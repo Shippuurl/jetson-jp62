@@ -66,6 +66,25 @@ nvbootctrl dump-slots-info   # Current version 应为 36.4.x
 nvpmodel -q                  # 期望 MAXN_SUPER
 ```
 
+## 硬盘预算（冷启动最坏情况，实测口径）
+
+| 模式 | 峰值占用 | 说明 |
+|---|---|---|
+| `--mode detect` | 1.4 GB | 只体检，不下载 |
+| `--mode prep` | 2.8 GB | 只有 BSP |
+| `--mode prep --with-rootfs` | 8.5 GB | BSP + rootfs + apply_binaries |
+| `--mode qspi` | 9.3 GB | 含 rootfs（拼 recovery ramdisk）+ 临时镜像 |
+| `--mode nvme` | 12.4 GB | 额外生成 system.img |
+| `--mode target` | 系统盘 ≥ 9 GB | 板内 apt 升级 |
+
+分项：BSP 下载 715 MiB / 解压 ~790 MB；sample rootfs 1.70 GiB / 解压 ~3.1 GB；apply_binaries +~0.9 GB；
+刷机临时镜像 QSPI ~0.8 GB、NVMe ~3.9 GB；日志与余量 1.4 GB。已缓存的包自动抵扣。
+
+下载与解压分盘（`--cache-dir`）：qspi 需 2.4 GB + 5.8 GB；nvme 需 2.4 GB + 8.9 GB。
+
+> ⚠️ **QSPI 也要 rootfs**：36.x 的 `flash.sh` 即使只写 QSPI 分区，也会从 `rootfs/` 拼 recovery ramdisk。
+> 所以 `--mode qspi` 的预算是 9.3 GB，不是老文档里的 2 GB。
+
 ## 参数
 
 ```
