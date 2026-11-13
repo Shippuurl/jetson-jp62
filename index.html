@@ -115,6 +115,7 @@
     <a href="#matrix">支持矩阵</a>
     <a href="#checks">刷前检查</a>
     <a href="#disk">硬盘预算</a>
+    <a href="#diag">诊断能力</a>
     <a href="#args">参数</a>
     <a href="#pitfalls">已知坑</a>
     <a href="#legal">免责声明</a>
@@ -351,6 +352,47 @@ L4T_VERSION=36.4.4</pre>
       <li><b>不能在 NTFS/exFAT 盘上准备 rootfs。</b>会丢权限和软链，刷出来必坏；脚本会拦。</li>
       <li><b>刷写中途断电＝变砖。</b>需要重新进 recovery 再刷，供电不稳就先别刷。</li>
     </ul>
+  </div>
+</section>
+
+<section id="diag">
+  <div class="wrap">
+    <h2><span class="n">DIAGNOSTICS</span>诊断能力：能看什么、看不到什么</h2>
+    <p><code>--mode diag</code>（菜单第 6 项）会自动分成两路，都不改动任何东西：</p>
+
+    <table>
+      <tr><th>板子状态</th><th>能看到</th><th>看不到</th></tr>
+      <tr>
+        <td>已启动（能 ssh / 板内跑）</td>
+        <td>L4T 与内核版本、UEFI(QSPI) 版本、bootloader A/B 槽位状态、功耗模式、/proc/cmdline、
+          dmesg 的 err/crit、journalctl -b -p err、失败的服务、外设探测失败（CSI / fusb301 / nvme / pcie）</td>
+        <td>UEFI 自检日志、DDR 训练、BootROM/MB1/MB2 阶段失败、电源上电时序</td>
+      </tr>
+      <tr>
+        <td>recovery 模式（未启动）</td>
+        <td>芯片信息（chip sku / minor rev / bootrom rev / ramcode）、EEPROM（BoardID / SKU / FAB / Revision /
+          板料号 / AssetID / GB+WiFi MAC）、BCT 与 custinfo 导出</td>
+        <td>内核与 UEFI 运行时日志、DDR 训练、系统盘内容 —— 这一切还没加载</td>
+      </tr>
+    </table>
+
+    <div class="note"><b>能判断的典型问题</b>：板型配置与 EEPROM sku 不匹配（刷错 .conf）、BCT/客户信息损坏
+      （能进 recovery 但起不来）、QSPI 与系统盘版本不同代、外设（相机/PD 芯片）没探到、bootloader 槽位异常。</div>
+
+    <div class="warnbox"><b>真正的"底层开机报错"只能从串口看。</b>
+      UEFI、DDR 训练、BPMP、电源时序这些在系统起来之前就发生了，任何刷机工具或 SSH 都读不到。
+      Orin Nano DevKit 40-pin 排针：Pin 6 = GND，Pin 8 = UART1_TX，Pin 10 = UART1_RX，115200 8N1，
+      控制台设备 <code>ttyTCU0</code>。冷启动会依次打出 BootROM → MB1/MB2 → UEFI → kernel，坏在哪段一眼就能分辨。</div>
+
+    <pre class="block">$ bash jetson-jp62.sh --mode diag
+── 诊断报告（输出目录 ./diag-20261113-191339）──
+  [ - ] 模式：板内诊断（系统已启动）
+  [ ✓ ] 系统 L4T/内核: R36.4.3 / 5.15.148-tegra
+  [ - ] UEFI(QSPI) 版本: 36.5.0
+  [ ! ] QSPI/UEFI(36.5.0) 与系统(36.4.3) 不同代：典型"只刷过 QSPI、系统盘没动"
+  [ - ] 功耗模式: NV Power Mode: MAXN_SUPER
+  [ ! ] CSI 相机(i2c 9/10) 探测失败 → 相机排线/供电/设备树，与刷机无关
+  [ ✓ ] 完整日志: ./diag-20261113-191339/onboard.txt</pre>
   </div>
 </section>
 
