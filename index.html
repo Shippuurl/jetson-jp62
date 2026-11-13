@@ -185,6 +185,9 @@ $ head -3 /etc/nv_boot_control.conf   # TNSPEC 应带 -super</pre>
       <li>官方 BSP 下载目录 HEAD 探测 → 这个版本到底有没有可直接刷机的 BSP tarball</li>
     </ul>
     <pre class="block">$ bash jetson-jp62.sh --matrix --refresh</pre>
+    <p>矩阵末尾会直接列出<b>所有真的能下载到 BSP 的版本</b>，例如当前是：
+      <code>36.5.0 36.4.4 36.4.3 36.4.0 36.3.0 36.2.0 35.6.5 … 35.4.1</code>。
+      交互运行时不给 <code>--l4t</code>，脚本会把这串列成菜单让你挑（回车才等于最新，不会偷偷选）。</p>
     <table>
       <tr><th>suite</th><th>L4T（apt）</th><th>BSP 可下载</th><th>QSPI capsule 包</th><th>只刷 QSPI</th></tr>
       <tr><td>r35.4</td><td>35.4.1</td><td>35.4.1</td><td class="no">无</td><td class="ok">是</td></tr>
@@ -292,7 +295,7 @@ $ bash jetson-jp62.sh --mode qspi --dir /data/jetson --cache-dir /data/jetson/ca
     <table>
       <tr><th>参数</th><th>说明</th></tr>
       <tr><td><code>--mode detect|qspi|nvme|prep|target</code></td><td>执行模式；不给则进交互菜单</td></tr>
-      <tr><td><code>--l4t &lt;版本|latest&gt;</code></td><td>目标 L4T，默认 <code>auto</code>＝向上游探测最新有 BSP 的版本</td></tr>
+      <tr><td><code>--l4t &lt;版本|latest&gt;</code></td><td>目标 L4T。<b>不给就会让你选</b>（列出上游确实存在 BSP 的版本）；非交互环境才回落 <code>auto</code></td></tr>
       <tr><td><code>--matrix</code> / <code>--refresh</code></td><td>打印支持矩阵 / 强制重取上游缓存</td></tr>
       <tr><td><code>--board &lt;名字&gt;</code> / <code>--list-boards</code></td><td>强制板型配置 / 列出 BSP 里全部板型</td></tr>
       <tr><td><code>--dir</code> / <code>--cache-dir</code> / <code>--auto-dir</code></td><td>工作目录 / 下载包目录（别名 <code>--resource</code>）/ 自动选余量最大的盘</td></tr>
