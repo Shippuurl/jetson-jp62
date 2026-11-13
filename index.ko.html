@@ -78,7 +78,10 @@ figcaption{margin-top:8px;font-size:12px;color:#626a72;line-height:1.6}
 footer{padding:0;margin:12px 0 0;font-size:11px;color:#626a72;display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px}
 /* ---- 移动端：单栏堆叠 ---- */
 @media(min-width:921px){
-  .page{min-height:100vh}          /* 整页滚动，不做栏内滚动：中线处不会多出滚动条 */
+  .page{min-height:100vh}
+  .pane.left{align-self:start;padding-top:14px;padding-bottom:10px}
+  .pane.left{position:sticky;top:var(--sticky-top,0px)}
+  .pane.left section{padding-top:12px;padding-bottom:12px}
 }
 @media(max-width:920px){
   .page{grid-template-columns:1fr}
@@ -151,11 +154,11 @@ SOFTWARE.</pre></details></section>
       </select>
     </div>
   </div>
+  <div class="panel" id="panel-recovery">
   <h2 id="prep">플래시 전 준비물</h2>
   <ol class="checklist"><li><b>Jetson 보드</b><span>Orin Nano / Orin NX(t234). 모듈과 캐리어는 EEPROM 판독값(Board ID / SKU)으로 확인합니다.</span></li><li><b>전원 어댑터</b><span>19V 배럴 잭 전원. 플래시와 recovery 중에는 USB-C 전원에만 의존하지 마십시오.</span></li><li><b>USB-C 데이터 케이블</b><span>보드를 recovery(APX) 모드로 호스트에 연결합니다. 데이터 전송을 지원해야 하며, 충전 전용 케이블은 인식되지 않습니다.</span></li><li><b>점퍼 캡</b><span>FC REC와 GND를 단락해 recovery로 진입합니다. 위치는 캐리어 실크를 확인하십시오. DevKit은 12핀 헤더의 FC REC / GND(9·10번 핀)입니다.</span></li></ol>
   <figure><img src="images/jetson-board.jpg" alt="Jetson 보드: 40핀 헤더, USB-C, 19V 입력." width="1100" height="741"><figcaption>Jetson 보드: 40핀 헤더, USB-C, 19V 입력.</figcaption></figure>
 
-  <div class="panel" id="panel-recovery">
   <h3 id="recovery">recovery(플래시 모드) 진입</h3>
   <p class="muted" style="font-size:13.5px">플래시 전에 보드는 Force Recovery 모드여야 합니다. 아래 세 가지 방법은 모두 NVIDIA 공식 문서에 따른 것이며, 보드 상태에 맞는 방법을 선택하십시오.</p>
   <div class="method"><p class="method-t"><b>A</b> 전원을 끈 상태에서 (권장)</p><ol class="steps"><li>전원을 분리하고 보드가 완전히 꺼졌는지 확인합니다.</li><li>Button Header의 9번과 10번 핀(FC REC → GND)에 점퍼를 장착합니다.</li><li>전원을 다시 연결하면 시스템 대신 recovery로 진입합니다.</li><li>호스트가 장치를 인식하면 점퍼를 제거합니다. 장착한 채 두면 다음 전원 인가 시 다시 recovery로 진입합니다.</li></ol></div>
@@ -169,29 +172,35 @@ SOFTWARE.</pre></details></section>
   </div>
   <p class="caution" style="margin-top:20px">확인: 호스트의 <code>lsusb</code>에 <code>0955:&lt;nnnn&gt; NVIDIA Corp.</code>가 표시됩니다. 7523 = Orin Nano 8GB, 7623 = Orin Nano 4GB(공식 모델 표). 표시되지 않으면 전원을 다시 인가해 재시도하십시오.</p>
   <p class="sources"><span class="meta">출처</span><a href="https://docs.nvidia.com/jetson/orin-nano-devkit/user-guide/latest/howto.html#force-recovery-mode" rel="noopener">NVIDIA · Force Recovery Mode（Orin Nano DevKit User Guide）</a><a href="https://docs.nvidia.com/jetson/archives/r36.4.3/DeveloperGuide/IN/QuickStart.html" rel="noopener">NVIDIA · Jetson Linux R36.4.3 Quick Start</a><a href="https://forums.developer.nvidia.com/t/how-to-get-into-recovery-mode/250525" rel="noopener">NVIDIA Developer Forums · How to Get Into Recovery Mode</a></p>
-  </div>
-
-  <div class="panel" id="panel-uart" hidden>
-  <h3>시리얼 진단(UART)</h3>
-  <p class="muted" style="font-size:13.5px">보드가 부팅되지 않거나, 플래시가 실패하거나, 부팅 화면에서 멈출 때 시리얼 로그로 부팅 체인의 어느 단계인지 가릴 수 있습니다. SSH나 recovery보다 하드웨어에 가까운 출력을 얻습니다.</p>
-  <div class="method"><p class="method-t"><b>1</b> 준비물</p><ul class="steps"><li>USB-TTL 시리얼 모듈(CP2102 / CH340 / FT232 계열, 3.3V 레벨)</li><li>점퍼 와이어 3개(암-암)</li></ul></div>
-  <div class="method"><p class="method-t"><b>2</b> 배선(40핀 헤더)</p><ul class="steps"><li>Pin 8 UART_TX → 어댑터 RXD</li><li>Pin 10 UART_RX → 어댑터 TXD</li><li>GND 공통(핀 6 / 9 / 14 / 25 / 30 / 34 / 39 중 하나)</li></ul></div>
-  <p class="note" style="margin-top:4px">115200 8N1, 흐름 제어 없음. TX와 RX는 반드시 교차해야 하며, TX-TX로 연결하면 한 글자도 받지 못합니다.</p>
-  <div class="method" style="margin-top:14px"><p class="method-t"><b>3</b> 캡처</p><ol class="steps"><li>스크립트 내장: <code>bash jetson-jp62.sh --mode uart</code>(/dev/ttyUSB* 자동 탐색, 기본 30초)</li><li>수동: <code>screen /dev/ttyUSB0 115200</code>(종료는 Ctrl-A 후 K), 또는 <code>minicom -D /dev/ttyUSB0 -b 115200</code></li><li>먼저 캡처를 시작한 뒤 보드 전원을 껐다 켜야 BootROM부터 커널까지 전체 체인을 얻습니다</li></ol></div>
-  <p class="note">보드 쪽 장치 이름은 /dev/ttyTHS1입니다(번호는 릴리스마다 동적으로 할당되며 ttyTHS0 고정이 아닙니다). 권한이 거부되면 dialout 그룹에 추가하십시오.</p>
-  <div class="method" style="margin-top:14px"><p class="method-t"><b>4</b> 어디서 멈추는가</p><ul class="steps"><li>BootROM / MB1 / MB2 출력 없음 → 전원, 모듈 접촉, QSPI 펌웨어</li><li>UEFI에서 정지 → 부트로더 또는 디바이스 트리 설정</li><li>커널에서 멈춤 → 드라이버, 루트 파일 시스템, 저장 장치</li><li>getty까지 도달 후 재부팅 → 애플리케이션 또는 systemd 유닛</li></ul></div>
-  <p class="sources"><span class="meta">출처</span><a href="https://developerwiki.proventusnova.com/How_to_NVIDIA_Jetson_Orin_Nano_UART_Console" rel="noopener">ProventusNova · How to NVIDIA Jetson Orin Nano UART Console</a><a href="https://forums.developer.nvidia.com/t/how-to-access-uart1-on-expansion-pins-8-10/328934" rel="noopener">NVIDIA Developer Forums · UART1 on expansion pins 8/10</a><a href="https://jetsonhacks.com/2019/04/19/jetson-nano-serial-console/" rel="noopener">JetsonHacks · Serial Debug Console (115200 8N1)</a></p>
-  </div>
-
   <h3>플래시와 검증</h3>
   <div class="gallery">
     <figure><img src="images/jetpack-version.png" alt="스크립트에서 버전 선택: --l4t를 주지 않으면 대화형으로 선택하며 최신을 임의로 쓰지 않습니다." width="792" height="426"><figcaption>스크립트에서 버전 선택: --l4t를 주지 않으면 대화형으로 선택하며 최신을 임의로 쓰지 않습니다.</figcaption></figure>
     <figure><img src="images/flash-done.jpg" alt="플래시 성공: flash.sh가 “The target generic has been flashed successfully”를 출력." width="1100" height="957"><figcaption>플래시 성공: flash.sh가 “The target generic has been flashed successfully”를 출력.</figcaption></figure>
   </div>
   <p class="muted" style="font-size:12.5px;margin-top:18px">준비가 끝나면 왼쪽 «받기와 실행»으로 돌아가 먼저 <code>--mode detect</code>를 실행한 뒤 플래시 여부를 결정하십시오.</p>
+  </div>
+
+  <div class="panel" id="panel-uart" hidden>
+  <h3>시리얼 진단(UART)</h3>
+  <div class="command"><div class="command-head">Windows · PowerShell</div><pre>irm https://raw.githubusercontent.com/Shippuurl/jetson-jp62/main/uart-logs.ps1 | iex</pre></div>
+  <div class="command"><div class="command-head">Linux / macOS · Bash</div><pre>bash &lt;(curl -fsSL https://raw.githubusercontent.com/Shippuurl/jetson-jp62/main/uart-logs.sh)</pre></div>
+  <p><a href="UART-LOGS.md">UART logs · ZIP · GitHub rules ↗</a></p>
+  <p class="muted" style="font-size:13.5px">보드가 부팅되지 않거나, 플래시가 실패하거나, 부팅 화면에서 멈출 때 시리얼 로그로 부팅 체인의 어느 단계인지 가릴 수 있습니다. SSH나 recovery보다 하드웨어에 가까운 출력을 얻습니다.</p>
+  <div class="method"><p class="method-t"><b>1</b> 준비물</p><ul class="steps"><li>USB-TTL 시리얼 모듈(CP2102 / CH340 / FT232 계열, 3.3V 레벨)</li><li>점퍼 와이어 3개(암-암)</li></ul></div>
+  <div class="method"><p class="method-t"><b>2</b> 배선(40핀 헤더)</p><ul class="steps"><li>Pin 8 UART_TX → 어댑터 RXD</li><li>Pin 10 UART_RX → 어댑터 TXD</li><li>GND 공통(핀 6 / 9 / 14 / 25 / 30 / 34 / 39 중 하나)</li></ul></div>
+  <p class="note" style="margin-top:4px">115200 8N1, 흐름 제어 없음. TX와 RX는 반드시 교차해야 하며, TX-TX로 연결하면 한 글자도 받지 못합니다.</p>
+  <figure><img src="images/uart-wiring.svg" alt="배선(40핀 헤더)" width="900" height="440"><figcaption>배선(40핀 헤더) · 3.3 V TTL</figcaption></figure>
+  <div class="method" style="margin-top:14px"><p class="method-t"><b>3</b> 캡처</p><ol class="steps"><li>스크립트 내장: <code>bash jetson-jp62.sh --mode uart</code>(/dev/ttyUSB* 자동 탐색, 기본 30초)</li><li>수동: <code>screen /dev/ttyUSB0 115200</code>(종료는 Ctrl-A 후 K), 또는 <code>minicom -D /dev/ttyUSB0 -b 115200</code></li><li>먼저 캡처를 시작한 뒤 보드 전원을 껐다 켜야 BootROM부터 커널까지 전체 체인을 얻습니다</li></ol></div>
+  <p class="note">보드 쪽 장치 이름은 /dev/ttyTHS1입니다(번호는 릴리스마다 동적으로 할당되며 ttyTHS0 고정이 아닙니다). 권한이 거부되면 dialout 그룹에 추가하십시오.</p>
+  <figure><img src="images/uart-capture.svg" alt="캡처" width="900" height="360"><figcaption>캡처 · 115200 8N1</figcaption></figure>
+  <div class="method" style="margin-top:14px"><p class="method-t"><b>4</b> 어디서 멈추는가</p><ul class="steps"><li>BootROM / MB1 / MB2 출력 없음 → 전원, 모듈 접촉, QSPI 펌웨어</li><li>UEFI에서 정지 → 부트로더 또는 디바이스 트리 설정</li><li>커널에서 멈춤 → 드라이버, 루트 파일 시스템, 저장 장치</li><li>getty까지 도달 후 재부팅 → 애플리케이션 또는 systemd 유닛</li></ul></div>
+  <p class="sources"><span class="meta">출처</span><a href="https://developerwiki.proventusnova.com/How_to_NVIDIA_Jetson_Orin_Nano_UART_Console" rel="noopener">ProventusNova · How to NVIDIA Jetson Orin Nano UART Console</a><a href="https://forums.developer.nvidia.com/t/how-to-access-uart1-on-expansion-pins-8-10/328934" rel="noopener">NVIDIA Developer Forums · UART1 on expansion pins 8/10</a><a href="https://jetsonhacks.com/2019/04/19/jetson-nano-serial-console/" rel="noopener">JetsonHacks · Serial Debug Console (115200 8N1)</a></p>
+  </div>
+
+
 </section>
 
 </div>
-<script>const ts=document.getElementById('tut');if(ts){const show=v=>{document.getElementById('panel-recovery').hidden=v!=='recovery';document.getElementById('panel-uart').hidden=v!=='uart';};ts.addEventListener('change',()=>show(ts.value));show(ts.value);}
+<script>const left=document.querySelector('.pane.left');const fit=()=>left.style.setProperty('--sticky-top',Math.min(0,window.innerHeight-left.getBoundingClientRect().height)+'px');new ResizeObserver(fit).observe(left);window.addEventListener('resize',fit);fit();const ts=document.getElementById('tut');if(ts){const show=v=>{document.getElementById('panel-recovery').hidden=v!=='recovery';document.getElementById('panel-uart').hidden=v!=='uart';};ts.addEventListener('change',()=>show(ts.value));show(ts.value);}
 const b=document.getElementById('copy');b.hidden=false;b.addEventListener('click',async()=>{const s=document.getElementById('copy-status');try{await navigator.clipboard.writeText(document.getElementById('command').textContent);s.textContent='복사했습니다. 먼저 스크립트를 검토하십시오.';}catch{s.textContent='클립보드를 사용할 수 없습니다. 직접 복사하십시오.';}});</script>
 </body></html>
