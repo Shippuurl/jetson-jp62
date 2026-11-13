@@ -665,33 +665,84 @@ mirror_list() {
     printf '%s\n' "${out[@]}"
 }
 
+# 上游给的真实大小（Content-Length，跟随重定向取最后一条）；取不到返回空
+remote_size() {
+    local name="$1" m sz
+    while IFS= read -r m; do
+        [ -n "$m" ] || continue
+        sz="$(curl -sIL --max-time 20 "${m}/${name}" 2>/dev/null |
+              awk 'BEGIN{IGNORECASE=1} /^content-length:/{v=$2} END{gsub(/[\r ]/,"",v); print v}')"
+        case "$sz" in ''|*[!0-9]*) continue ;; esac
+        printf '%s' "$sz"; return 0
+    done < <(mirror_list)
+    return 0
+}
+
+human() { local b="${1:-0}"; awk -v b="$b" 'BEGIN{ if (b>=1073741824) printf "%.2f GiB", b/1073741824; else if (b>=1048576) printf "%.1f MiB", b/1048576; else printf "%d B", b }'; }
+
 fetch() {
     local name="$1" size="$2" local_src="${3:-}" dst
     dst="$(pkg_dir)/$1"
     mkdir -p "$(pkg_dir)" 2>/dev/null || true
+
+    # 期望大小：命令行/常量给了就用，否则现场向上游 HEAD 问
+    local want="$size"
+    [ -n "$want" ] || want="$(remote_size "$name")"
+
     if [ -s "$dst" ]; then
         local got; got="$(stat -c%s "$dst")"
-        [ -n "$size" ] && [ "$got" = "$size" ] && { log "已存在且大小对得上，复用: $name"; return 0; }
-        [ "$DRY_RUN" = 1 ] || warn "已存在但大小不符（$got/$size），续传"
+        if [ -n "$want" ] && [ "$got" = "$want" ]; then
+            log "已存在且与上游大小一致（$(human "$got")），跳过下载: $name"
+            return 0
+        fi
+        if [ -z "$want" ]; then
+            log "上游没给大小，本地已有 $(human "$got")，交给压缩包完整性校验判断: $name"
+            return 0
+        fi
+        if [ "$got" -gt "$want" ]; then
+            warn "本地文件比上游还大（本地 $(human "$got") > 上游 $(human "$want")），可能不是同一版本 → 删除重下"
+            [ "$DRY_RUN" = 1 ] || rm -f "$dst"
+        else
+            warn "本地不完整（$(human "$got") / $(human "$want")）→ 断点续传"
+        fi
     fi
+
     if [ -n "$local_src" ] && [ -f "$local_src/$name" ]; then
         log "离线拷贝: $local_src/$name"
         [ "$DRY_RUN" = 1 ] && { log "[dry-run] cp $local_src/$name $dst"; return 0; }
         cp -f "$local_src/$name" "$dst" && return 0
     fi
-    local m
+
+    local m got
     while IFS= read -r m; do
         [ -n "$m" ] || continue
         log "下载 $name ← $m"
         [ "$DRY_RUN" = 1 ] && { log "[dry-run] curl -fL -C - -o $dst ${m}/${name}"; return 0; }
         if curl -fL --retry 3 --retry-delay 2 --connect-timeout 20 -C - -o "$dst" "${m}/${name}"; then
-            local got; got="$(stat -c%s "$dst")"
-            [ -n "$size" ] && [ "$got" != "$size" ] && { warn "大小不符（$got/$size），换源"; rm -f "$dst"; continue; }
+            got="$(stat -c%s "$dst")"
+            if [ -n "$want" ] && [ "$got" != "$want" ]; then
+                warn "下完大小仍不符（$(human "$got") / $(human "$want")），删掉换下一个源"
+                rm -f "$dst"; continue
+            fi
             return 0
         fi
         warn "该源失败，换下一个"
     done < <(mirror_list)
     die "全部源都下不动: $name；用 --mirror 指定内网/本地源（支持 file:// 与目录）"
+}
+
+# 取包 + 校验，坏包自动删掉重下一次（不让用户手工 rm）
+ensure_pkg() {
+    local name="$1" size="${2:-}" src="${3:-}"
+    fetch "$name" "$size" "$src"
+    if [ "$DRY_RUN" = 1 ]; then verify_tbz2 "$name"; return 0; fi
+    if bzip2 -t "$(pkg_dir)/$name" 2>/dev/null; then log "压缩包校验通过: $name"; return 0; fi
+    warn "压缩包校验失败（$name），删掉重新下载一次"
+    rm -f "$(pkg_dir)/$name"
+    fetch "$name" "$size" "$src"
+    log "校验压缩包: $name"
+    bzip2 -t "$(pkg_dir)/$name" || die "重下后仍损坏：查网络/代理，或换 --mirror 源（文件: $(pkg_dir)/$name）"
+    ok "重下后校验通过: $name"
 }
 
 verify_tbz2() {
@@ -891,14 +942,12 @@ do_prep() {
         [ -d "$src" ] || die "离线源目录不存在: $src"
         log "离线模式：从 $src 取包"
     fi
-    fetch "$BSP_FILENAME" "$BSP_SIZE" "$src"
-    verify_tbz2 "$BSP_FILENAME"
+    ensure_pkg "$BSP_FILENAME" "$BSP_SIZE" "$src"
     verify_checksum "$BSP_FILENAME"
     extract_bsp
     install_deps
     if [ "$WITH_ROOTFS" = 1 ]; then
-        fetch "$ROOTFS_FILENAME" "$ROOTFS_SIZE" "$src"
-        verify_tbz2 "$ROOTFS_FILENAME"
+        ensure_pkg "$ROOTFS_FILENAME" "$ROOTFS_SIZE" "$src"
         extract_rootfs
     fi
     ok "准备完成: $WORK_DIR/Linux_for_Tegra"
