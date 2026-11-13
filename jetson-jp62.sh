@@ -20,7 +20,7 @@
 set -o pipefail
 
 # 版本不写死：默认 auto = 运行时向上游探测"存在 BSP 包的最高 L4T 版本"
-L4T_VERSION="${L4T_VERSION:-auto}"
+L4T_VERSION="${L4T_VERSION:-}"   # 空 = 交互时让你选版本；非交互才回落 auto(最新可刷)
 L4T_TAG="${L4T_TAG:-}"
 BSP_FILENAME=""
 ROOTFS_FILENAME=""
@@ -986,8 +986,8 @@ menu() {
     banner
     echo "  请选择要做什么（输入序号）："
     echo "    1) 体检：自动识别板子 + 检查能不能刷（不改任何东西）"
-    echo "    2) 只刷 QSPI（UEFI/bootloader 升 36.4.3，系统盘数据保留）"
-    echo "    3) 整机刷到 NVMe（QSPI + 系统全刷，目标盘会格式化）"
+    echo "    2) 只刷 QSPI（UEFI/bootloader 升级，系统盘数据保留；版本随后选）"
+    echo "    3) 整机刷到 NVMe（QSPI + 系统全刷，目标盘会格式化；版本随后选）"
     echo "    4) 只下载 + 解压（离线缓存，可带 sample rootfs）"
     echo "    5) 在 Jetson 本机：apt 升计算栈到 6.2（不重刷）"
     echo "    6) 打开使用说明页（支持矩阵 / 参数 / 免责声明）"
@@ -1073,11 +1073,14 @@ build_matrix() {
         [ -n "$core" ] || continue
         qspi="$(suite_qspi_updater "$s")"
         maj="${core%%.*}"; local rest="${core#*.}"; min="${rest%%.*}"; pat="${rest#*.}"; pat="${pat%%-*}"
-        best=""
+        best=""; local all=""
         for v in $(seq "$pat" -1 0); do
-            if url_exists "$(bsp_url "$maj.$min.$v")"; then best="$maj.$min.$v"; break; fi
+            if url_exists "$(bsp_url "$maj.$min.$v")"; then
+                [ -z "$best" ] && best="$maj.$min.$v"
+                all="${all:+$all,}$maj.$min.$v"
+            fi
         done
-        printf '%s|%s|%s|%s\n' "$s" "$core" "${qspi%%-*}" "$best" >> "$MATRIX_FILE.tmp"
+        printf '%s|%s|%s|%s|%s\n' "$s" "$core" "${qspi%%-*}" "$best" "$all" >> "$MATRIX_FILE.tmp"
         log "探测 $s: L4T=${core%%-*}, 有BSP=${best:-无}"
     done
     mv "$MATRIX_FILE.tmp" "$MATRIX_FILE"
@@ -1086,13 +1089,15 @@ build_matrix() {
 matrix_print() {
     printf '\n%s── QSPI / 刷机支持矩阵（数据源：NVIDIA apt 仓库 + 官方下载目录，%s）──%s\n' "$C_B" "$(date +%F)" "$C_N"
     printf '%-8s %-10s %-12s %-12s %s\n' "suite" "L4T(apt)" "BSP可下" "QSPI胶囊包" "只刷QSPI"
-    local s core qspi best
-    while IFS='|' read -r s core qspi best; do
+    local s core qspi best all
+    while IFS='|' read -r s core qspi best all; do
         [ -n "$s" ] || continue
         local ok="是"; [ -n "$best" ] || ok="否(只有apt)"
         local cap="无"; [ -n "$qspi" ] && cap="有 $qspi"
         printf '%-8s %-10s %-12s %-12s %s\n' "$s" "${core%%-*}" "${best:--}" "$cap" "$ok"
     done < "$MATRIX_FILE"
+    printf '\n所有可刷版本（下载目录里真有 BSP 包，按高到低）：%s\n' "$(available_versions 2>/dev/null | tr '\n' ' ')"
+    printf '指定方式：--l4t <版本>；交互运行时不给 --l4t 会弹选择菜单（不会偷偷用最新）\n' 
     local lt="$WORK_DIR/Linux_for_Tegra"
     if [ -d "$lt/bootloader/generic/cfg" ]; then
         printf '\n本机 BSP 里的 QSPI 分区配置（决定能刷哪些存储后端）：\n'
@@ -1102,6 +1107,66 @@ matrix_print() {
     fi
     printf '\n官方图形工具（可整机刷，无"只刷 QSPI"选项）: https://developer.nvidia.com/sdk-manager\n'
     printf '只刷 QSPI 的第三方实现参考: osrbot/mfi-qspi-forge（量产 MFI 包）、Hi5808/turing-pi-2.5-jetson-eeprom-fix（先备份载板 EEPROM 再只刷 QSPI）\n\n'
+}
+
+jp_hint() {
+    case "$1" in
+        36.5.*) printf 'JetPack 6.2.2' ;;
+        36.4.4*) printf 'JetPack 6.2.1' ;;
+        36.4.3*) printf 'JetPack 6.2' ;;
+        36.4.0*) printf 'JetPack 6.1' ;;
+        36.3.*) printf 'JetPack 6.0' ;;
+        36.2.*) printf 'JetPack 6.0 DP' ;;
+        *) printf '' ;;
+    esac
+}
+
+available_versions() {
+    # 来自上游矩阵：每个 suite 里"确实存在 BSP 包"的所有版本，去重后从高到低
+    [ -f "$MATRIX_FILE" ] || return 0
+    awk -F'|' '$5!=""{n=split($5,a,","); for(i=1;i<=n;i++) print a[i]}' "$MATRIX_FILE" |
+        sort -Vu | tac
+}
+
+# 交互选版本：默认高亮最新，但必须由你确认/选择，不再偷偷用最新
+pick_l4t_interactive() {
+    build_matrix 0
+    local vers; vers="$(available_versions)"
+    [ -n "$vers" ] || { warn "取不到可用版本列表，回落 auto"; L4T_VERSION=auto; return 0; }
+
+    printf '\n%s── 选择要装的 L4T / JetPack 版本（数据源：官方下载目录实测存在 BSP）──%s\n' "$C_B" "$C_N"
+    local i=0 newest; newest="$(printf '%s\n' "$vers" | head -1)"
+    local -a arr=()
+    while IFS= read -r v; do
+        [ -n "$v" ] || continue
+        i=$((i+1)); arr+=("$v")
+        local hint; hint="$(jp_hint "$v")"
+        printf '   %2d) %-9s %s%s\n' "$i" "$v" "${hint:+$hint}" "$([ "$v" = "$newest" ] && printf '   %s← 最新%s' "$C_D" "$C_N")"
+    done <<< "$vers"
+    printf '    q) 退出\n'
+    while :; do
+        printf '  请选择 [1-%d]（直接回车 = 1 最新 %s，也可直接输入版本号如 36.4.3）> ' "${#arr[@]}" "$newest"
+        local a; IFS= read -r a || { L4T_VERSION=auto; return 0; }
+        case "$a" in
+            q|Q) die "已退出" ;;
+            "")  L4T_VERSION="${arr[0]}"; break ;;
+            *[!0-9]*) ;;   # 非纯数字 → 当作版本号处理
+        esac
+        if printf '%s' "$a" | grep -qE '^36\.[0-9]+(\.[0-9]+)?$'; then
+            case "$a" in
+                *.*.*) L4T_VERSION="$a" ;;
+                *)     L4T_VERSION="$(printf '%s\n' "$vers" | grep -E "^$a\." | head -1)" ;;
+            esac
+            [ -n "$L4T_VERSION" ] && break
+            L4T_VERSION=""; warn "没找到 $a 对应的可刷版本，重选"; continue
+        fi
+        case "$a" in
+            ''|*[!0-9]*) warn "请输入序号或版本号"; continue ;;
+        esac
+        if [ "$a" -ge 1 ] && [ "$a" -le "${#arr[@]}" ]; then L4T_VERSION="${arr[$((a-1))]}"; break; fi
+        warn "序号超出范围"
+    done
+    ok "已选 L4T $L4T_VERSION$( [ -n "$(jp_hint "$L4T_VERSION")" ] && printf '（%s）' "$(jp_hint "$L4T_VERSION")" )"
 }
 
 resolve_l4t() {
@@ -1252,8 +1317,18 @@ main() {
         doc)    open_doc; exit 0 ;;
     esac
 
-    case "$MODE" in nvme) WITH_ROOTFS=1 ;; esac   # nvme 必定要 rootfs，先定下来再算空间
+    case "$MODE" in nvme|qspi) WITH_ROOTFS=1 ;; esac   # 这两种都要 rootfs，先定下来再算空间
     [ "$AUTO_DIR" = 1 ] && auto_select_dirs "$MODE"
+
+    # 版本：没显式给 --l4t 时，交互就让你选；非交互才回落 auto
+    if [ -z "$L4T_VERSION" ]; then
+        case "$MODE" in
+            qspi|nvme|prep)
+                if [ -t 0 ] && [ "$YES" != 1 ] && [ "$DRY_RUN" != 1 ]; then pick_l4t_interactive
+                else L4T_VERSION=auto; log "非交互环境，版本回落 auto（最新可刷）"; fi ;;
+            *) L4T_VERSION=auto ;;
+        esac
+    fi
     resolve_l4t                    # auto/latest → 向上游探测最新可刷 BSP（不写死版本）
 
     detect_onboard || detect_recovery || DET_MODE="none"
