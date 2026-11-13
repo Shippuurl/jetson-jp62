@@ -1,0 +1,74 @@
+{
+  "version": 3,
+  "board": "raspberrypi",
+  "context": 3,
+  "rules": [
+    {
+      "id": "pi-platform",
+      "severity": "info",
+      "context": 2,
+      "terms": [
+        "Raspberry Pi",
+        "bcm27",
+        "bcm28",
+        "raspi"
+      ],
+      "advice": "识别为 Raspberry Pi 平台。"
+    },
+    {
+      "id": "pi-firmware",
+      "severity": "error",
+      "context": 3,
+      "terms": [
+        "start4.elf",
+        "start.elf",
+        "kernel.img not found",
+        "mmc: no card"
+      ],
+      "advice": "固件/启动文件缺失或 SD 卡读不到：确认 boot 分区与卡。"
+    },
+    {
+      "id": "under-voltage",
+      "severity": "warn",
+      "context": 2,
+      "terms": [
+        "Under-voltage detected",
+        "low voltage"
+      ],
+      "advice": "供电不足：换 5V/3A 以上电源与短粗线。"
+    },
+    {
+      "id": "sd-error",
+      "severity": "error",
+      "context": 3,
+      "terms": [
+        "mmc0: error",
+        "sdhci",
+        "EXT4-fs error"
+      ],
+      "advice": "SD 卡或文件系统故障：换卡/重刷，别长期跑在坏卡上。"
+    },
+    {
+      "id": "pi-wifi",
+      "severity": "warn",
+      "context": 2,
+      "terms": [
+        "brcmfmac",
+        "wlan0",
+        "cfg80211"
+      ],
+      "advice": "无线驱动相关报错：确认固件包与 regulatory 设置。"
+    },
+    {
+      "id": "pi-overlay",
+      "severity": "warn",
+      "context": 2,
+      "terms": [
+        "overlay",
+        "dtparam",
+        "config.txt"
+      ],
+      "advice": "设备树 overlay 配置问题：核对 config.txt。"
+    }
+  ]
+}
