@@ -29,6 +29,7 @@ REC = {
 "zh": dict(
     h="进入 recovery（刷机模式）",
     intro="刷写前板子必须处于 Force Recovery 模式。下面三种方式都出自 NVIDIA 官方文档，按板子当前状态选一种即可。",
+    menu_hint="刷写时脚本会在需要的情况下自动提示这三种方式，不必再回来查这一页。",
     a_t="断电进入（推荐）",
     a=["断开电源，确认板子已完全断电。",
        "用跳线帽短接 Button Header 的 9 与 10 脚（FC REC → GND）。",
@@ -54,6 +55,7 @@ REC = {
 "en": dict(
     h="Entering recovery (flash mode)",
     intro="The board must be in Force Recovery Mode before flashing. All three methods come from NVIDIA's own documentation; pick the one that matches the board's current state.",
+    menu_hint="Before flashing, the script prints these three methods itself when it needs them.",
     a_t="From power-off (recommended)",
     a=["Disconnect power and confirm the board is fully off.",
        "Fit a jumper across pins 9 and 10 of the Button Header (FC REC → GND).",
@@ -79,6 +81,7 @@ REC = {
 "ja": dict(
     h="recovery（書き込みモード）に入る",
     intro="書き込み前にボードを Force Recovery モードにする必要があります。以下の 3 通りはいずれも NVIDIA 公式ドキュメントの記載です。ボードの状態に合う方法を選んでください。",
+    menu_hint="書き込み時、必要ならスクリプトがこの 3 通りを表示します。",
     a_t="電源を切った状態から（推奨）",
     a=["電源を外し、ボードが完全に切れていることを確認します。",
        "Button Header の 9 番と 10 番（FC REC → GND）にジャンパを装着します。",
@@ -104,6 +107,7 @@ REC = {
 "de": dict(
     h="Recovery-Modus (Flash-Modus) herstellen",
     intro="Vor dem Flashen muss sich das Board im Force-Recovery-Modus befinden. Alle drei Wege stammen aus der NVIDIA-Dokumentation; wählen Sie den zum Boardzustand passenden.",
+    menu_hint="Beim Flashen gibt das Skript diese drei Wege bei Bedarf selbst aus.",
     a_t="Aus dem ausgeschalteten Zustand (empfohlen)",
     a=["Netzteil trennen und sicherstellen, dass das Board vollständig aus ist.",
        "Jumper über Pin 9 und 10 des Button-Headers setzen (FC REC → GND).",
@@ -129,6 +133,7 @@ REC = {
 "fr": dict(
     h="Entrer en mode recovery (mode flash)",
     intro="La carte doit être en Force Recovery Mode avant le flash. Les trois méthodes ci-dessous proviennent de la documentation NVIDIA ; choisissez celle qui correspond à l'état de la carte.",
+    menu_hint="Au moment du flash, le script affiche lui-même ces trois méthodes si nécessaire.",
     a_t="Depuis l'arrêt (recommandé)",
     a=["Débranchez l'alimentation et vérifiez que la carte est complètement hors tension.",
        "Placez un cavalier entre les broches 9 et 10 du Button Header (FC REC → GND).",
@@ -154,6 +159,7 @@ REC = {
 "ko": dict(
     h="recovery(플래시 모드) 진입",
     intro="플래시 전에 보드는 Force Recovery 모드여야 합니다. 아래 세 가지 방법은 모두 NVIDIA 공식 문서에 따른 것이며, 보드 상태에 맞는 방법을 선택하십시오.",
+    menu_hint="플래시할 때 필요하면 스크립트가 이 세 가지 방법을 직접 안내합니다.",
     a_t="전원을 끈 상태에서 (권장)",
     a=["전원을 분리하고 보드가 완전히 꺼졌는지 확인합니다.",
        "Button Header의 9번과 10번 핀(FC REC → GND)에 점퍼를 장착합니다.",
