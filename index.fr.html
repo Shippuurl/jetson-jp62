@@ -55,6 +55,15 @@ details h2{margin-top:18px}details pre{white-space:pre-wrap;padding:0;font-size:
 figure{margin:20px 0 0}figure img{display:block;width:100%;height:auto;border:1px solid #e3e5e7}
 figcaption{margin-top:8px;font-size:12px;color:#626a72;line-height:1.6}
 .gallery figure+figure{margin-top:16px}
+.col-wiki h3{font-size:14.5px;font-weight:650;margin:26px 0 10px;padding-top:18px;border-top:1px solid #e3e5e7}
+.method{margin:0 0 14px}
+.method-t{margin:0 0 6px;font-size:13.5px;color:#202428}
+.method-t b{display:inline-block;min-width:16px;font-weight:650;color:#9aa3ab;font-family:ui-monospace,monospace;font-size:12px}
+.steps{margin:0;padding:0 0 0 20px;color:#555e66;font-size:13.5px;line-height:1.7}
+.steps li{margin:2px 0}
+.sources{margin:16px 0 0;font-size:12.5px;color:#626a72;display:grid;gap:4px}
+.sources a{color:#555e66}
+.sources .meta{display:block;margin-bottom:2px}
 /* ---- 语言切换（放在栏底，不做顶部导航）---- */
 .lang{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;margin:26px 0 0;padding-top:16px;border-top:1px solid #e3e5e7;font-size:13px}
 .lang .meta{margin-right:4px}
@@ -131,14 +140,29 @@ SOFTWARE.</pre></details></section>
 </section>
 
 <section class="pane right col-wiki" aria-labelledby="prep">
-  <div class="pane-top"><span class="meta">PRÉPARATION</span></div>
+  <div class="pane-top"><span class="meta">Préparation</span></div>
   <h2 id="prep">Ce qu'il faut avant de flasher</h2>
   <ol class="checklist"><li><b>Carte Jetson</b><span>Orin Nano / Orin NX (t234). Module et carte porteuse sont confirmés par la lecture EEPROM (Board ID / SKU).</span></li><li><b>Alimentation</b><span>Entrée jack 19 V. Pendant le flash ou le mode recovery, ne pas dépendre uniquement de l'alimentation USB-C.</span></li><li><b>Câble USB-C de données</b><span>Relie la carte à l'hôte en mode recovery (APX). Doit transmettre des données ; un câble de charge seul n'est pas détecté.</span></li><li><b>Cavalier</b><span>Court-circuite FC REC et GND pour entrer en recovery. Position selon la sérigraphie ; sur le DevKit, connecteur 12 broches, FC REC / GND (broches 9 et 10).</span></li></ol>
-  <p class="note"><b>Retirez le cavalier environ 2 s après la mise sous tension.</b><br><span class="inline-risk">S'il reste en place, la carte redémarre en recovery à la prochaine mise sous tension.</span><br>Ordre : couper l'alimentation → poser le cavalier → remettre sous tension → retirer après ~2 s → <code>lsusb</code> sur l'hôte affiche <code>0955:7523</code> ou <code>0955:7623</code> (APX).</p>
   <figure><img src="images/jetson-board.jpg" alt="Carte Jetson : connecteur 40 broches, USB-C et entrée 19 V." width="1100" height="741"><figcaption>Carte Jetson : connecteur 40 broches, USB-C et entrée 19 V.</figcaption></figure>
+
+  <h3 id="recovery">Entrer en mode recovery (mode flash)</h3>
+  <p class="muted" style="font-size:13.5px">La carte doit être en Force Recovery Mode avant le flash. Les trois méthodes ci-dessous proviennent de la documentation NVIDIA ; choisissez celle qui correspond à l'état de la carte.</p>
+  <div class="method"><p class="method-t"><b>A</b> Depuis l'arrêt (recommandé)</p><ol class="steps"><li>Débranchez l'alimentation et vérifiez que la carte est complètement hors tension.</li><li>Placez un cavalier entre les broches 9 et 10 du Button Header (FC REC → GND).</li><li>Rebranchez l'alimentation : la carte démarre en recovery au lieu du système.</li><li>Retirez le cavalier dès que l'hôte détecte l'appareil ; laissé en place, il renvoie la prochaine mise sous tension en recovery.</li></ol></div>
+  <div class="method"><p class="method-t"><b>B</b> Carte déjà allumée</p><ol class="steps"><li>Placez d'abord un cavalier entre les broches 9 et 10 du Button Header.</li><li>Reliez ensuite brièvement les broches 7 et 8 pour provoquer un reset.</li><li>Retirez les deux cavaliers dès que l'hôte détecte l'appareil.</li></ol></div>
+  <div class="method"><p class="method-t"><b>C</b> Depuis la carte, en ligne de commande</p><p class="steps" style="padding-left:0">Si vous pouvez déjà vous connecter, passez directement en recovery : <code>sudo reboot --force forced-recovery</code></p></div>
+  <p class="note"><b>Retirez le cavalier dès que l'hôte détecte l'appareil.</b><br><span class="inline-risk">S'il reste en place, la carte redémarre en recovery à la prochaine mise sous tension.</span><br>Ordre : couper l'alimentation → poser le cavalier (9/10) → remettre sous tension → retirer dès que <code>lsusb</code> affiche <code>0955:7523</code> ou <code>0955:7623</code>.</p>
   <div class="gallery">
     <figure><img src="images/jumper-cap.jpg" alt="Cavalier : court-circuite FC REC et GND." width="1100" height="611"><figcaption>Cavalier : court-circuite FC REC et GND.</figcaption></figure>
-    <figure><img src="images/jumper-cap-installed.jpg" alt="Cavalier en place : mise sous tension avec le shunt, retrait après ~2 s." width="901" height="575"><figcaption>Cavalier en place : mise sous tension avec le shunt, retrait après ~2 s.</figcaption></figure>
+    <figure><img src="images/jumper-cap-installed.jpg" alt="Cavalier en place : mise sous tension avec le shunt, retrait dès que l'hôte détecte l'appareil." width="901" height="575"><figcaption>Cavalier en place : mise sous tension avec le shunt, retrait dès que l'hôte détecte l'appareil.</figcaption></figure>
+    <figure><img src="images/lsusb-0955.png" alt="Sortie lsusb sur l'hôte une fois la carte en recovery (0955:7623, Orin Nano 4GB)." width="556" height="93" style="max-width:556px"><figcaption>Sortie lsusb sur l'hôte une fois la carte en recovery (0955:7623, Orin Nano 4GB).</figcaption></figure>
+  </div>
+  <p class="caution" style="margin-top:20px">Vérification : <code>lsusb</code> sur l'hôte affiche <code>0955:&lt;nnnn&gt; NVIDIA Corp.</code> — 7523 = Orin Nano 8GB, 7623 = Orin Nano 4GB (table officielle). Si rien n'apparaît, coupez l'alimentation et réessayez.</p>
+  <p class="sources"><span class="meta">Sources</span><a href="https://docs.nvidia.com/jetson/orin-nano-devkit/user-guide/latest/howto.html#force-recovery-mode" rel="noopener">NVIDIA · Force Recovery Mode（Orin Nano DevKit User Guide）</a><a href="https://docs.nvidia.com/jetson/archives/r36.4.3/DeveloperGuide/IN/QuickStart.html" rel="noopener">NVIDIA · Jetson Linux R36.4.3 Quick Start</a><a href="https://forums.developer.nvidia.com/t/how-to-get-into-recovery-mode/250525" rel="noopener">NVIDIA Developer Forums · How to Get Into Recovery Mode</a></p>
+
+  <h3>Flash et vérification</h3>
+  <div class="gallery">
+    <figure><img src="images/jetpack-version.png" alt="Choix de version dans le script : sans --l4t, sélection interactive, jamais la plus récente par défaut." width="792" height="426"><figcaption>Choix de version dans le script : sans --l4t, sélection interactive, jamais la plus récente par défaut.</figcaption></figure>
+    <figure><img src="images/flash-done.jpg" alt="Flash réussi : flash.sh affiche « The target generic has been flashed successfully »." width="1100" height="957"><figcaption>Flash réussi : flash.sh affiche « The target generic has been flashed successfully ».</figcaption></figure>
   </div>
   <p class="muted" style="font-size:12.5px;margin-top:18px">Une fois prêt, revenez à « Obtenir et exécuter » et lancez <code>--mode detect</code> avant de décider du flash.</p>
 </section>
