@@ -13,7 +13,7 @@ BLOCK = f"""
         autoindex on;
         charset utf-8;
         default_type text/plain;
-        types {{ text/html html htm; text/plain sh md txt; }}
+        types {{ text/html html htm; text/plain sh md txt; image/svg+xml svg; }}
         add_header Content-Disposition "inline" always;
         add_header Cache-Control "no-cache" always;
         include /etc/nginx/snippets/a2vec-security.conf;
