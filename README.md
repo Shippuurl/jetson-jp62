@@ -107,6 +107,8 @@ nvpmodel -q                  # 期望 MAXN_SUPER
 --self-update --update-from <url>     更新脚本自身
 --config <文件>                       配置文件（默认 ~/.config/jetson-jp62/config）
 --doc / --doc-url / --no-doc          打开说明页 / 指定在线文档 / 不提示
+--diag                               诊断（板内日志 / recovery 的 EEPROM+BCT）
+--uart / --uart-log / --uart-list    串口抓取分析 / 离线分析 / 列设备
 --skip-recovery-check                 不检查 recovery 强行刷
 --no-deps / --yes / --accept / --dry-run
 ```
@@ -128,6 +130,21 @@ JETSON_BOARD=jetson-orin-nano-devkit-super
 | recovery | 芯片信息、EEPROM(BoardID/SKU/FAB/Rev/MAC)、BCT 与 custinfo | 内核/UEFI 运行时日志、系统盘内容 |
 
 底层开机报错只能看串口：40-pin Pin 6=GND、Pin 8=UART1_TX、Pin 10=UART1_RX，115200 8N1，设备 `ttyTCU0`。
+
+## 串口诊断（`--mode uart`）
+
+UEFI / DDR / BPMP / 电源层日志只有串口看得到（`ttyTCU0`，115200 8N1）。
+DevKit 40-pin：Pin 6=GND、Pin 8=UART1_TX(接 USB-TTL 的 RX)、Pin 10=UART1_RX(接 TX)。
+
+```bash
+bash jetson-jp62.sh --mode uart --uart-seconds 60        # 自动找口、抓取并分析
+bash jetson-jp62.sh --mode uart --uart /dev/ttyUSB0      # 手动指定
+bash jetson-jp62.sh --mode uart --uart-log boot.log      # 离线分析已有日志
+bash jetson-jp62.sh --uart-list                          # 列串口（会标注 L4T gadget，别选它）
+```
+
+分级结论：userspace/kernel → 走完；UEFI → 启动项/分区/rootfs；MB2 → UEFI 分区或 BCT；MB1 → DDR/BCT；
+只到 BootROM → 硬件/供电/DDR；什么都没抓到 → 波特率、TX/RX 接反、没共地。
 
 ## 已知坑
 
