@@ -185,15 +185,15 @@ SOFTWARE.</pre></details></section>
   <div class="command"><div class="command-head">Windows · PowerShell</div><pre>irm https://raw.githubusercontent.com/Shippuurl/jetson-jp62/main/uart-logs.ps1 | iex</pre></div>
   <div class="command"><div class="command-head">Linux / macOS · Bash</div><pre>bash &lt;(curl -fsSL https://raw.githubusercontent.com/Shippuurl/jetson-jp62/main/uart-logs.sh)</pre></div>
   <p><a href="UART-LOGS.md">UART logs · ZIP · GitHub rules ↗</a></p>
-  <p class="muted" style="font-size:13.5px">起動しない、書き込みに失敗する、起動画面で止まる——こうした症状はシリアルログで起動チェーンのどの段階かを切り分けられます。SSH や recovery より低層の出力が取れます。</p>
+  <p class="muted" style="font-size:13.5px">独立した UART ログ取得です。recovery や書き込み操作は不要です。</p>
   <div class="method"><p class="method-t"><b>1</b> 用意するもの</p><ul class="steps"><li>USB-TTL シリアル変換（CP2102 / CH340 / FT232 など、3.3V レベル）</li><li>ジャンパ線 3 本（メス-メス）</li></ul></div>
   <div class="method"><p class="method-t"><b>2</b> 配線（40 ピンヘッダ）</p><ul class="steps"><li>Pin 8 UART_TX → アダプタの RXD</li><li>Pin 10 UART_RX → アダプタの TXD</li><li>GND を共通化（Pin 6 / 9 / 14 / 25 / 30 / 34 / 39 のいずれか）</li></ul></div>
   <p class="note" style="margin-top:4px">115200 8N1、フロー制御なし。TX と RX は必ず交差させます。TX-TX で繋ぐと 1 文字も受信できません。</p>
   <figure><img src="images/uart-wiring.svg" alt="配線（40 ピンヘッダ）" width="900" height="440"><figcaption>配線（40 ピンヘッダ） · 3.3 V TTL</figcaption></figure>
-  <div class="method" style="margin-top:14px"><p class="method-t"><b>3</b> 取得</p><ol class="steps"><li>スクリプト内蔵: <code>bash jetson-jp62.sh --mode uart</code>（/dev/ttyUSB* を自動検出、既定 30 秒）</li><li>手動: <code>screen /dev/ttyUSB0 115200</code>（終了は Ctrl-A の後 K）、または <code>minicom -D /dev/ttyUSB0 -b 115200</code></li><li>先に取得を開始し、その後にボードの電源を入れ直すと、BootROM からカーネルまでの全ログが残ります</li></ol></div>
-  <p class="note">ボード側のデバイス名は /dev/ttyTHS1（番号はリリースごとに動的に割り当てられ、ttyTHS0 固定ではありません）。権限不足なら dialout グループに追加してください。</p>
+  <div class="method" style="margin-top:14px"><p class="method-t"><b>3</b> 取得</p><ol class="steps"><li>スクリプト内蔵: <code>bash jetson-jp62.sh --mode uart</code>（/dev/ttyUSB* を自動検出、既定 30 秒）</li><li>手動: <code>screen /dev/ttyUSB0 115200</code>（終了は Ctrl-A の後 K）、または <code>minicom -D /dev/ttyUSB0 -b 115200</code></li><li>取得を開始してから電源を入れます。この UART に出力されるログのみ取得でき、40 ピン UART で初期起動ログが出る保証はありません。</li></ol></div>
+  <p class="note">ホストは COMx / /dev/ttyUSBx を使います。ボード側 ttyTHS とデバッグコンソールはキャリアと BSP に依存します。無出力だけで故障と判断せず、ポートと配線、設定を確認してください。</p>
   <figure><img src="images/uart-capture.svg" alt="取得" width="900" height="360"><figcaption>取得 · 115200 8N1</figcaption></figure>
-  <div class="method" style="margin-top:14px"><p class="method-t"><b>4</b> どこで止まっているか</p><ul class="steps"><li>BootROM / MB1 / MB2 が出ない → 電源、モジュールの装着、QSPI ファームウェア</li><li>UEFI で停止 → bootloader またはデバイスツリー設定</li><li>カーネルで停止 → ドライバ、ルートファイルシステム、ストレージ</li><li>getty まで到達して再起動 → アプリまたは systemd ユニット</li></ul></div>
+  <div class="method" style="margin-top:14px"><p class="method-t"><b>4</b> どこで止まっているか</p><ul class="steps"><li>ホストは COMx / /dev/ttyUSBx を使います。ボード側 ttyTHS とデバッグコンソールはキャリアと BSP に依存します。無出力だけで故障と判断せず、ポートと配線、設定を確認してください。</li><li>UEFI で停止 → bootloader またはデバイスツリー設定</li><li>カーネルで停止 → ドライバ、ルートファイルシステム、ストレージ</li><li>getty まで到達して再起動 → アプリまたは systemd ユニット</li></ul></div>
   <p class="sources"><span class="meta">参考</span><a href="https://developerwiki.proventusnova.com/How_to_NVIDIA_Jetson_Orin_Nano_UART_Console" rel="noopener">ProventusNova · How to NVIDIA Jetson Orin Nano UART Console</a><a href="https://forums.developer.nvidia.com/t/how-to-access-uart1-on-expansion-pins-8-10/328934" rel="noopener">NVIDIA Developer Forums · UART1 on expansion pins 8/10</a><a href="https://jetsonhacks.com/2019/04/19/jetson-nano-serial-console/" rel="noopener">JetsonHacks · Serial Debug Console (115200 8N1)</a></p>
   </div>
 
