@@ -9,6 +9,7 @@
 用法：python3 build/build_i18n.py       # 输出 index.html + index.<lang>.html
 """
 import os, sys
+from i18n_recovery import REC, SOURCES
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -76,7 +77,7 @@ T = {
     note_seq="顺序：断电 → 戴跳线帽 → 上电 → 约 2 秒后拔下 → 主机 <code>lsusb</code> 出现 <code>0955:7523</code> 或 <code>0955:7623</code>（APX）。",
     figs=["Jetson 主板：40-pin 排针、USB-C 与 19V 供电口位置。",
           "跳线帽：用于短接 FC REC 与 GND。",
-          "跳线帽接入位置：保持短接状态下上电，约 2 秒后拔下。"],
+          "跳线帽接入位置：保持短接状态下上电，主机检测到设备后拔下。"],
     prep_close="准备完成后回到左栏「获取与运行」，先执行 <code>--mode detect</code> 再决定是否刷写。",
     legal_sum="法律声明 · MIT License · 第三方许可",
     legal_h2="法律声明与许可",
@@ -123,7 +124,7 @@ T = {
     note_seq="Order: power off → fit the cap → power on → remove it after ~2 s → <code>lsusb</code> on the host shows <code>0955:7523</code> or <code>0955:7623</code> (APX).",
     figs=["Jetson board: 40-pin header, USB-C and 19 V input.",
           "Jumper cap: shorts FC REC to GND.",
-          "Jumper cap installed: power on while shorted, remove after ~2 s."],
+          "Jumper cap in place: power on while shorted, remove it once the host detects the device."],
     prep_close="When ready, go back to “Get and run” on the left and run <code>--mode detect</code> before deciding whether to flash.",
     legal_sum="Legal notice · MIT License · Third-party licences",
     legal_h2="Legal notice and licence",
@@ -170,7 +171,7 @@ T = {
     note_seq="手順: 電源オフ → キャップ装着 → 電源オン → 約 2 秒後に取り外す → ホストの <code>lsusb</code> に <code>0955:7523</code> または <code>0955:7623</code>（APX）が表示される。",
     figs=["Jetson ボード: 40 ピンヘッダ、USB-C、19V 入力。",
           "ジャンパキャップ: FC REC と GND を短絡します。",
-          "ジャンパキャップ装着位置: 短絡したまま電源を入れ、約 2 秒後に外します。"],
+          "ジャンパキャップ装着位置: 短絡したまま電源を入れ、ホストが認識したら外します。"],
     prep_close="準備ができたら左欄の「入手と実行」に戻り、まず <code>--mode detect</code> を実行してから書き込むか判断してください。",
     legal_sum="法的通知 · MIT License · 第三者ライセンス",
     legal_h2="法的通知とライセンス",
@@ -217,7 +218,7 @@ T = {
     note_seq="Reihenfolge: ausschalten → Kappe stecken → einschalten → nach ~2 s abziehen → <code>lsusb</code> am Host zeigt <code>0955:7523</code> oder <code>0955:7623</code> (APX).",
     figs=["Jetson-Board: 40-Pin-Header, USB-C und 19-V-Eingang.",
           "Jumper-Kappe: überbrückt FC REC und GND.",
-          "Jumper-Kappe gesteckt: bei gesteckter Brücke einschalten, nach ~2 s abziehen."],
+          "Jumper-Kappe gesteckt: bei gesteckter Brücke einschalten, nach Erkennung am Host abziehen."],
     prep_close="Wenn alles bereit ist, zurück zu „Beziehen und ausführen“ und zuerst <code>--mode detect</code> ausführen, bevor über das Flashen entschieden wird.",
     legal_sum="Rechtliche Hinweise · MIT License · Lizenzhinweise Dritter",
     legal_h2="Rechtliche Hinweise und Lizenz",
@@ -264,7 +265,7 @@ T = {
     note_seq="Ordre : couper l'alimentation → poser le cavalier → remettre sous tension → retirer après ~2 s → <code>lsusb</code> sur l'hôte affiche <code>0955:7523</code> ou <code>0955:7623</code> (APX).",
     figs=["Carte Jetson : connecteur 40 broches, USB-C et entrée 19 V.",
           "Cavalier : court-circuite FC REC et GND.",
-          "Cavalier en place : mise sous tension avec le shunt, retrait après ~2 s."],
+          "Cavalier en place : mise sous tension avec le shunt, retrait dès que l'hôte détecte l'appareil."],
     prep_close="Une fois prêt, revenez à « Obtenir et exécuter » et lancez <code>--mode detect</code> avant de décider du flash.",
     legal_sum="Mentions légales · MIT License · Licences tierces",
     legal_h2="Mentions légales et licence",
@@ -311,7 +312,7 @@ T = {
     note_seq="순서: 전원 차단 → 캡 장착 → 전원 인가 → 약 2초 후 제거 → 호스트 <code>lsusb</code>에 <code>0955:7523</code> 또는 <code>0955:7623</code>(APX) 표시.",
     figs=["Jetson 보드: 40핀 헤더, USB-C, 19V 입력.",
           "점퍼 캡: FC REC와 GND를 단락합니다.",
-          "점퍼 캡 장착 위치: 단락 상태로 전원을 인가하고 약 2초 후 제거합니다."],
+          "점퍼 캡 장착 위치: 단락 상태로 전원을 인가하고 호스트가 인식하면 제거합니다."],
     prep_close="준비가 끝나면 왼쪽 «받기와 실행»으로 돌아가 먼저 <code>--mode detect</code>를 실행한 뒤 플래시 여부를 결정하십시오.",
     legal_sum="법적 고지 · MIT License · 제3자 라이선스",
     legal_h2="법적 고지 및 라이선스",
@@ -374,6 +375,15 @@ details h2{margin-top:18px}details pre{white-space:pre-wrap;padding:0;font-size:
 figure{margin:20px 0 0}figure img{display:block;width:100%;height:auto;border:1px solid #e3e5e7}
 figcaption{margin-top:8px;font-size:12px;color:#626a72;line-height:1.6}
 .gallery figure+figure{margin-top:16px}
+.col-wiki h3{font-size:14.5px;font-weight:650;margin:26px 0 10px;padding-top:18px;border-top:1px solid #e3e5e7}
+.method{margin:0 0 14px}
+.method-t{margin:0 0 6px;font-size:13.5px;color:#202428}
+.method-t b{display:inline-block;min-width:16px;font-weight:650;color:#9aa3ab;font-family:ui-monospace,monospace;font-size:12px}
+.steps{margin:0;padding:0 0 0 20px;color:#555e66;font-size:13.5px;line-height:1.7}
+.steps li{margin:2px 0}
+.sources{margin:16px 0 0;font-size:12.5px;color:#626a72;display:grid;gap:4px}
+.sources a{color:#555e66}
+.sources .meta{display:block;margin-bottom:2px}
 /* ---- 语言切换（放在栏底，不做顶部导航）---- */
 .lang{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;margin:26px 0 0;padding-top:16px;border-top:1px solid #e3e5e7;font-size:13px}
 .lang .meta{margin-right:4px}
@@ -437,14 +447,29 @@ bash jetson-jp62.sh</code></pre></div><div id="copy-status" class="status" role=
 </section>
 
 <section class="pane right col-wiki" aria-labelledby="prep">
-  <div class="pane-top"><span class="meta">{prep_meta}</span></div>
+  <div class="pane-top"><span class="meta">{grp_prep}</span></div>
   <h2 id="prep">{prep_h2}</h2>
   <ol class="checklist">{items}</ol>
-  <p class="note"><b>{note_t}</b><br><span class="inline-risk">{note_risk}</span><br>{note_seq}</p>
   <figure><img src="images/jetson-board.jpg" alt="{fig1alt}" width="1100" height="741"><figcaption>{fig1}</figcaption></figure>
+
+  <h3 id="recovery">{rec_h}</h3>
+  <p class="muted" style="font-size:13.5px">{rec_intro}</p>
+  <div class="method"><p class="method-t"><b>A</b> {rec_a_t}</p><ol class="steps">{rec_a}</ol></div>
+  <div class="method"><p class="method-t"><b>B</b> {rec_b_t}</p><ol class="steps">{rec_b}</ol></div>
+  <div class="method"><p class="method-t"><b>C</b> {rec_c_t}</p><p class="steps" style="padding-left:0">{rec_c_body} <code>sudo reboot --force forced-recovery</code></p></div>
+  <p class="note"><b>{note_t}</b><br><span class="inline-risk">{note_risk}</span><br>{note_seq}</p>
   <div class="gallery">
     <figure><img src="images/jumper-cap.jpg" alt="{fig2alt}" width="1100" height="611"><figcaption>{fig2}</figcaption></figure>
     <figure><img src="images/jumper-cap-installed.jpg" alt="{fig3alt}" width="901" height="575"><figcaption>{fig3}</figcaption></figure>
+    <figure><img src="images/lsusb-0955.png" alt="{fig4alt}" width="556" height="93" style="max-width:556px"><figcaption>{fig4}</figcaption></figure>
+  </div>
+  <p class="caution" style="margin-top:20px">{rec_verify}</p>
+  <p class="sources"><span class="meta">{rec_src}</span>{rec_links}</p>
+
+  <h3>{grp_result}</h3>
+  <div class="gallery">
+    <figure><img src="images/jetpack-version.png" alt="{fig6alt}" width="792" height="426"><figcaption>{fig6}</figcaption></figure>
+    <figure><img src="images/flash-done.jpg" alt="{fig5alt}" width="1100" height="957"><figcaption>{fig5}</figcaption></figure>
   </div>
   <p class="muted" style="font-size:12.5px;margin-top:18px">{prep_close}</p>
 </section>
@@ -476,6 +501,7 @@ def bold(s):
 
 def build(code):
     t = T[code]
+    rec = REC[code]
     alt = "\n".join(
         f'<link rel="alternate" hreflang="{hl}" href="{fn}">' for _, hl, fn, _, _ in LANGS
     ) + '\n<link rel="alternate" hreflang="x-default" href="index.html">'
@@ -505,11 +531,21 @@ def build(code):
         legal=legal, mit_h2=t["mit_h2"], mit=esc(MIT),
         lang_label=t["lang_label"], langs=langs,
         foot_l=t["foot_l"], foot_r=t["foot_r"],
-        prep_meta=t["prep_meta"], prep_h2=t["prep_h2"], items=items,
-        note_t=t["note_t"], note_risk=t["note_risk"], note_seq=t["note_seq"],
+        prep_meta=rec["grp_prep"], prep_h2=t["prep_h2"], items=items,
+        note_t=rec["note_t"], note_risk=t["note_risk"], note_seq=rec["note_seq"],
         fig1=t["figs"][0], fig2=t["figs"][1], fig3=t["figs"][2],
         fig1alt=esc(t["figs"][0]), fig2alt=esc(t["figs"][1]), fig3alt=esc(t["figs"][2]),
-        prep_close=t["prep_close"], copy=copy_label,
+        prep_close=t["prep_close"],
+        grp_prep=rec["grp_prep"], grp_result=rec["grp_result"],
+        rec_h=rec["h"], rec_intro=rec["intro"],
+        rec_a_t=rec["a_t"], rec_a="".join(f"<li>{x}</li>" for x in rec["a"]),
+        rec_b_t=rec["b_t"], rec_b="".join(f"<li>{x}</li>" for x in rec["b"]),
+        rec_c_t=rec["c_t"], rec_c_body=rec["c_body"],
+        rec_verify=rec["verify"], rec_src=rec["src"],
+        rec_links="".join(f'<a href="{u}" rel="noopener">{ti}</a>' for ti, u in SOURCES),
+        fig4=rec["fig_lsusb"], fig5=rec["fig_done"], fig6=rec["fig_ver"],
+        fig4alt=esc(rec["fig_lsusb"]), fig5alt=esc(rec["fig_done"]), fig6alt=esc(rec["fig_ver"]),
+        copy=copy_label,
         copied=copied, copyfail=copyfail,
     )
     html = TPL
