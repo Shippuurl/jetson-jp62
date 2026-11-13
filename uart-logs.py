@@ -439,22 +439,31 @@ def capture(port, baud, seconds, folder: pathlib.Path, progress=True):
 
 
 # --------------------------------------------------------------------------- 规则更新
-def _fetch(url_or_dir: str) -> bytes:
-    """本地路径直接读；否则按 BASES 依次回退取 .tmp 同目录的相对文件。"""
-    p = pathlib.Path(url_or_dir)
-    if p.exists():
-        return p.read_bytes() if p.is_file() else b""
+def _fetch_url(url: str, timeout=30) -> bytes:
     import urllib.request
+    req = urllib.request.Request(url, headers={"User-Agent": "serial-log/1"})
+    with urllib.request.urlopen(req, timeout=timeout) as r:
+        return r.read()
+
+
+def _fetch_rel_url(url: str) -> bytes:
+    """先试给定 URL；失败则回退到 BASES + rules/<文件名>（用户可能只给了仓库根）。"""
+    import pathlib as _p
+    try:
+        return _fetch_url(url)
+    except Exception:
+        return _fetch_rel("rules/" + _p.PurePosixPath(url).name)
+
+
+def _fetch_rel(name: str) -> bytes:
+    """相对规则名：按 BASES（GitHub → 自建站）依次回退。"""
     last = None
     for base in BASES:
-        url = url_or_dir if url_or_dir.startswith("http") else base + url_or_dir
         try:
-            req = urllib.request.Request(url, headers={"User-Agent": "serial-log/1"})
-            with urllib.request.urlopen(req, timeout=30) as r:
-                return r.read()
-        except Exception as exc:  # 换下一个源
+            return _fetch_url(base + name)
+        except Exception as exc:
             last = exc
-    raise SystemExit(f"取规则失败：{url_or_dir}（最后错误：{last}）")
+    raise SystemExit(f"取规则失败：{name}（最后错误：{last}）")
 
 
 def update_rules(src: str, force=False, verbose=True):
@@ -469,7 +478,8 @@ def update_rules(src: str, force=False, verbose=True):
     if is_local and src_path.resolve() == folder.resolve():
         raise SystemExit("更新源不能与目标目录相同")
 
-    index_raw = (src_path / "index.json").read_bytes() if is_local else _fetch(src.rstrip("/") + "/index.json")
+    base = src.rstrip("/") + "/"
+    index_raw = (src_path / "index.json").read_bytes() if is_local else _fetch_rel_url(base + "index.json")
     index = json.loads(index_raw)
     new_ver = int(index.get("version", 0))
 
@@ -491,7 +501,7 @@ def update_rules(src: str, force=False, verbose=True):
     try:
         for entry in index.get("files", []):
             name = entry["name"]
-            raw = (src_path / name).read_bytes() if is_local else _fetch(name)
+            raw = (src_path / name).read_bytes() if is_local else _fetch_rel_url(base + name)
             want = entry.get("sha256")
             if want and sha256_bytes(raw) != want:
                 raise SystemExit(f"sha256 不匹配，已中止：{name}")
