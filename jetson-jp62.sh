@@ -1470,29 +1470,17 @@ uart_capture() {
 }
 
 do_uart() {
-    printf '\n%s── 串口诊断（UEFI / DDR / BPMP / 电源层）──%s\n' "$C_B" "$C_N"
-    # 抓取优先：给了 --uart（或 --uart-out）就去抓；只给 --uart-log 才做离线分析
-    if [ -n "$UART_DEV" ]; then
-        UART_LOG="${UART_OUT:-$WORK_DIR/uart-$(date +%Y%m%d-%H%M%S).log}"
-        uart_capture "$UART_DEV" "$UART_LOG" "$UART_SECONDS"
-        return 0
-    fi
-    if [ -n "$UART_FILE" ]; then
-        [ -f "$UART_FILE" ] || die "日志文件不存在: $UART_FILE"
-        chk_info "离线分析: $UART_FILE"
-        uart_analyze "$UART_FILE"
-        return 0
-    fi
-    chk_info "可用串口设备："; uart_list_ports
-    local auto; if auto="$(uart_auto_dev)"; then
-        UART_LOG="${UART_LOG:-$WORK_DIR/uart-$(date +%Y%m%d-%H%M%S).log}"
-        log "自动选中 $auto"
-        uart_capture "$auto" "$UART_LOG" "$UART_SECONDS"
-    else
-        warn "没检测到串口。接线（Orin Nano DevKit 40-pin）：Pin 6=GND、Pin 8=UART1_TX、Pin 10=UART1_RX，115200 8N1"
-        warn "接好后重跑：--mode uart --uart /dev/ttyUSB0 --uart-seconds 60"
-        warn "已有日志想离线分析：--mode uart --uart-log boot.log"
-    fi
+    local runner_dir runner
+    runner_dir="${XDG_CACHE_HOME:-$HOME/.cache}/jetson-uart"
+    mkdir -p "$runner_dir"
+    runner="$runner_dir/uart-logs.sh"
+    curl -fsSL https://raw.githubusercontent.com/Shippuurl/jetson-jp62/main/uart-logs.sh -o "$runner.tmp" || return 1
+    mv "$runner.tmp" "$runner"
+    local args=(--baud "$UART_BAUD" --seconds "$UART_SECONDS")
+    [ -n "$UART_DEV" ] && args+=(--port "$UART_DEV")
+    [ -n "$UART_FILE" ] && args+=(--input "$UART_FILE")
+    [ -n "$UART_OUT" ] && args+=(--output "$UART_OUT")
+    bash "$runner" "${args[@]}"
 }
 
 # ==================================================================== 菜单
@@ -1502,26 +1490,26 @@ menu() {
     _pad() { local s="$1" w="$2" n; n=${#s}; printf '%s' "$s"; [ $((w - n)) -gt 0 ] && printf '%*s' $((w - n)) ''; return 0; }
     printf '  %s\n' "$(T "检查与诊断" "Check and diagnose")"
     printf '    1  %s %s\n' "$(_pad "$(T 环境检查 "env check")" 12)"    "$(T "设备识别与运行条件检查" "Device identification and host prerequisites")"
-    printf '    6  %s %s\n' "$(_pad "$(T 设备诊断 "diagnose")" 12)"     "$(T "采集身份信息及诊断日志" "Collect identity data and diagnostic logs")"
-    printf '    7  %s %s\n' "$(_pad "$(T 串口诊断 "UART diag")" 12)"    "$(T "采集启动日志并提供排查线索" "Capture boot log and localise the stall")"
+    printf '    2  %s %s\n' "$(_pad "$(T 设备诊断 "diagnose")" 12)"     "$(T "采集身份信息及诊断日志" "Collect identity data and diagnostic logs")"
+    printf '    3  %s %s\n' "$(_pad "$(T 串口诊断 "UART diag")" 12)"    "$(T "采集启动日志并提供排查线索" "Capture boot log and localise the stall")"
     printf '\n  %s\n' "$(T "资源与维护" "Resources and upkeep")"
     printf '    4  %s %s\n' "$(_pad "$(T 准备资源 "prepare")" 12)"      "$(T "下载并解压 BSP / 可选 rootfs" "Download and extract BSP / optional rootfs")"
     printf '    5  %s %s\n' "$(_pad "$(T 板内更新 "onboard apt")" 12)"  "$(T "通过 apt 更新软件包" "Update packages on the Jetson via apt")"
-    printf '    2  %s %s%s%s\n' "$(_pad "$(T "QSPI 刷写" "QSPI flash")" 12)" "$C_Y" "$(T "写入启动固件；请核对板型与版本" "Writes boot firmware; verify board and version")" "$C_N"
-    printf '    3  %s %s%s%s\n' "$(_pad "$(T "NVMe 刷写" "NVMe flash")" 12)" "$C_R" "$(T "重写目标存储，清除数据" "Rewrites target storage, erases data")" "$C_N"
+    printf '    6  %s %s%s%s\n' "$(_pad "$(T "QSPI 刷写" "QSPI flash")" 12)" "$C_Y" "$(T "写入启动固件；请核对板型与版本" "Writes boot firmware; verify board and version")" "$C_N"
+    printf '    7  %s %s%s%s\n' "$(_pad "$(T "NVMe 刷写" "NVMe flash")" 12)" "$C_R" "$(T "重写目标存储，清除数据" "Rewrites target storage, erases data")" "$C_N"
     printf '\n    8  %s %s\n' "$(_pad "$(T 操作手册 "manual")" 12)"   "$(T "参数、许可与官方参考" "Options, licence and official references")"
     printf '    0  %s\n' "$(T 退出 quit)"
     printf '\n  %s [0-8] > ' "$(T 选择 select)"
     local a; read -r a
     case "$a" in
         1) MODE=detect ;;
-        2) MODE=qspi ;;
-        3) MODE=nvme; WITH_ROOTFS=1 ;;
+        6) MODE=qspi ;;
+        7) MODE=nvme; WITH_ROOTFS=1 ;;
         4) MODE=prep; printf '  %s [y/N] ' "$(T "一并下载 sample rootfs（1.83G，整机刷才需要）？" "Also fetch the sample rootfs (1.83G, only needed for a full flash)?")"; local b; read -r b
            case "$b" in y|Y) WITH_ROOTFS=1 ;; esac ;;
         5) MODE=target ;;
-        6) MODE=diag ;;
-        7) MODE=uart ;;
+        2) MODE=diag ;;
+        3) MODE=uart ;;
         8) MODE=doc ;;
         *) log "$(T 退出 quit)"; exit 0 ;;
     esac
