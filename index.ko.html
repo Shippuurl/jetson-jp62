@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>A2VEC · Jetson 유지보수 도구</title><meta name="description" content="A2VEC Jetson 명령줄 유지보수 도구: 환경 점검, QSPI 펌웨어 플래시, NVMe 전체 플래시. 소스, 준비물, 설명서, MIT 라이선스 제공.">
+<link rel="icon" href="a2vec-logo.svg" type="image/svg+xml">
+<link rel="alternate" hreflang="zh-CN" href="index.html">
+<link rel="alternate" hreflang="en" href="index.en.html">
+<link rel="alternate" hreflang="ja" href="index.ja.html">
+<link rel="alternate" hreflang="de" href="index.de.html">
+<link rel="alternate" hreflang="fr" href="index.fr.html">
+<link rel="alternate" hreflang="ko" href="index.ko.html">
+<link rel="alternate" hreflang="x-default" href="index.html">
+<style>
+*{box-sizing:border-box}html{color-scheme:light}
+body{margin:0;background:#fff;color:#202428;font:15px/1.8 system-ui,-apple-system,"Segoe UI","Hiragino Sans","Microsoft YaHei","Malgun Gothic",sans-serif}
+a{color:inherit;text-underline-offset:4px}a:hover{color:#925700}
+a:focus-visible,button:focus-visible,summary:focus-visible{outline:2px solid #995b00;outline-offset:5px}
+.meta{font:11.5px ui-monospace,SFMono-Regular,Consolas,monospace;letter-spacing:.09em;color:#626a72;text-transform:uppercase}
+.muted{color:#626a72}
+h1{font-size:clamp(25px,2.4vw,33px);font-weight:600;line-height:1.3;letter-spacing:-.03em;margin:10px 0 14px}
+h2{font-size:16.5px;font-weight:650;margin:0 0 12px}
+p{margin:10px 0}
+/* ---- 正中严格对半 ---- */
+.page{display:grid;grid-template-columns:1fr 1fr;align-items:start}
+.pane{min-width:0;padding:40px clamp(22px,3.2vw,56px) 56px}
+.pane.right{border-left:1px solid #e3e5e7}
+.pane-top{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:38px;margin-bottom:26px}
+.brand{display:flex;align-items:center;gap:11px;font-size:19px;font-weight:750;letter-spacing:.08em;text-decoration:none}
+.brand img{width:38px;height:38px}
+.intro{max-width:38em;color:#555e66}
+.links{display:flex;flex-wrap:wrap;gap:10px 22px;margin:18px 0 0;font-size:14.5px}.primary{font-weight:650}
+section{padding:26px 0;border-bottom:1px solid #e3e5e7}
+section:last-of-type{border-bottom:0;padding-bottom:8px}
+.command{border:1px solid #d7dbdf;margin-top:14px}
+.command-head{display:flex;align-items:center;justify-content:space-between;padding:7px 14px;border-bottom:1px solid #e3e5e7;font-size:11.5px;color:#626a72}
+button{background:#fff;color:#202428;border:1px solid #c7ccd1;padding:4px 11px;cursor:pointer;font:inherit;font-size:12.5px}
+pre{padding:14px;margin:0;overflow:auto;font:12px/1.85 ui-monospace,SFMono-Regular,Consolas,monospace}
+code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.92em}
+.caution{border-left:3px solid #ad6800;padding-left:14px;margin:20px 0 0;font-size:13.5px}.caution strong{color:#925700}
+.modes{margin:0}.modes div{display:grid;grid-template-columns:96px 1fr;gap:12px;padding:8px 0;border-bottom:1px solid #eff0f1}
+.modes div:last-child{border:0}dt{font-family:ui-monospace,monospace;font-size:13.5px}dd{margin:0;color:#555e66;font-size:14px}
+.danger{color:#a83224;font-weight:600}
+details{font-size:13px;color:#555e66}summary{cursor:pointer;color:#202428;font-weight:600}
+details h2{margin-top:18px}details pre{white-space:pre-wrap;padding:0;font-size:11px}
+.status{min-height:20px;font-size:12px;color:#626a72}
+/* ---- 右栏 ---- */
+.col-wiki{font-size:14px;line-height:1.75}
+.checklist{margin:14px 0 0;padding:0;list-style:none;counter-reset:c}
+.checklist li{counter-increment:c;position:relative;padding:12px 0 12px 32px;border-bottom:1px solid #eff0f1}
+.checklist li:last-child{border-bottom:0}
+.checklist li::before{content:counter(c,decimal-leading-zero);position:absolute;left:0;top:13px;font:11px/1.9 ui-monospace,monospace;color:#9aa3ab;letter-spacing:.08em}
+.checklist b{display:block;font-weight:650;font-size:14.5px;margin-bottom:2px}
+.checklist span{color:#555e66;font-size:13.5px}
+.inline-risk{color:#a83224;font-weight:600}
+.note{border-left:3px solid #ad6800;padding-left:14px;margin:18px 0 0;font-size:13.5px;color:#555e66}.note b{color:#925700}
+figure{margin:20px 0 0}figure img{display:block;width:100%;height:auto;border:1px solid #e3e5e7}
+figcaption{margin-top:8px;font-size:12px;color:#626a72;line-height:1.6}
+.gallery figure+figure{margin-top:16px}
+/* ---- 语言切换（放在栏底，不做顶部导航）---- */
+.lang{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;margin:26px 0 0;padding-top:16px;border-top:1px solid #e3e5e7;font-size:13px}
+.lang .meta{margin-right:4px}
+.lang a{text-decoration:none;border-bottom:1px solid #d7dbdf;padding-bottom:1px}
+.lang a:hover{border-color:#925700}
+.lang [aria-current]{color:#202428;font-weight:650}
+footer{padding:0;margin:22px 0 0;font-size:11.5px;color:#626a72;display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px}
+/* ---- 移动端：单栏堆叠 ---- */
+@media(min-width:921px){
+  .page{min-height:100vh}
+  .pane{height:100vh;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable}
+}
+@media(max-width:920px){
+  .page{grid-template-columns:1fr}
+  .pane{padding:28px 20px 40px;height:auto;overflow:visible}
+  .pane.right{border-left:0;border-top:1px solid #e3e5e7}
+  .pane-top{margin-bottom:18px;min-height:32px}
+  .brand{font-size:17px}.brand img{width:34px;height:34px}
+  .modes div{grid-template-columns:74px 1fr;gap:10px}
+  h1{font-size:24px}
+}
+</style></head>
+<body>
+<div class="page">
+
+<section class="pane left">
+  <div class="pane-top">
+    <a class="brand" href="index.ko.html" aria-label="A2VEC"><img src="a2vec-logo.svg" alt="" width="38" height="38">A2VEC</a>
+    <span class="meta">FIELD TOOLS / JETSON</span>
+  </div>
+
+  <div class="meta">유지보수 도구 · 01</div>
+  <h1>Jetson 펌웨어 유지보수 스크립트</h1>
+  <p class="intro">NVIDIA 플래시 도구를 Bash로 호출해 환경 점검, 리소스 준비, QSPI 또는 NVMe 플래시를 수행합니다. 대상은 Jetson Orin 시리즈이며, 지원 범위는 선택한 BSP, 보드 구성, 벤더 문서에 따라 달라집니다.</p>
+  <div class="links"><a class="primary" href="jetson-jp62.sh" download>스크립트 다운로드 ↓</a><a href="guide.html">상세 사용 설명서 ↗</a><a href="https://github.com/Shippuurl/jetson-jp62">GitHub 소스 ↗</a></div>
+
+  <section aria-labelledby="run"><h2 id="run">받기와 실행</h2><p class="muted">다운로드 후 스크립트를 검토하고 옵션을 확인하거나 대화형 메뉴를 엽니다. 플래시 전에 확인된 L4T 버전을 명시적으로 선택하십시오.</p>
+    <div class="command"><div class="command-head"><span>BASH / jetson-jp62.sh</span><button type="button" id="copy" hidden>복사</button></div><pre><code id="command">curl -fL --proto '=https' -o jetson-jp62.sh \
+  https://tool.kervein.club/jetson/jetson-jp62.sh
+# 스크립트 검토 후 실행
+bash jetson-jp62.sh --help
+bash jetson-jp62.sh</code></pre></div><div id="copy-status" class="status" role="status" aria-live="polite"></div>
+    <p class="caution"><strong>플래시 전 확인</strong><br>QSPI 모드는 부팅 펌웨어를 기록하므로 설정이 잘못되면 부팅이 되지 않을 수 있습니다. NVMe 모드는 대상 저장 장치를 다시 쓰고 데이터를 지웁니다. 데이터를 백업하고 캐리어 호환성, 안정적인 전원, 복구 절차를 확인하십시오. 필요한 디스크 공간은 실행 시 사전 점검으로 판정됩니다.</p>
+  </section>
+
+  <section aria-labelledby="modes"><h2 id="modes">스크립트 모드</h2><dl class="modes"><div><dt>detect</dt><dd>실행 환경과 장치 상태를 점검합니다. 플래시는 하지 않습니다.</dd></div><div><dt>prep</dt><dd>BSP를 내려받아 준비합니다. sample rootfs 준비는 선택 사항입니다.</dd></div><div><dt>qspi</dt><dd>QSPI 부팅 펌웨어를 기록합니다. 시스템 디스크 재작성이 목적이 아닙니다.</dd></div><div><dt>nvme</dt><dd><span class="danger">대상 저장 장치를 다시 쓰고 데이터를 삭제합니다.</span> 공식 initrd flash를 사용합니다.</dd></div><div><dt>target</dt><dd>Jetson에서 apt로 패키지를 업데이트합니다. QSPI 업그레이드와 같지 않습니다.</dd></div></dl><p class="muted">사용법: <code>bash jetson-jp62.sh --mode &lt;모드&gt;</code><br>버전, 진단, UART, 오프라인 옵션은 <code>--help</code> 또는 <a href="guide.html">설명서</a>를 참고하십시오.</p></section>
+
+  <section id="legal"><details><summary>법적 고지 · MIT License · 제3자 라이선스</summary><h2>법적 고지 및 라이선스</h2>
+    <p>이 도구는 A2VEC 브랜드로 공개되는 독립 유지보수 보조 프로젝트이며 NVIDIA 공식 제품이 아닙니다. NVIDIA와 제휴, 대리, 보증 관계가 없습니다. NVIDIA, Jetson, JetPack은 NVIDIA Corporation의 상표입니다.</p><p>스크립트와 문서는 <a href="LICENSE">MIT License</a>로 제공되며, 재배포 시 저작권 및 라이선스 고지를 유지해야 합니다. 원 저작권 고지는 Copyright (c) 2026 Shippuurl이며, 브랜드 표기는 귀속을 변경하지 않습니다. MIT는 제3자 상표나 NVIDIA 소프트웨어에 대한 사용권을 부여하지 않습니다.</p><p>소프트웨어는 "있는 그대로"(AS IS) 제공됩니다. 적용 법률이 허용하는 최대 범위에서 상품성, 특정 목적 적합성, 비침해를 포함한 명시적·묵시적 보증을 하지 않으며, 책임 제한은 MIT 원문을 따릅니다. 본 고지는 적용 법률상 배제할 수 없는 책임을 배제하지 않습니다.</p><p>공개 스크립트에는 NVIDIA 펌웨어, 부트로더, 전용 SDK가 포함되지 않습니다. 실행 시 획득하는 제3자 구성 요소는 해당 라이선스와 <a href="https://docs.nvidia.com/jetson/archives/r36.4.3/DeveloperGuide/SD/SoftwarePackagesAndTheUpdateMechanism.html">NVIDIA 소프트웨어 패키지 설명</a>의 적용을 받습니다. 다운로드, 사용, 재배포 전에 해당 버전의 라이선스를 확인하십시오. 본 도구에 대한 동의는 제3자 라이선스 요구를 대체하지 않습니다.</p><p>사용자는 장치 조작 권한, 백업, 복구 계획을 확인하고 모듈, 캐리어, BSP, 시스템 버전을 공식 문서와 대조해야 합니다. 사전 점검 통과나 다운로드 URL의 가용성은 호환성, 안전성, 플래시 성공을 보장하지 않습니다. 제3자 캐리어는 해당 벤더의 적응 자료를 따릅니다.</p>
+    <h2>MIT License · 원문</h2><pre>MIT License
+
+Copyright (c) 2026 Shippuurl
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.</pre></details></section>
+
+  <nav class="lang" aria-label="언어"><span class="meta">언어</span><a href="index.html" hreflang="zh-CN" lang="zh-CN">中文</a><a href="index.en.html" hreflang="en" lang="en">English</a><a href="index.ja.html" hreflang="ja" lang="ja">日本語</a><a href="index.de.html" hreflang="de" lang="de">Deutsch</a><a href="index.fr.html" hreflang="fr" lang="fr">Français</a><span aria-current="true">한국어</span></nav>
+  <footer><span>A2VEC · 독립 유지보수 도구 / NVIDIA 공식 제품 아님</span><a href="LICENSE">MIT License · © 2026 Shippuurl</a></footer>
+</section>
+
+<section class="pane right col-wiki" aria-labelledby="prep">
+  <div class="pane-top"><span class="meta">준비물</span></div>
+  <h2 id="prep">플래시 전 준비물</h2>
+  <ol class="checklist"><li><b>Jetson 보드</b><span>Orin Nano / Orin NX(t234). 모듈과 캐리어는 EEPROM 판독값(Board ID / SKU)으로 확인합니다.</span></li><li><b>전원 어댑터</b><span>19V 배럴 잭 전원. 플래시와 recovery 중에는 USB-C 전원에만 의존하지 마십시오.</span></li><li><b>USB-C 데이터 케이블</b><span>보드를 recovery(APX) 모드로 호스트에 연결합니다. 데이터 전송을 지원해야 하며, 충전 전용 케이블은 인식되지 않습니다.</span></li><li><b>점퍼 캡</b><span>FC REC와 GND를 단락해 recovery로 진입합니다. 위치는 캐리어 실크를 확인하십시오. DevKit은 12핀 헤더의 FC REC / GND(9·10번 핀)입니다.</span></li></ol>
+  <p class="note"><b>전원 인가 약 2초 후 점퍼 캡을 제거하십시오.</b><br><span class="inline-risk">제거하지 않으면 다음 전원 인가 시에도 recovery로 진입합니다.</span><br>순서: 전원 차단 → 캡 장착 → 전원 인가 → 약 2초 후 제거 → 호스트 <code>lsusb</code>에 <code>0955:7523</code> 또는 <code>0955:7623</code>(APX) 표시.</p>
+  <figure><img src="images/jetson-board.jpg" alt="Jetson 보드: 40핀 헤더, USB-C, 19V 입력." width="1100" height="741"><figcaption>Jetson 보드: 40핀 헤더, USB-C, 19V 입력.</figcaption></figure>
+  <div class="gallery">
+    <figure><img src="images/jumper-cap.jpg" alt="점퍼 캡: FC REC와 GND를 단락합니다." width="1100" height="611"><figcaption>점퍼 캡: FC REC와 GND를 단락합니다.</figcaption></figure>
+    <figure><img src="images/jumper-cap-installed.jpg" alt="점퍼 캡 장착 위치: 단락 상태로 전원을 인가하고 약 2초 후 제거합니다." width="901" height="575"><figcaption>점퍼 캡 장착 위치: 단락 상태로 전원을 인가하고 약 2초 후 제거합니다.</figcaption></figure>
+  </div>
+  <p class="muted" style="font-size:12.5px;margin-top:18px">준비가 끝나면 왼쪽 «받기와 실행»으로 돌아가 먼저 <code>--mode detect</code>를 실행한 뒤 플래시 여부를 결정하십시오.</p>
+</section>
+
+</div>
+<script>const b=document.getElementById('copy');b.hidden=false;b.addEventListener('click',async()=>{const s=document.getElementById('copy-status');try{await navigator.clipboard.writeText(document.getElementById('command').textContent);s.textContent='복사했습니다. 먼저 스크립트를 검토하십시오.';}catch{s.textContent='클립보드를 사용할 수 없습니다. 직접 복사하십시오.';}});</script>
+</body></html>
