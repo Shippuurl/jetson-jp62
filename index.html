@@ -78,7 +78,10 @@ figcaption{margin-top:8px;font-size:12px;color:#626a72;line-height:1.6}
 footer{padding:0;margin:12px 0 0;font-size:11px;color:#626a72;display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px}
 /* ---- 移动端：单栏堆叠 ---- */
 @media(min-width:921px){
-  .page{min-height:100vh}          /* 整页滚动，不做栏内滚动：中线处不会多出滚动条 */
+  .page{min-height:100vh}
+  .pane.left{align-self:start;padding-top:14px;padding-bottom:10px}
+  .pane.left{position:sticky;top:var(--sticky-top,0px)}
+  .pane.left section{padding-top:12px;padding-bottom:12px}
 }
 @media(max-width:920px){
   .page{grid-template-columns:1fr}
@@ -151,11 +154,11 @@ SOFTWARE.</pre></details></section>
       </select>
     </div>
   </div>
+  <div class="panel" id="panel-recovery">
   <h2 id="prep">刷写前需要准备</h2>
   <ol class="checklist"><li><b>Jetson 主板</b><span>Orin Nano / Orin NX（t234）。实际模组与载板以 EEPROM 读数（Board ID / SKU）为准。</span></li><li><b>电源适配器</b><span>19V 桶形供电。刷写与 recovery 期间不要仅依赖 USB-C 供电。</span></li><li><b>USB-C 数据线</b><span>把板子以 recovery（APX）方式连到主机。需支持数据传输，纯充电线无法被识别。</span></li><li><b>跳线帽</b><span>短接 FC REC 与 GND 进入 recovery。短接位置以载板丝印为准，DevKit 为 12 针排针的 FC REC / GND（第 9、10 脚）。</span></li></ol>
   <figure><img src="images/jetson-board.jpg" alt="Jetson 主板：40-pin 排针、USB-C 与 19V 供电口位置。" width="1100" height="741"><figcaption>Jetson 主板：40-pin 排针、USB-C 与 19V 供电口位置。</figcaption></figure>
 
-  <div class="panel" id="panel-recovery">
   <h3 id="recovery">进入 recovery（刷机模式）</h3>
   <p class="muted" style="font-size:13.5px">刷写前板子必须处于 Force Recovery 模式。下面三种方式都出自 NVIDIA 官方文档，按板子当前状态选一种即可。</p>
   <div class="method"><p class="method-t"><b>A</b> 断电进入（推荐）</p><ol class="steps"><li>断开电源，确认板子已完全断电。</li><li>用跳线帽短接 Button Header 的 9 与 10 脚（FC REC → GND）。</li><li>接回电源：板子直接进入 recovery，不启动系统。</li><li>主机检测到设备后拔掉跳线帽；一直插着会让下次上电继续进 recovery。</li></ol></div>
@@ -169,29 +172,35 @@ SOFTWARE.</pre></details></section>
   </div>
   <p class="caution" style="margin-top:20px">校验：主机 lsusb 应出现 <code>0955:&lt;nnnn&gt; NVIDIA Corp.</code> —— 7523 = Orin Nano 8GB，7623 = Orin Nano 4GB（官方型号表）。看不到设备就断电重来一次。</p>
   <p class="sources"><span class="meta">引用</span><a href="https://docs.nvidia.com/jetson/orin-nano-devkit/user-guide/latest/howto.html#force-recovery-mode" rel="noopener">NVIDIA · Force Recovery Mode（Orin Nano DevKit User Guide）</a><a href="https://docs.nvidia.com/jetson/archives/r36.4.3/DeveloperGuide/IN/QuickStart.html" rel="noopener">NVIDIA · Jetson Linux R36.4.3 Quick Start</a><a href="https://forums.developer.nvidia.com/t/how-to-get-into-recovery-mode/250525" rel="noopener">NVIDIA Developer Forums · How to Get Into Recovery Mode</a></p>
-  </div>
-
-  <div class="panel" id="panel-uart" hidden>
-  <h3>串口诊断（UART）</h3>
-  <p class="muted" style="font-size:13.5px">板子起不来、刷机失败或卡在开机画面时，串口日志能定位问题出现在启动链的哪一层。抓到的是硬件级输出，比 SSH 与 recovery 更接近底层。</p>
-  <div class="method"><p class="method-t"><b>1</b> 准备</p><ul class="steps"><li>USB-TTL 串口模块（CP2102 / CH340 / FT232 一类，3.3V 电平）</li><li>杜邦线 3 根（母-母）</li></ul></div>
-  <div class="method"><p class="method-t"><b>2</b> 接线（40-pin 排针）</p><ul class="steps"><li>Pin 8 UART_TX → 适配器 RXD</li><li>Pin 10 UART_RX → 适配器 TXD</li><li>GND 共地（Pin 6 / 9 / 14 / 25 / 30 / 34 / 39 任一）</li></ul></div>
-  <p class="note" style="margin-top:4px">参数 115200 8N1、无流控。TX 与 RX 必须交叉；接成 TX-TX 会一个字都收不到。</p>
-  <div class="method" style="margin-top:14px"><p class="method-t"><b>3</b> 抓取</p><ol class="steps"><li>脚本内置：<code>bash jetson-jp62.sh --mode uart</code>（自动找 /dev/ttyUSB*，默认 30 秒）</li><li>手工：<code>screen /dev/ttyUSB0 115200</code>（退出 Ctrl-A 再按 K），或 <code>minicom -D /dev/ttyUSB0 -b 115200</code></li><li>先开始抓，再给板子断电 → 上电，才能拿到从 BootROM 到内核的完整启动链</li></ol></div>
-  <p class="note">板内系统侧设备名是 /dev/ttyTHS1（编号随版本动态分配，不是固定 ttyTHS0）；提示权限不足就把自己加进 dialout 组。</p>
-  <div class="method" style="margin-top:14px"><p class="method-t"><b>4</b> 判读卡在哪一层</p><ul class="steps"><li>BootROM / MB1 / MB2 无输出 → 供电、模组接触、QSPI 固件</li><li>停在 UEFI → bootloader 或设备树配置</li><li>卡在 kernel → 驱动、根文件系统、存储设备</li><li>已到 getty 仍重启 → 应用或 systemd 单元</li></ul></div>
-  <p class="sources"><span class="meta">引用</span><a href="https://developerwiki.proventusnova.com/How_to_NVIDIA_Jetson_Orin_Nano_UART_Console" rel="noopener">ProventusNova · How to NVIDIA Jetson Orin Nano UART Console</a><a href="https://forums.developer.nvidia.com/t/how-to-access-uart1-on-expansion-pins-8-10/328934" rel="noopener">NVIDIA Developer Forums · UART1 on expansion pins 8/10</a><a href="https://jetsonhacks.com/2019/04/19/jetson-nano-serial-console/" rel="noopener">JetsonHacks · Serial Debug Console (115200 8N1)</a></p>
-  </div>
-
   <h3>刷写与校验</h3>
   <div class="gallery">
     <figure><img src="images/jetpack-version.png" alt="刷写前在脚本里选版本：不给 --l4t 就交互选择，不会默认最新。" width="792" height="426"><figcaption>刷写前在脚本里选版本：不给 --l4t 就交互选择，不会默认最新。</figcaption></figure>
     <figure><img src="images/flash-done.jpg" alt="刷写成功：flash.sh 输出 “The target generic has been flashed successfully”。" width="1100" height="957"><figcaption>刷写成功：flash.sh 输出 “The target generic has been flashed successfully”。</figcaption></figure>
   </div>
   <p class="muted" style="font-size:12.5px;margin-top:18px">准备完成后回到左栏「获取与运行」，先执行 <code>--mode detect</code> 再决定是否刷写。</p>
+  </div>
+
+  <div class="panel" id="panel-uart" hidden>
+  <h3>串口诊断（UART）</h3>
+  <div class="command"><div class="command-head">Windows · PowerShell</div><pre>irm https://raw.githubusercontent.com/Shippuurl/jetson-jp62/main/uart-logs.ps1 | iex</pre></div>
+  <div class="command"><div class="command-head">Linux / macOS · Bash</div><pre>bash &lt;(curl -fsSL https://raw.githubusercontent.com/Shippuurl/jetson-jp62/main/uart-logs.sh)</pre></div>
+  <p><a href="UART-LOGS.md">UART logs · ZIP · GitHub rules ↗</a></p>
+  <p class="muted" style="font-size:13.5px">独立串口日志采集：连接 USB-TTL、设置串口、保存日志。不需要进入 recovery，也不执行刷写。</p>
+  <div class="method"><p class="method-t"><b>1</b> 准备</p><ul class="steps"><li>USB-TTL 串口模块（CP2102 / CH340 / FT232 一类，3.3V 电平）</li><li>杜邦线 3 根（母-母）</li></ul></div>
+  <div class="method"><p class="method-t"><b>2</b> 接线（40-pin 排针）</p><ul class="steps"><li>Pin 8 UART_TX → 适配器 RXD</li><li>Pin 10 UART_RX → 适配器 TXD</li><li>GND 共地（Pin 6 / 9 / 14 / 25 / 30 / 34 / 39 任一）</li></ul></div>
+  <p class="note" style="margin-top:4px">参数 115200 8N1、无流控。TX 与 RX 必须交叉；接成 TX-TX 会一个字都收不到。</p>
+  <figure><img src="images/uart-wiring.svg" alt="接线（40-pin 排针）" width="900" height="440"><figcaption>接线（40-pin 排针） · 3.3 V TTL</figcaption></figure>
+  <div class="method" style="margin-top:14px"><p class="method-t"><b>3</b> 抓取</p><ol class="steps"><li>脚本内置：<code>bash jetson-jp62.sh --mode uart</code>（自动找 /dev/ttyUSB*，默认 30 秒）</li><li>手工：<code>screen /dev/ttyUSB0 115200</code>（退出 Ctrl-A 再按 K），或 <code>minicom -D /dev/ttyUSB0 -b 115200</code></li><li>先开始采集，再给板子上电。只能采集此 UART 实际输出的日志；40-pin UART 不保证输出早期启动日志。</li></ol></div>
+  <p class="note">主机使用 COMx / /dev/ttyUSBx；板内 ttyTHS 编号和调试控制台端口需按载板及 BSP 核实，不能混用。无输出先查端口、接线、波特率与控制台配置。</p>
+  <figure><img src="images/uart-capture.svg" alt="抓取" width="900" height="360"><figcaption>抓取 · 115200 8N1</figcaption></figure>
+  <div class="method" style="margin-top:14px"><p class="method-t"><b>4</b> 判读卡在哪一层</p><ul class="steps"><li>没有启动日志 → 先检查采集端口、接线与控制台配置，不能据此断定固件故障</li><li>停在 UEFI → bootloader 或设备树配置</li><li>卡在 kernel → 驱动、根文件系统、存储设备</li><li>已到 getty 仍重启 → 应用或 systemd 单元</li></ul></div>
+  <p class="sources"><span class="meta">引用</span><a href="https://developerwiki.proventusnova.com/How_to_NVIDIA_Jetson_Orin_Nano_UART_Console" rel="noopener">ProventusNova · How to NVIDIA Jetson Orin Nano UART Console</a><a href="https://forums.developer.nvidia.com/t/how-to-access-uart1-on-expansion-pins-8-10/328934" rel="noopener">NVIDIA Developer Forums · UART1 on expansion pins 8/10</a><a href="https://jetsonhacks.com/2019/04/19/jetson-nano-serial-console/" rel="noopener">JetsonHacks · Serial Debug Console (115200 8N1)</a></p>
+  </div>
+
+
 </section>
 
 </div>
-<script>const ts=document.getElementById('tut');if(ts){const show=v=>{document.getElementById('panel-recovery').hidden=v!=='recovery';document.getElementById('panel-uart').hidden=v!=='uart';};ts.addEventListener('change',()=>show(ts.value));show(ts.value);}
+<script>const left=document.querySelector('.pane.left');const fit=()=>left.style.setProperty('--sticky-top',Math.min(0,window.innerHeight-left.getBoundingClientRect().height)+'px');new ResizeObserver(fit).observe(left);window.addEventListener('resize',fit);fit();const ts=document.getElementById('tut');if(ts){const show=v=>{document.getElementById('panel-recovery').hidden=v!=='recovery';document.getElementById('panel-uart').hidden=v!=='uart';};ts.addEventListener('change',()=>show(ts.value));show(ts.value);}
 const b=document.getElementById('copy');b.hidden=false;b.addEventListener('click',async()=>{const s=document.getElementById('copy-status');try{await navigator.clipboard.writeText(document.getElementById('command').textContent);s.textContent='已复制。请先审阅脚本。';}catch{s.textContent='无法访问剪贴板，请手动复制。';}});</script>
 </body></html>
