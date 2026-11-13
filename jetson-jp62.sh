@@ -1469,18 +1469,66 @@ uart_capture() {
     uart_analyze "$log"
 }
 
+# 串口诊断：优先用脚本同目录的采集器（离线可用），否则缓存/下载一次。
+# 交互式运行时在脚本内问时长、采完自动给出结果路径并可打开目录。
 do_uart() {
-    local runner_dir runner
+    local here runner_dir runner viewer
+    here="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" 2>/dev/null && pwd || echo .)"
     runner_dir="${XDG_CACHE_HOME:-$HOME/.cache}/jetson-uart"
     mkdir -p "$runner_dir"
-    runner="$runner_dir/uart-logs.sh"
-    curl -fsSL https://raw.githubusercontent.com/Shippuurl/jetson-jp62/main/uart-logs.sh -o "$runner.tmp" || return 1
-    mv "$runner.tmp" "$runner"
+    runner=""
+    if [ -f "$here/uart-logs.sh" ]; then
+        runner="$here/uart-logs.sh"                      # 与脚本同目录：完全离线
+    elif [ -f "$runner_dir/uart-logs.sh" ]; then
+        runner="$runner_dir/uart-logs.sh"                # 上次下载的缓存
+    else
+        log "$(T "本地没有采集器，下载一次（之后可离线使用）" "No local collector; downloading once (offline afterwards)")"
+        if curl -fsSL https://raw.githubusercontent.com/Shippuurl/jetson-jp62/main/uart-logs.sh -o "$runner.tmp"; then
+            mv "$runner.tmp" "$runner"
+            runner="$runner_dir/uart-logs.sh"
+        else
+            rm -f "$runner.tmp"
+            die "$(T "下载失败；把 uart-logs.sh / uart-logs.py 放到脚本同目录即可离线使用" "Download failed; place uart-logs.sh and uart-logs.py next to this script for offline use")"
+        fi
+    fi
+
+    # 交互：时长（脚本内一次问完，不用记参数）
+    if [ -t 0 ] && [ "$YES" != 1 ] && [ -z "$UART_FILE" ]; then
+        printf '  %s [%s]（0 = 直到 Ctrl-C）: ' "$(T "采集时长（秒）" "Capture length (seconds)")" "$UART_SECONDS"
+        local d; read -r d
+        case "$d" in ''|*[!0-9]*) ;; *) UART_SECONDS="$d" ;; esac
+        [ "$UART_SECONDS" = 0 ] && warn "$(T "持续采集：抓完按 Ctrl-C，仍会自动打包" "Continuous capture: press Ctrl-C when done, packaging still runs")"
+    fi
+
     local args=(--baud "$UART_BAUD" --seconds "$UART_SECONDS")
-    [ -n "$UART_DEV" ] && args+=(--port "$UART_DEV")
+    [ -n "$UART_DEV" ]  && args+=(--port "$UART_DEV")
     [ -n "$UART_FILE" ] && args+=(--input "$UART_FILE")
-    [ -n "$UART_OUT" ] && args+=(--output "$UART_OUT")
-    bash "$runner" "${args[@]}"
+    [ -n "$UART_OUT" ]  && args+=(--output "$UART_OUT")
+
+    printf '\n  %s%s%s\n' "$C_D" "$(T "给板子断电 → 上电，开始抓完整启动链" "Power-cycle the board now to capture the whole boot chain")" "$C_N"
+    bash "$runner" "${args[@]}" 2>&1 | tee "$runner_dir/last-run.txt"
+    local rc=${PIPESTATUS[0]}
+
+    # 结果位置：从采集器输出里取会话目录
+    local sess
+    sess="$(sed -n 's/^Saved locally: //p' "$runner_dir/last-run.txt" | tail -1)"
+    if [ -n "$sess" ] && [ -d "$sess" ]; then
+        printf '\n  %s\n' "$(T "结果目录" "Results")"
+        printf '    %s\n' "$sess"
+        printf '    %s %s\n' "$(T "全量日志" "Full log")"    "$sess/full.log"
+        printf '    %s %s\n' "$(T "重要日志" "Important")"   "$sess/important.log"
+        printf '    %s %s\n' "$(T "压缩包"   "Archives")"    "$sess/all-logs.zip（$(T 全部 all)）, $sess/important-logs.zip"
+        printf '    %s %s\n' "$(T "本地入口" "Shortcut")"    "file://$sess/index.html"
+        viewer=""
+        for c in xdg-open open explorer.exe; do command -v "$c" >/dev/null 2>&1 && { viewer="$c"; break; }; done
+        if [ -n "$viewer" ] && [ -t 0 ] && [ "$YES" != 1 ]; then
+            printf '\n  %s[回车] %s  [n] %s > ' "$C_Y" "$(T "打开目录" "open folder")" "$(T "不打开" "skip")"
+            local o; read -r o
+            case "$o" in n|N) ;; *) "$viewer" "$sess" >/dev/null 2>&1 || true ;; esac
+        fi
+    fi
+    [ "$rc" = 0 ] || warn "$(T "采集器返回 $rc（见上面的输出）" "collector exited $rc (see output above)")"
+    return 0
 }
 
 # ==================================================================== 菜单
