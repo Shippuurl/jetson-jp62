@@ -16,30 +16,31 @@ a{color:inherit;text-underline-offset:4px}a:hover{color:#925700}
 a:focus-visible,button:focus-visible,summary:focus-visible{outline:2px solid #995b00;outline-offset:5px}
 .meta{font:11.5px ui-monospace,SFMono-Regular,Consolas,monospace;letter-spacing:.09em;color:#626a72;text-transform:uppercase}
 .muted{color:#626a72}
-h1{font-size:clamp(25px,2.4vw,33px);font-weight:600;line-height:1.3;letter-spacing:-.03em;margin:10px 0 14px}
-h2{font-size:16.5px;font-weight:650;margin:0 0 12px}
-p{margin:10px 0}
+h1{font-size:clamp(23px,2vw,27px);font-weight:600;line-height:1.25;letter-spacing:-.02em;margin:6px 0 10px}
+h2{font-size:15.5px;font-weight:650;margin:0 0 9px}
+p{margin:8px 0}
 /* ---- 正中严格对半 ---- */
-.page{display:grid;grid-template-columns:1fr 1fr;align-items:start}
-.pane{min-width:0;padding:40px clamp(22px,3.2vw,56px) 56px}
+.page{display:grid;grid-template-columns:1fr 1fr;align-items:stretch}
+.pane{min-width:0;padding:20px clamp(20px,2.4vw,44px) 18px}
 .pane.right{border-left:1px solid #e3e5e7}
-.pane-top{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:38px;margin-bottom:26px}
+.pane-top{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:30px;margin-bottom:14px}
+.pane-top .meta{white-space:nowrap}
 .brand{display:flex;align-items:center;gap:11px;font-size:19px;font-weight:750;letter-spacing:.08em;text-decoration:none}
 .brand img{width:38px;height:38px}
-.intro{max-width:38em;color:#555e66}
-.links{display:flex;flex-wrap:wrap;gap:10px 22px;margin:18px 0 0;font-size:14.5px}.primary{font-weight:650}
-section{padding:26px 0;border-bottom:1px solid #e3e5e7}
+.intro{max-width:42em;color:#555e66;font-size:13px;line-height:1.66}
+.links{display:flex;flex-wrap:wrap;gap:8px 20px;margin:12px 0 0;font-size:13.5px}.primary{font-weight:650}
+section{padding:15px 0;border-bottom:1px solid #e3e5e7}
 section:last-of-type{border-bottom:0;padding-bottom:8px}
-.command{border:1px solid #d7dbdf;margin-top:14px}
+.command{border:1px solid #d7dbdf;margin-top:10px}
 .command-head{display:flex;align-items:center;justify-content:space-between;padding:7px 14px;border-bottom:1px solid #e3e5e7;font-size:11.5px;color:#626a72}
 button{background:#fff;color:#202428;border:1px solid #c7ccd1;padding:4px 11px;cursor:pointer;font:inherit;font-size:12.5px}
-pre{padding:14px;margin:0;overflow:auto;font:12px/1.85 ui-monospace,SFMono-Regular,Consolas,monospace}
+pre{padding:11px 13px;margin:0;overflow:auto;font:11.5px/1.62 ui-monospace,SFMono-Regular,Consolas,monospace}
 code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.92em}
-.caution{border-left:3px solid #ad6800;padding-left:14px;margin:20px 0 0;font-size:13.5px}.caution strong{color:#925700}
-.modes{margin:0}.modes div{display:grid;grid-template-columns:96px 1fr;gap:12px;padding:8px 0;border-bottom:1px solid #eff0f1}
-.modes div:last-child{border:0}dt{font-family:ui-monospace,monospace;font-size:13.5px}dd{margin:0;color:#555e66;font-size:14px}
+.caution{border-left:3px solid #ad6800;padding-left:13px;margin:14px 0 0;font-size:12.8px;line-height:1.65}.caution strong{color:#925700}
+.modes{margin:0}.modes div{display:grid;grid-template-columns:84px 1fr;gap:10px;padding:3.5px 0;border-bottom:1px solid #eff0f1}
+.modes div:last-child{border:0}dt{font-family:ui-monospace,monospace;font-size:12.6px}dd{margin:0;color:#555e66;font-size:12.6px}
 .danger{color:#a83224;font-weight:600}
-details{font-size:13px;color:#555e66}summary{cursor:pointer;color:#202428;font-weight:600}
+details{font-size:12.5px;color:#555e66}summary{cursor:pointer;color:#202428;font-weight:600}
 details h2{margin-top:18px}details pre{white-space:pre-wrap;padding:0;font-size:11px}
 .status{min-height:20px;font-size:12px;color:#626a72}
 /* ---- 右栏 ---- */
@@ -64,17 +65,20 @@ figcaption{margin-top:8px;font-size:12px;color:#626a72;line-height:1.6}
 .sources{margin:16px 0 0;font-size:12.5px;color:#626a72;display:grid;gap:4px}
 .sources a{color:#555e66}
 .sources .meta{display:block;margin-bottom:2px}
-/* ---- 语言切换（放在栏底，不做顶部导航）---- */
-.lang{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;margin:26px 0 0;padding-top:16px;border-top:1px solid #e3e5e7;font-size:13px}
-.lang .meta{margin-right:4px}
-.lang a{text-decoration:none;border-bottom:1px solid #d7dbdf;padding-bottom:1px}
-.lang a:hover{border-color:#925700}
+/* ---- 语言切换：放在原 FIELD TOOLS 位置的右上角 ---- */
+.lang{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;font-size:12.5px;justify-content:flex-end}
+.lang a{text-decoration:none;color:#626a72;border-bottom:1px solid transparent;padding-bottom:1px}
+.lang a:hover{color:#202428;border-color:#d7dbdf}
 .lang [aria-current]{color:#202428;font-weight:650}
-footer{padding:0;margin:22px 0 0;font-size:11.5px;color:#626a72;display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px}
+/* ---- 教程下拉框 ---- */
+.tutsel{display:flex;align-items:center;gap:8px;justify-content:flex-end;flex:0 1 auto;min-width:0}
+.tutsel select{font:inherit;font-size:12.5px;padding:4px 8px;border:1px solid #c7ccd1;background:#fff;color:#202428;max-width:100%;text-overflow:ellipsis}
+.panel[hidden]{display:none}
+
+footer{padding:0;margin:12px 0 0;font-size:11px;color:#626a72;display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px}
 /* ---- 移动端：单栏堆叠 ---- */
 @media(min-width:921px){
-  .page{min-height:100vh}
-  .pane{height:100vh;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable}
+  .page{min-height:100vh}          /* 整页滚动，不做栏内滚动：中线处不会多出滚动条 */
 }
 @media(max-width:920px){
   .page{grid-template-columns:1fr}
@@ -91,8 +95,8 @@ footer{padding:0;margin:22px 0 0;font-size:11.5px;color:#626a72;display:flex;fle
 
 <section class="pane left">
   <div class="pane-top">
-    <a class="brand" href="index.en.html" aria-label="A2VEC"><img src="a2vec-logo.svg" alt="" width="38" height="38">A2VEC</a>
-    <span class="meta">FIELD TOOLS / JETSON</span>
+    <a class="brand" href="index.en.html" aria-label="A2VEC"><img src="a2vec-logo.svg" alt="" width="34" height="34">A2VEC</a>
+    <nav class="lang" aria-label="Language"><a href="index.html" hreflang="zh-CN" lang="zh-CN">中文</a><span aria-current="true">English</span><a href="index.ja.html" hreflang="ja" lang="ja">日本語</a><a href="index.de.html" hreflang="de" lang="de">Deutsch</a><a href="index.fr.html" hreflang="fr" lang="fr">Français</a><a href="index.ko.html" hreflang="ko" lang="ko">한국어</a></nav>
   </div>
 
   <div class="meta">MAINTENANCE TOOL · 01</div>
@@ -103,13 +107,12 @@ footer{padding:0;margin:22px 0 0;font-size:11.5px;color:#626a72;display:flex;fle
   <section aria-labelledby="run"><h2 id="run">Get and run</h2><p class="muted">Review the script after downloading, then check the options or open the interactive menu. Select a verified L4T version explicitly before flashing.</p>
     <div class="command"><div class="command-head"><span>BASH / jetson-jp62.sh</span><button type="button" id="copy" hidden>Copy</button></div><pre><code id="command">curl -fL --proto '=https' -o jetson-jp62.sh \
   https://tool.kervein.club/jetson/jetson-jp62.sh
-# after reviewing the script
-bash jetson-jp62.sh --help
+bash jetson-jp62.sh --help   # after reviewing the script
 bash jetson-jp62.sh</code></pre></div><div id="copy-status" class="status" role="status" aria-live="polite"></div>
     <p class="caution"><strong>Before flashing</strong><br>QSPI mode writes boot firmware; a wrong configuration can leave the board unbootable. NVMe mode rewrites the target storage and erases data. Back up your data and confirm carrier support, stable power and a recovery path. Required disk space is determined by the runtime pre-check.</p>
   </section>
 
-  <section aria-labelledby="modes"><h2 id="modes">Script modes</h2><dl class="modes"><div><dt>detect</dt><dd>Inspect the host and device state; performs no flashing.</dd></div><div><dt>prep</dt><dd>Download and prepare the BSP; optionally prepare a sample rootfs.</dd></div><div><dt>qspi</dt><dd>Flash QSPI boot firmware; the system disk is not the target.</dd></div><div><dt>nvme</dt><dd><span class="danger">Rewrites target storage, erases data.</span> Uses the official initrd flash.</dd></div><div><dt>target</dt><dd>Update packages on the Jetson via apt; not equivalent to a QSPI upgrade.</dd></div></dl><p class="muted">Usage: <code>bash jetson-jp62.sh --mode &lt;mode&gt;</code><br>Version, diagnostics, UART and offline options: see <code>--help</code> or the <a href="guide.html">manual</a>.</p></section>
+  <section aria-labelledby="modes"><h2 id="modes">Script modes</h2><dl class="modes"><div><dt>detect</dt><dd>Inspect the host and device state; performs no flashing.</dd></div><div><dt>prep</dt><dd>Download and prepare the BSP; optionally prepare a sample rootfs.</dd></div><div><dt>qspi</dt><dd>Flash QSPI boot firmware; the system disk is not the target.</dd></div><div><dt>nvme</dt><dd><span class="danger">Rewrites target storage, erases data.</span> Uses the official initrd flash.</dd></div><div><dt>target</dt><dd>Update packages on the Jetson via apt; not equivalent to a QSPI upgrade.</dd></div></dl><p class="muted" style="font-size:12.5px">Usage: <code>bash jetson-jp62.sh --mode &lt;mode&gt;</code> · Version, diagnostics, UART and offline options: see <code>--help</code> or the <a href="guide.html">manual</a>.</p></section>
 
   <section id="legal"><details><summary>Legal notice · MIT License · Third-party licences</summary><h2>Legal notice and licence</h2>
     <p>This tool is an independent maintenance helper published under the A2VEC brand. It is not an NVIDIA product and has no affiliation with, authorisation from or endorsement by NVIDIA. NVIDIA, Jetson and JetPack are trademarks of NVIDIA Corporation.</p><p>The script and documentation are provided under the <a href="LICENSE">MIT License</a>; redistributions must keep the copyright and licence notice. The original copyright notice is Copyright (c) 2026 Shippuurl; brand presentation does not change that ownership. MIT grants no rights to third-party trademarks or NVIDIA software.</p><p>The software is provided “AS IS”. To the maximum extent permitted by applicable law no express or implied warranty is given, including merchantability, fitness for a particular purpose and non-infringement; liability is limited as stated in the MIT text. This notice does not exclude liability that applicable law does not allow to be excluded.</p><p>The published script contains no NVIDIA firmware, bootloader or proprietary SDK. Third-party components obtained at runtime are governed by their own licences and the <a href="https://docs.nvidia.com/jetson/archives/r36.4.3/DeveloperGuide/SD/SoftwarePackagesAndTheUpdateMechanism.html">NVIDIA software package documentation</a>; check the licence of the matching version before downloading, using or redistributing. Acknowledgement of this tool does not replace third-party licence requirements.</p><p>Users must confirm they are authorised to operate the device, prepare backups and a recovery plan, and verify module, carrier, BSP and system versions against official documentation. A passing pre-check or an available download URL is not a guarantee of compatibility, safety or flashing success. Third-party carriers are governed by their vendor's adaptation material.</p>
@@ -135,16 +138,24 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.</pre></details></section>
 
-  <nav class="lang" aria-label="Language"><span class="meta">Language</span><a href="index.html" hreflang="zh-CN" lang="zh-CN">中文</a><span aria-current="true">English</span><a href="index.ja.html" hreflang="ja" lang="ja">日本語</a><a href="index.de.html" hreflang="de" lang="de">Deutsch</a><a href="index.fr.html" hreflang="fr" lang="fr">Français</a><a href="index.ko.html" hreflang="ko" lang="ko">한국어</a></nav>
   <footer><span>A2VEC · Independent maintenance tool / not an NVIDIA product</span><a href="LICENSE">MIT License · © 2026 Shippuurl</a></footer>
 </section>
 
 <section class="pane right col-wiki" aria-labelledby="prep">
-  <div class="pane-top"><span class="meta">Preparation</span></div>
+  <div class="pane-top">
+    <label class="meta" for="tut">Guides</label>
+    <div class="tutsel">
+      <select id="tut" aria-label="Guides">
+        <option value="recovery">Entering recovery (flash mode)</option>
+        <option value="uart">Serial diagnostics (UART)</option>
+      </select>
+    </div>
+  </div>
   <h2 id="prep">What you need before flashing</h2>
   <ol class="checklist"><li><b>Jetson board</b><span>Orin Nano / Orin NX (t234). Module and carrier are confirmed by the EEPROM reading (Board ID / SKU).</span></li><li><b>Power supply</b><span>19 V barrel input. Do not rely on USB-C power alone while flashing or in recovery.</span></li><li><b>USB-C data cable</b><span>Connects the board to the host in recovery (APX) mode. Must carry data; charge-only cables are not detected.</span></li><li><b>Jumper cap</b><span>Shorts FC REC to GND to enter recovery. Follow the carrier silkscreen; on the DevKit it is the 12-pin header, FC REC / GND (pins 9 and 10).</span></li></ol>
   <figure><img src="images/jetson-board.jpg" alt="Jetson board: 40-pin header, USB-C and 19 V input." width="1100" height="741"><figcaption>Jetson board: 40-pin header, USB-C and 19 V input.</figcaption></figure>
 
+  <div class="panel" id="panel-recovery">
   <h3 id="recovery">Entering recovery (flash mode)</h3>
   <p class="muted" style="font-size:13.5px">The board must be in Force Recovery Mode before flashing. All three methods come from NVIDIA's own documentation; pick the one that matches the board's current state.</p>
   <div class="method"><p class="method-t"><b>A</b> From power-off (recommended)</p><ol class="steps"><li>Disconnect power and confirm the board is fully off.</li><li>Fit a jumper across pins 9 and 10 of the Button Header (FC REC → GND).</li><li>Reconnect power: the board enters recovery instead of booting.</li><li>Remove the jumper once the host detects the device; leaving it fitted makes the next power-up enter recovery again.</li></ol></div>
@@ -158,6 +169,19 @@ SOFTWARE.</pre></details></section>
   </div>
   <p class="caution" style="margin-top:20px">Check: the host's <code>lsusb</code> shows <code>0955:&lt;nnnn&gt; NVIDIA Corp.</code> — 7523 = Orin Nano 8GB, 7623 = Orin Nano 4GB (official model table). If nothing appears, power-cycle and try again.</p>
   <p class="sources"><span class="meta">Sources</span><a href="https://docs.nvidia.com/jetson/orin-nano-devkit/user-guide/latest/howto.html#force-recovery-mode" rel="noopener">NVIDIA · Force Recovery Mode（Orin Nano DevKit User Guide）</a><a href="https://docs.nvidia.com/jetson/archives/r36.4.3/DeveloperGuide/IN/QuickStart.html" rel="noopener">NVIDIA · Jetson Linux R36.4.3 Quick Start</a><a href="https://forums.developer.nvidia.com/t/how-to-get-into-recovery-mode/250525" rel="noopener">NVIDIA Developer Forums · How to Get Into Recovery Mode</a></p>
+  </div>
+
+  <div class="panel" id="panel-uart" hidden>
+  <h3>Serial diagnostics (UART)</h3>
+  <p class="muted" style="font-size:13.5px">When the board will not boot, flashing fails, or it hangs at the splash screen, a serial log shows which stage of the boot chain fails. It captures hardware-level output, closer to the metal than SSH or recovery.</p>
+  <div class="method"><p class="method-t"><b>1</b> What you need</p><ul class="steps"><li>USB-TTL serial adapter (CP2102 / CH340 / FT232 class, 3.3 V level)</li><li>Three jumper wires (female-female)</li></ul></div>
+  <div class="method"><p class="method-t"><b>2</b> Wiring (40-pin header)</p><ul class="steps"><li>Pin 8 UART_TX → adapter RXD</li><li>Pin 10 UART_RX → adapter TXD</li><li>GND to GND (any of pins 6 / 9 / 14 / 25 / 30 / 34 / 39)</li></ul></div>
+  <p class="note" style="margin-top:4px">115200 8N1, no flow control. TX and RX must cross; wired TX-to-TX you receive nothing at all.</p>
+  <div class="method" style="margin-top:14px"><p class="method-t"><b>3</b> Capturing</p><ol class="steps"><li>Built into the script: <code>bash jetson-jp62.sh --mode uart</code> (auto-detects /dev/ttyUSB*, 30 s by default)</li><li>Manually: <code>screen /dev/ttyUSB0 115200</code> (exit with Ctrl-A then K), or <code>minicom -D /dev/ttyUSB0 -b 115200</code></li><li>Start capturing first, then power-cycle the board, so you get the whole chain from BootROM to kernel</li></ol></div>
+  <p class="note">On the board itself the device is /dev/ttyTHS1 (the number is assigned dynamically per release, not always ttyTHS0); add yourself to the dialout group if permission is denied.</p>
+  <div class="method" style="margin-top:14px"><p class="method-t"><b>4</b> Where it stalls</p><ul class="steps"><li>Nothing from BootROM / MB1 / MB2 → power, module seating, QSPI firmware</li><li>Stops in UEFI → bootloader or device-tree configuration</li><li>Hangs in kernel → drivers, root filesystem, storage</li><li>Reaches getty then reboots → application or systemd unit</li></ul></div>
+  <p class="sources"><span class="meta">Sources</span><a href="https://developerwiki.proventusnova.com/How_to_NVIDIA_Jetson_Orin_Nano_UART_Console" rel="noopener">ProventusNova · How to NVIDIA Jetson Orin Nano UART Console</a><a href="https://forums.developer.nvidia.com/t/how-to-access-uart1-on-expansion-pins-8-10/328934" rel="noopener">NVIDIA Developer Forums · UART1 on expansion pins 8/10</a><a href="https://jetsonhacks.com/2019/04/19/jetson-nano-serial-console/" rel="noopener">JetsonHacks · Serial Debug Console (115200 8N1)</a></p>
+  </div>
 
   <h3>Flashing and verification</h3>
   <div class="gallery">
@@ -168,5 +192,6 @@ SOFTWARE.</pre></details></section>
 </section>
 
 </div>
-<script>const b=document.getElementById('copy');b.hidden=false;b.addEventListener('click',async()=>{const s=document.getElementById('copy-status');try{await navigator.clipboard.writeText(document.getElementById('command').textContent);s.textContent='Copied. Review the script first.';}catch{s.textContent='Clipboard unavailable; copy manually.';}});</script>
+<script>const ts=document.getElementById('tut');if(ts){const show=v=>{document.getElementById('panel-recovery').hidden=v!=='recovery';document.getElementById('panel-uart').hidden=v!=='uart';};ts.addEventListener('change',()=>show(ts.value));show(ts.value);}
+const b=document.getElementById('copy');b.hidden=false;b.addEventListener('click',async()=>{const s=document.getElementById('copy-status');try{await navigator.clipboard.writeText(document.getElementById('command').textContent);s.textContent='Copied. Review the script first.';}catch{s.textContent='Clipboard unavailable; copy manually.';}});</script>
 </body></html>
