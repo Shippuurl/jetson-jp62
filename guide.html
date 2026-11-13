@@ -1,0 +1,103 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>A2VEC · Jetson 操作手册</title><link rel="icon" href="a2vec-logo.svg"><style>*{box-sizing:border-box}html{color-scheme:light}body{margin:0;background:#fff;color:#202428;font:15px/1.8 system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif}.wrap{max-width:920px;margin:auto;padding:0 28px}header{border-bottom:1px solid #e3e5e7}header .wrap{height:88px;display:flex;align-items:center;justify-content:space-between;gap:20px}.brand{display:flex;align-items:center;gap:12px;font-size:21px;font-weight:750;letter-spacing:.08em;text-decoration:none}.brand img{width:44px;height:44px}.meta,.muted{color:#626a72}.meta{font:12px ui-monospace,monospace;letter-spacing:.06em}main{padding-top:56px!important}h1{font-size:clamp(28px,5vw,40px);font-weight:600;line-height:1.3;letter-spacing:-.03em;margin:12px 0 18px}h2{font-size:17px;font-weight:650;margin:0 0 16px}p{margin:10px 0}a{color:inherit;text-underline-offset:4px}a:hover{color:#925700}a:focus-visible,button:focus-visible,summary:focus-visible{outline:2px solid #995b00;outline-offset:5px}.intro{max-width:710px;color:#555e66}.links{display:flex;flex-wrap:wrap;gap:12px 24px;margin:22px 0 0}.primary{font-weight:650}section{padding:32px 0;border-bottom:1px solid #e3e5e7}.command{border:1px solid #d7dbdf;margin-top:18px}.command-head{display:flex;align-items:center;justify-content:space-between;padding:8px 16px;border-bottom:1px solid #e3e5e7;font-size:12px;color:#626a72}button{background:white;color:#202428;border:1px solid #c7ccd1;padding:5px 12px;cursor:pointer;font:inherit}pre{padding:18px;margin:0;overflow:auto;font:13px/1.9 ui-monospace,SFMono-Regular,Consolas,monospace}code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.92em}.caution{border-left:3px solid #ad6800;padding-left:16px;margin:24px 0 0;font-size:14px}.caution strong{color:#925700}.modes{margin:0}.modes div{display:grid;grid-template-columns:112px 1fr;gap:16px;padding:10px 0;border-bottom:1px solid #eff0f1}.modes div:last-child{border:0}dt{font-family:ui-monospace,monospace}dd{margin:0;color:#555e66}.danger{color:#a83224}details{font-size:13px;color:#555e66}summary{cursor:pointer;color:#202428;font-weight:600}details h2{margin-top:22px}details pre{white-space:pre-wrap;padding:0;font-size:11px}footer{padding:24px 0 40px;font-size:12px;color:#626a72}footer .wrap{display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px}.status{min-height:22px;font-size:12px;color:#626a72}@media(max-width:520px){.wrap{padding:0 20px}header .wrap{height:74px}.meta{font-size:10px}main{padding-top:32px!important}.modes div{grid-template-columns:76px 1fr;gap:10px}pre{font-size:12px;padding:14px}.brand{font-size:18px}.brand img{width:36px;height:36px}} article{padding:28px 0}article h2{margin-top:32px}article h3{font-size:16px;margin-top:24px}article pre{border:1px solid #e3e5e7;margin:16px 0}article table{display:block;overflow:auto;border-collapse:collapse;font-size:13px}article th,article td{border:1px solid #e3e5e7;padding:8px 12px;text-align:left}article p,article li{overflow-wrap:anywhere}article blockquote{margin:16px 0;padding-left:18px;border-left:2px solid #c7ccd1}</style></head><body><header><div class="wrap"><a class="brand" href="index.html"><img src="a2vec-logo.svg" alt="" width="44" height="44">A2VEC</a><a href="index.html">返回工具首页</a></div></header><main class="wrap"><article><h1>A2VEC · Jetson 维护工具</h1>
+<p><code>jetson-jp62.sh</code> 是面向 Jetson Orin 的 Bash 维护辅助脚本，用于环境检查、资源准备及调用 NVIDIA 刷写工具。A2VEC 为项目展示品牌；本项目不是 NVIDIA 官方产品。</p>
+<p><a href="https://tool.kervein.club/jetson/">工具首页</a> · <a href="https://tool.kervein.club/jetson/guide.html">操作手册</a> · <a href="LICENSE">MIT License</a></p>
+<h2>获取与运行</h2>
+<pre><code class="language-bash">curl -fL --proto '=https' -o jetson-jp62.sh https://tool.kervein.club/jetson/jetson-jp62.sh
+# 审阅下载的脚本后执行
+bash jetson-jp62.sh --help
+bash jetson-jp62.sh
+</code></pre>
+<p>交互菜单提供检查、诊断、资源准备和刷写入口。脚本需要时会使用 sudo；具体主机要求以对应 Jetson Linux 版本的 NVIDIA 文档为准。请勿将某一版本的主机要求推广至全部版本。</p>
+<h2>模式与写入范围</h2>
+<table>
+<thead>
+<tr>
+<th>模式</th>
+<th>行为</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--mode detect</code></td>
+<td>检查环境和设备状态，不执行固件刷写；可能访问上游并更新本地缓存</td>
+</tr>
+<tr>
+<td><code>--mode prep</code></td>
+<td>下载并解压 BSP；<code>--with-rootfs</code> 准备 sample rootfs</td>
+</tr>
+<tr>
+<td><code>--mode qspi</code></td>
+<td>调用官方 <code>flash.sh</code> 写入 QSPI 启动固件，不以重写系统盘为目标</td>
+</tr>
+<tr>
+<td><code>--mode nvme</code></td>
+<td>调用官方 initrd flash，重写目标存储并清除数据</td>
+</tr>
+<tr>
+<td><code>--mode target</code></td>
+<td>在 Jetson 本机通过 apt 更新软件包，不等同于更新 QSPI</td>
+</tr>
+</tbody>
+</table>
+<p>QSPI 和 NVMe 模式均需要准备 rootfs。即使不计划重写系统盘，也应提前备份数据和厂商配置。错误固件、错误板型或供电中断可能导致无法启动。</p>
+<h2>操作顺序</h2>
+<ol>
+<li>记录模组、载板型号、现有 L4T / UEFI 版本与系统存储位置。第三方载板须先取得厂商适配资料。</li>
+<li>依据对应版本的 NVIDIA 文档确认升级路径，完成数据备份并准备 Recovery 恢复条件。</li>
+<li>检查主机空间、依赖及 USB 连接。Recovery 引脚和操作方式以具体载板手册为准。</li>
+<li>显式指定已核对的 L4T 版本及板型，阅读预检查结果与即将执行的命令后再确认刷写。</li>
+<li>完成后检查启动日志、实际版本、存储及外设工作状态；命令退出成功不替代功能验收。</li>
+</ol>
+<pre><code class="language-bash"># 环境检查（示例版本，不构成适配建议）
+bash jetson-jp62.sh --mode detect --l4t 36.4.3
+
+# 准备资源
+bash jetson-jp62.sh --mode prep --l4t 36.4.3 --with-rootfs
+
+# 已确认适配后，刷写 QSPI
+bash jetson-jp62.sh --mode qspi --l4t 36.4.3
+</code></pre>
+<h2>版本与板型</h2>
+<p><code>--l4t &lt;版本&gt;</code> 指定 L4T；<code>--jetpack &lt;版本&gt;</code> 按脚本内映射选择 L4T。交互刷写未指定版本时显示版本菜单；非交互运行可能回落到自动探测，因此自动化任务应显式固定版本。</p>
+<p><code>--matrix</code> 读取上游软件包和下载目录信息，<code>--refresh</code> 刷新缓存。资源存在仅代表可获取，不能作为当前硬件兼容或可安全刷写的证明。apt 软件包版本与可下载 BSP 版本可能不同；映射目标缺少 BSP 时，脚本可能选择不高于目标的其他版本，请核对输出。</p>
+<p><code>--board &lt;配置名&gt;</code> 指定板型，<code>--list-boards</code> 列出本地 BSP 配置。USB Recovery 标识不足以确定载板适配关系，不能替代设备型号及厂商配置核验。</p>
+<h2>工作目录与磁盘</h2>
+<ul>
+<li><code>--dir &lt;路径&gt;</code>：工作目录，存放解压树与日志。</li>
+<li><code>--cache-dir &lt;路径&gt;</code>：下载包缓存目录；默认与工作目录相同。</li>
+<li><code>--auto-dir</code>：按脚本规则选择空间较充足的分区；执行前核对输出路径。</li>
+<li><code>--mirror &lt;源&gt;</code>：指定下载源，支持 HTTP、HTTPS、file URL 或本地目录；建议使用可信 HTTPS 来源。</li>
+<li><code>--offline --src &lt;目录&gt;</code>：使用本地资源包；主机依赖仍需提前准备。</li>
+</ul>
+<p>空间需求随版本、rootfs、解压树及缓存复用情况变化，以运行时预检查为准。仅下载包大小不足以代表峰值空间需求。删除现有刷机树前应确认其中没有厂商补丁、备份或其他任务需要的文件。</p>
+<h2>校验与自动化</h2>
+<p>默认 TOFU 清单在首次获取资源后记录摘要，后续用于检查一致性；它不能独立证明首次获取文件的真实性。可使用 <code>--manifest-url &lt;URL&gt;</code> 指定来自可信渠道的 SHA-256 清单。</p>
+<p>首次交互运行需确认使用声明，当前记录位于 <code>~/.config/jetson-jp62/agreed-v2</code>（设置 <code>XDG_CONFIG_HOME</code> 时使用该目录）。<code>--accept</code> 明确接受声明；<code>--yes</code> 还会自动确认后续操作，请仅在已审阅命令和参数的自动化流程中使用。</p>
+<p><code>--dry-run</code> 用于预检查和查看计划，不替代实际硬件验证。<code>--no-deps</code> 禁止自动安装主机依赖。设置 <code>NO_COLOR=1</code> 可禁用 ANSI 颜色；重定向输出自动禁用颜色。</p>
+<h2>诊断与日志</h2>
+<pre><code class="language-bash">bash jetson-jp62.sh --diag
+bash jetson-jp62.sh --uart-list
+bash jetson-jp62.sh --uart /dev/ttyUSB0 --uart-seconds 30
+bash jetson-jp62.sh --uart-log uart-existing.log
+</code></pre>
+<p>诊断可能读取设备信息、生成文件或与 Recovery 设备通信，不应理解为完全没有本地副作用。串口默认波特率为 115200；电平、接线和引脚定义以设备资料为准。日志阶段匹配只提供排查线索，未出现某阶段不等于该阶段故障。</p>
+<p>常见输出包括工作目录中的 <code>flash-qspi.log</code>、<code>diag-&lt;时间&gt;/</code> 和 <code>uart-&lt;时间&gt;.log</code>。分享日志前检查设备标识、网络地址及其他敏感信息。</p>
+<p><code>--doc</code> 打开操作手册；<code>--no-doc</code> 关闭完成后的文档提示。完整参数以 <code>--help</code> 为准。</p>
+<h2>许可与责任</h2>
+<p>脚本与文档依据 MIT License 提供，Copyright (c) 2026 Shippuurl。品牌展示不改变原版权归属。再分发须保留版权与许可声明，全文见 <a href="LICENSE">LICENSE</a>。</p>
+<p>软件按现状（AS IS）提供。在适用法律允许的最大范围内不提供明示或默示担保；作者及版权持有人的责任限制以 MIT 原文为准。本声明不排除或限制适用法律不得排除或限制的责任。</p>
+<p>公开发布的脚本不包含 NVIDIA 固件、引导程序或专有 SDK。运行时取得的第三方组件受其随附许可约束；对本工具声明的确认不替代第三方许可要求。使用者应确认设备操作权限、适配条件和备份恢复方案。</p>
+<p>NVIDIA、Jetson 和 JetPack 为 NVIDIA Corporation 的商标。本项目与 NVIDIA 无隶属或背书关系；MIT 不授予第三方商标或 NVIDIA 软件的使用权。</p>
+<h2>官方参考</h2>
+<ul>
+<li><a href="https://docs.nvidia.com/jetson/archives/r36.4.3/DeveloperGuide/SD/FlashingSupport.html">Jetson Linux R36.4.3 · Flashing Support</a>：刷写工具及存储配置。其他版本应查阅对应版本文档。</li>
+<li><a href="https://docs.nvidia.com/jetson/archives/r36.4.3/DeveloperGuide/SD/SoftwarePackagesAndTheUpdateMechanism.html">Jetson Linux R36.4.3 · Software Packages and the Update Mechanism</a>：软件包与更新机制。</li>
+<li><a href="https://docs.nvidia.com/jetson/jetpack/install-setup/index.html">JetPack · Install &amp; Setup</a>：JetPack 安装与升级说明，内容可能随当前版本更新。</li>
+<li><a href="https://docs.nvidia.com/jetson/orin-nano-devkit/user-guide/latest/update_firmware.html">Orin Nano Developer Kit · Firmware Update</a>：官方开发套件固件更新路径，不应直接套用于第三方载板。</li>
+</ul>
+<p>原始手工命令与排查记录保留在仓库的 <code>docs/刷QSPI.md</code>（本地文件 <code>README-刷QSPI.md</code>），仅供历史参考，须按实际硬件及版本重新核验。</p></article><section><h2>法律声明与许可</h2>
+<p>本工具为 A2VEC 品牌下的独立维护辅助项目，不是 NVIDIA 官方产品，与 NVIDIA 无隶属、授权代理或背书关系。NVIDIA、Jetson 和 JetPack 为 NVIDIA Corporation 的商标。</p>
+<p>脚本与文档依据 <a href="LICENSE">MIT License</a> 提供；再分发时须保留版权与许可声明。原版权声明为 Copyright (c) 2026 Shippuurl，品牌展示不改变原版权归属。MIT 不授予第三方商标或 NVIDIA 软件的使用权。</p>
+<p>软件按“现状”（AS IS）提供。在适用法律允许的最大范围内，不提供明示或默示担保，包括适销性、特定用途适用性及不侵权担保；作者及版权持有人的责任限制以 MIT 原文为准。本声明不排除或限制适用法律不得排除或限制的责任。</p>
+<p>公开发布的脚本不包含 NVIDIA 固件、引导程序或专有 SDK。运行时取得的第三方组件受其随附许可及 <a href="https://docs.nvidia.com/jetson/archives/r36.4.3/DeveloperGuide/SD/SoftwarePackagesAndTheUpdateMechanism.html">NVIDIA 软件包说明</a>约束；使用者应在下载、使用或再分发前核对对应版本许可。对本工具的确认不替代第三方许可要求。</p>
+<p>使用者应确认设备操作权限、备份及恢复方案，并依据官方文档核对模组、载板、BSP 和系统版本。预检查通过或下载地址可用不构成兼容性、安全性或刷写成功保证。第三方载板须以其厂商适配资料为准。</p><p><a href="LICENSE">MIT 许可原文</a> · <a href="https://github.com/Shippuurl/jetson-jp62/blob/main/docs/%E5%88%B7QSPI.md">原始操作记录（历史参考）</a></p></section></main><footer><div class="wrap">A2VEC · 独立维护工具 / MIT License</div></footer></body></html>
