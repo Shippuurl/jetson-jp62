@@ -161,6 +161,7 @@ SOFTWARE.</pre></details></section>
 
   <h3 id="recovery">recovery（書き込みモード）に入る</h3>
   <p class="muted" style="font-size:13.5px">書き込み前にボードを Force Recovery モードにする必要があります。以下の 3 通りはいずれも NVIDIA 公式ドキュメントの記載です。ボードの状態に合う方法を選んでください。</p>
+  <p class="muted" style="font-size:12.5px">書き込み時、必要ならスクリプトがこの 3 通りを表示します。</p>
   <div class="method"><p class="method-t"><b>A</b> 電源を切った状態から（推奨）</p><ol class="steps"><li>電源を外し、ボードが完全に切れていることを確認します。</li><li>Button Header の 9 番と 10 番（FC REC → GND）にジャンパを装着します。</li><li>電源を入れ直すと、OS は起動せず recovery に入ります。</li><li>ホストがデバイスを認識したらジャンパを外します。付けたままだと次回も recovery に入ります。</li></ol></div>
   <div class="method"><p class="method-t"><b>B</b> 電源が入った状態から</p><ol class="steps"><li>まず Button Header の 9 番と 10 番を短絡します。</li><li>続けて 7 番と 8 番を短時間短絡してリセットします。</li><li>ホストが認識したら、両方のジャンパを外します。</li></ol></div>
   <div class="method"><p class="method-t"><b>C</b> ボード上でコマンドから</p><p class="steps" style="padding-left:0">すでにログインできる場合は、そのまま recovery に移行できます: <code>sudo reboot --force forced-recovery</code></p></div>
@@ -182,19 +183,23 @@ SOFTWARE.</pre></details></section>
 
   <div class="panel" id="panel-uart" hidden>
   <h3>シリアル診断（UART）</h3>
-  <div class="command"><div class="command-head">Windows · PowerShell</div><pre>irm https://raw.githubusercontent.com/Shippuurl/jetson-jp62/main/uart-logs.ps1 | iex</pre></div>
-  <div class="command"><div class="command-head">Linux / macOS · Bash</div><pre>bash &lt;(curl -fsSL https://raw.githubusercontent.com/Shippuurl/jetson-jp62/main/uart-logs.sh)</pre></div>
-  <p><a href="UART-LOGS.md">UART logs · ZIP · GitHub rules ↗</a></p>
-  <p class="muted" style="font-size:13.5px">独立した UART ログ取得です。recovery や書き込み操作は不要です。</p>
-  <div class="method"><p class="method-t"><b>1</b> 用意するもの</p><ul class="steps"><li>USB-TTL シリアル変換（CP2102 / CH340 / FT232 など、3.3V レベル）</li><li>ジャンパ線 3 本（メス-メス）</li></ul></div>
-  <div class="method"><p class="method-t"><b>2</b> 配線（40 ピンヘッダ）</p><ul class="steps"><li>Pin 8 UART_TX → アダプタの RXD</li><li>Pin 10 UART_RX → アダプタの TXD</li><li>GND を共通化（Pin 6 / 9 / 14 / 25 / 30 / 34 / 39 のいずれか）</li></ul></div>
-  <p class="note" style="margin-top:4px">115200 8N1、フロー制御なし。TX と RX は必ず交差させます。TX-TX で繋ぐと 1 文字も受信できません。</p>
+  <p class="muted" style="font-size:13.5px">スクリプト 1 回で完了します。ポート自動検出・取得・ルールで重要行を抽出・zip 化まで行います。このページは配線、出力先、読み方だけを扱います。</p>
+
+  <div class="command"><div class="command-head">Linux / macOS · Bash</div><pre><code>bash jetson-jp62.sh                     <span class="muted"># メニューで 3 を選択</span>
+bash jetson-jp62.sh --mode uart --uart /dev/ttyUSB0 --uart-seconds 60</code></pre></div>
+  <div class="command"><div class="command-head">Windows · PowerShell（独立采集器，无需脚本）</div><pre>irm https://raw.githubusercontent.com/Shippuurl/jetson-jp62/main/uart-logs.ps1 | iex</pre></div>
+
+  <div class="method"><p class="method-t"><b>1</b> 配線（40 ピンヘッダ）</p><ul class="steps"><li>Pin 8 UART_TX → アダプタの RXD</li><li>Pin 10 UART_RX → アダプタの TXD</li><li>GND を共通化（Pin 6 / 9 / 14 / 25 / 30 / 34 / 39 のいずれか）</li></ul></div>
+  <p class="note" style="margin-top:2px">115200 8N1、フロー制御なし。TX/RX は必ず交差。USB-TTL は 3.3V、VCC は接続せずボードは別電源で給電します。</p>
   <figure><img src="images/uart-wiring.svg" alt="配線（40 ピンヘッダ）" width="900" height="440"><figcaption>配線（40 ピンヘッダ） · 3.3 V TTL</figcaption></figure>
-  <div class="method" style="margin-top:14px"><p class="method-t"><b>3</b> 取得</p><ol class="steps"><li>スクリプト内蔵: <code>bash jetson-jp62.sh --mode uart</code>（/dev/ttyUSB* を自動検出、既定 30 秒）</li><li>手動: <code>screen /dev/ttyUSB0 115200</code>（終了は Ctrl-A の後 K）、または <code>minicom -D /dev/ttyUSB0 -b 115200</code></li><li>取得を開始してから電源を入れます。この UART に出力されるログのみ取得でき、40 ピン UART で初期起動ログが出る保証はありません。</li></ol></div>
-  <p class="note">ホストは COMx / /dev/ttyUSBx を使います。ボード側 ttyTHS とデバッグコンソールはキャリアと BSP に依存します。無出力だけで故障と判断せず、ポートと配線、設定を確認してください。</p>
-  <figure><img src="images/uart-capture.svg" alt="取得" width="900" height="360"><figcaption>取得 · 115200 8N1</figcaption></figure>
-  <div class="method" style="margin-top:14px"><p class="method-t"><b>4</b> どこで止まっているか</p><ul class="steps"><li>ホストは COMx / /dev/ttyUSBx を使います。ボード側 ttyTHS とデバッグコンソールはキャリアと BSP に依存します。無出力だけで故障と判断せず、ポートと配線、設定を確認してください。</li><li>UEFI で停止 → bootloader またはデバイスツリー設定</li><li>カーネルで停止 → ドライバ、ルートファイルシステム、ストレージ</li><li>getty まで到達して再起動 → アプリまたは systemd ユニット</li></ul></div>
-  <p class="sources"><span class="meta">参考</span><a href="https://developerwiki.proventusnova.com/How_to_NVIDIA_Jetson_Orin_Nano_UART_Console" rel="noopener">ProventusNova · How to NVIDIA Jetson Orin Nano UART Console</a><a href="https://forums.developer.nvidia.com/t/how-to-access-uart1-on-expansion-pins-8-10/328934" rel="noopener">NVIDIA Developer Forums · UART1 on expansion pins 8/10</a><a href="https://jetsonhacks.com/2019/04/19/jetson-nano-serial-console/" rel="noopener">JetsonHacks · Serial Debug Console (115200 8N1)</a></p>
+
+  <div class="method" style="margin-top:16px"><p class="method-t"><b>2</b> スクリプトの出力</p><ul class="steps"><li><code>full.log</code> — デコード済みの全ログ（生バイトは <code>full.bin</code>）</li><li><code>important.log</code> — ルールに一致した行と前後、元の行番号付き</li><li><code>all-logs.zip</code> / <code>important-logs.zip</code> — 共有用の 2 つのアーカイブ</li><li><code>index.html</code> — ローカルの入口。クリックで両方の zip を取得</li></ul></div>
+  <p class="muted" style="font-size:12.5px">保存先: <code>~/Downloads/Jetson-Logs/&lt;タイムスタンプ&gt;/</code>。取得終了後、そのフォルダを開くか確認します。</p>
+  <figure><img src="images/uart-capture.svg" alt="スクリプトの出力" width="900" height="360"><figcaption>115200 8N1</figcaption></figure>
+
+  <div class="method" style="margin-top:16px"><p class="method-t"><b>3</b> どこで止まっているか</p><ul class="steps"><li>BootROM / MB1 / MB2 が出ない → 電源、モジュール装着、QSPI ファームウェア</li><li>UEFI で停止 → bootloader またはデバイスツリー設定</li><li>カーネルで停止 → ドライバ、ルート FS、ストレージ</li><li>getty まで到達して再起動 → アプリまたは systemd ユニット</li></ul></div>
+  <p class="note">読み取り専用で、書き込みコマンドは送りません。ルールは既定で GitHub から取得し、<code>--rules</code> で固定できます。ルールは文字一致のみで、一致＝故障確定ではありませんし、出力なし＝ファームウェア破損でもありません。ボード側のデバイス名は /dev/ttyTHS1 です（番号はリリースで変わります）。</p>
+  <p class="sources"><span class="meta">参考</span><a href="https://developerwiki.proventusnova.com/How_to_NVIDIA_Jetson_Orin_Nano_UART_Console" rel="noopener">ProventusNova · Orin Nano UART Console</a><a href="https://forums.developer.nvidia.com/t/how-to-access-uart1-on-expansion-pins-8-10/328934" rel="noopener">NVIDIA Developer Forums · UART1 on pins 8/10</a><a href="https://jetsonhacks.com/2019/04/19/jetson-nano-serial-console/" rel="noopener">JetsonHacks · Serial Debug Console</a></p>
   </div>
 
 
