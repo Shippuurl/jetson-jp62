@@ -255,7 +255,8 @@ space_plan() {
     [ -s "${CACHE_DIR:-$WORK_DIR}/$BSP_FILENAME" ] && have_bsp=1
     [ -s "${CACHE_DIR:-$WORK_DIR}/$ROOTFS_FILENAME" ] && have_rfs=1
     case "$mode" in
-        qspi) dl=$SPACE_DL_BSP; ex=$SPACE_EX_BSP ;;
+        qspi) dl=$((SPACE_DL_BSP+SPACE_DL_ROOTFS)); ex=$((SPACE_EX_BSP+SPACE_EX_ROOTFS+SPACE_APPLY))
+              tmp=800 ;;   # 只刷 QSPI：不生成 system.img，但要拼 recovery ramdisk
         prep) dl=$SPACE_DL_BSP; ex=$SPACE_EX_BSP
               [ "$WITH_ROOTFS" = 1 ] && { dl=$((dl+SPACE_DL_ROOTFS)); ex=$((ex+SPACE_EX_ROOTFS+SPACE_APPLY)); } ;;
         nvme) dl=$((SPACE_DL_BSP+SPACE_DL_ROOTFS)); ex=$((SPACE_EX_BSP+SPACE_EX_ROOTFS+SPACE_APPLY)); tmp=$SPACE_FLASH_TMP ;;
@@ -265,7 +266,7 @@ space_plan() {
     [ "$have_bsp" = 1 ] && dl=$((dl-SPACE_DL_BSP))
     [ "$have_rfs" = 1 ] && dl=$((dl-SPACE_DL_ROOTFS))
     [ "$dl" -lt 0 ] && dl=0
-    printf '%d %d %d\n' "$dl" "$ex" $((dl+ex+tmp+SPACE_LOG+SPACE_SLACK))
+    printf '%d %d %d %d\n' "$dl" "$ex" $((dl+ex+tmp+SPACE_LOG+SPACE_SLACK)) "$tmp" 
 }
 
 # 列出可用的其它挂载点（真实块设备、可写、余量够）
@@ -297,11 +298,12 @@ auto_pick_dir() {
 # 空间总检：下载 / 解压 分两个目录算，文件系统类型也对（exFAT/NTFS 会毁掉 rootfs 权限）
 check_disk() {
     local mode="$1"
-    local plan dl ex total
+    local plan dl ex total tmp
     plan="$(space_plan "$mode")"
     dl="$(echo "$plan" | cut -d' ' -f1)"
     ex="$(echo "$plan" | cut -d' ' -f2)"
     total="$(echo "$plan" | cut -d' ' -f3)"
+    tmp="$(echo "$plan" | cut -d' ' -f4)"; [ -n "$tmp" ] || tmp=$SPACE_FLASH_TMP
     local cache="${CACHE_DIR:-$WORK_DIR}"
     mkdir -p "$cache" 2>/dev/null; mkdir -p "$WORK_DIR" 2>/dev/null
 
@@ -342,10 +344,10 @@ check_disk() {
     else
         if [ "$fcache" -ge "$dl" ]; then chk_ok "下载目录 $cache 可用 $(mb2g "$fcache")（已用 ${pctc}%），需装下 $(mb2g $dl)"
         else chk_bad "下载目录只剩 $(mb2g "$fcache")，需要 $(mb2g $dl)" "换 --cache-dir 到大盘，或加 --auto-dir"; fi
-        if [ "$fwork" -ge "$((ex+SPACE_FLASH_TMP+SPACE_LOG+SPACE_SLACK))" ]; then
-            chk_ok "工作目录 $WORK_DIR 可用 $(mb2g "$fwork")，解压+临时约 $(mb2g $((ex+SPACE_FLASH_TMP+SPACE_LOG)))"
+        if [ "$fwork" -ge "$((ex+tmp+SPACE_LOG+SPACE_SLACK))" ]; then
+            chk_ok "工作目录 $WORK_DIR 可用 $(mb2g "$fwork")，解压+临时约 $(mb2g $((ex+tmp+SPACE_LOG)))"
         else
-            chk_bad "工作目录只剩 $(mb2g "$fwork")，解压+临时需要 $(mb2g $((ex+SPACE_FLASH_TMP+SPACE_LOG)))" \
+            chk_bad "工作目录只剩 $(mb2g "$fwork")，解压+临时需要 $(mb2g $((ex+tmp+SPACE_LOG)))" \
                     "换盘：$(pick_hint "$total") ；或加 --auto-dir"
         fi
     fi
