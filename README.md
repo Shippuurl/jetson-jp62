@@ -48,6 +48,9 @@ GitHub 镜像：`https://raw.githubusercontent.com/Shippuurl/jetson-jp62/main/je
 
 数据源：`repo.download.nvidia.com/jetson/t234/dists/<suite>/Packages.gz` + 官方下载目录 HEAD 探测。
 
+JetPack → Jetson Linux：`6.0→36.3.0`、`6.1→36.4.0`、`6.2→36.4.3`、`6.2.1→36.4.4`、`6.2.2→36.5.0`、`6.2.3→36.5.2`（只走 apt/OTA）。
+映射到没有 BSP 包的版本时，脚本自动退到不高于它的最近可刷版本，并明确提示。
+
 `--matrix` 末尾会列出**所有真的能下载到 BSP 的版本**（当前：`36.5.0 36.4.4 36.4.3 36.4.0 36.3.0 36.2.0 35.6.5 … 35.4.1`）。
 交互运行且不给 `--l4t` 时，脚本把这串列成菜单让你选，回车才等于最新。
 **apt 版本 ≠ 能刷的版本**：r36.4 的 apt 已 36.4.7，但 BSP 只到 36.4.4；那些 patch 只走 apt/OTA。
@@ -93,6 +96,8 @@ nvpmodel -q                  # 期望 MAXN_SUPER
 ```
 --mode detect|qspi|nvme|prep|target   执行模式（不给则进交互菜单）
 --l4t <版本|latest>                   目标 L4T；交互时不指定会弹菜单让你选，非交互才回落 auto
+--jetpack / --jp <版本>              按 JetPack 号自动映射 L4T（6.2→36.4.3、6.2.2→36.5.0…）
+--jp-list                            打印 JetPack → L4T 映射表
 --matrix / --refresh                  打印支持矩阵 / 强制重取上游缓存
 --board <名字> / --list-boards        强制板型 / 列出 BSP 内全部板型
 --dir / --cache-dir / --auto-dir      工作目录 / 下载包目录 / 自动选盘
