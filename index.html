@@ -114,6 +114,7 @@
     <a href="#modes">能做什么</a>
     <a href="#matrix">支持矩阵</a>
     <a href="#checks">刷前检查</a>
+    <a href="#disk">硬盘预算</a>
     <a href="#args">参数</a>
     <a href="#pitfalls">已知坑</a>
     <a href="#legal">免责声明</a>
@@ -223,6 +224,68 @@ $ head -3 /etc/nv_boot_control.conf   # TNSPEC 应带 -super</pre>
   </div>
 </section>
 
+<section id="disk">
+  <div class="wrap">
+    <h2><span class="n">DISK BUDGET</span>硬盘预算</h2>
+    <p>刷机树吃多少盘，取决于模式。<b>QSPI 模式在 36.x 也需要 sample rootfs</b>（flash.sh 要用它拼 recovery ramdisk），
+      所以它的预算不再是"2G 够用"。下表是脚本 <code>space_plan()</code> 实际使用的口径，冷启动（什么都没缓存）时最坏情况。</p>
+
+    <h3>各阶段体积</h3>
+    <table>
+      <tr><th>阶段</th><th>下载</th><th>落盘后</th><th>说明</th></tr>
+      <tr><td>BSP（Jetson_Linux_R*.tbz2）</td><td>715 MiB</td><td>约 790 MB</td><td>解压出 Linux_for_Tegra（flash.sh / bootloader / kernel）</td></tr>
+      <tr><td>sample rootfs</td><td>1.70 GiB</td><td>约 3.1 GB</td><td>QSPI 与整机刷都要；只用于 host 侧拼 ramdisk / system.img</td></tr>
+      <tr><td>apply_binaries.sh 膨胀</td><td>—</td><td>约 +0.9 GB</td><td>把内核模块、NVIDIA 库塞进 rootfs</td></tr>
+      <tr><td>刷机临时镜像</td><td>—</td><td>QSPI ≈ 0.8 GB<br>NVMe ≈ 3.9 GB</td><td>initrd flash 生成的 boot.img / system.img / ramdisk</td></tr>
+      <tr><td>日志与安全余量</td><td>—</td><td>1.4 GB</td><td>兜底，别贴着上限跑</td></tr>
+    </table>
+
+    <h3>各模式峰值（下载与解压放同一块盘）</h3>
+    <table>
+      <tr><th>模式</th><th>峰值占用</th><th>说明</th></tr>
+      <tr><td><code>--mode detect</code></td><td class="ok">1.4 GB</td><td>只体检，不下载（余量检查用）</td></tr>
+      <tr><td><code>--mode prep</code></td><td class="ok">2.8 GB</td><td>只 BSP，解压后的刷机树</td></tr>
+      <tr><td><code>--mode prep --with-rootfs</code></td><td class="mid">8.5 GB</td><td>BSP + rootfs + apply_binaries</td></tr>
+      <tr><td><code>--mode qspi</code></td><td class="mid">9.3 GB</td><td>含 rootfs（拼 ramdisk 用）+ 临时镜像</td></tr>
+      <tr><td><code>--mode nvme</code></td><td class="no">12.4 GB</td><td>额外要生成 system.img</td></tr>
+      <tr><td><code>--mode target</code></td><td class="ok">系统盘 ≥ 9 GB</td><td>板内 apt dist-upgrade，看的是 / 的余量</td></tr>
+    </table>
+
+    <h3>下载与解压分开放（推荐，省一半峰值）</h3>
+    <p>用 <code>--cache-dir</code>（别名 <code>--resource</code>）把下载包放到另一块盘，工作目录只承担解压与临时镜像：</p>
+    <table>
+      <tr><th>模式</th><th>下载目录需要</th><th>工作目录需要</th></tr>
+      <tr><td><code>qspi</code></td><td>2.4 GB</td><td>5.8 GB</td></tr>
+      <tr><td><code>nvme</code></td><td>2.4 GB</td><td>8.9 GB</td></tr>
+    </table>
+
+    <div class="note"><b>已下过的包会自动抵扣。</b>BSP 在缓存里就少算 683 MB，rootfs 在就少算 1.74 GB，
+      所以第二次跑同一版本通常只需要解压空间。</div>
+
+    <h3>脚本怎么判</h3>
+    <ul>
+      <li>按模式算「下载 + 解压 + 临时 + 余量」四项，<b>下载目录与工作目录分开核对</b></li>
+      <li>文件系统必须是 <b>ext4 / xfs / btrfs</b>；NTFS / exFAT / vfat 直接判不通过（存 rootfs 会丢权限与软链）</li>
+      <li>分区已用率 <b>&gt; 85%</b> 额外警告：刷机中途写镜像/日志容易失败</li>
+      <li>不够时自动列出本机其它够用的挂载点，<code>--auto-dir</code> 直接切到余量最大的那块盘</li>
+    </ul>
+
+    <pre class="block"># 自查余量（不用跑脚本）
+$ df -h /path/to/work
+
+# 自动选盘（下载与解压都搬到最大余量的分区）
+$ bash jetson-jp62.sh --mode qspi --auto-dir
+
+# 手动分盘
+$ bash jetson-jp62.sh --mode qspi --dir /data/jetson --cache-dir /data/jetson/cache</pre>
+
+    <div class="warnbox">实测踩坑：先跑了一次不带 rootfs 的 prep，再跑 <code>--mode qspi</code>，
+      flash.sh 会在拼 recovery ramdisk 时对 <code>rootfs/lib</code>、<code>rootfs/usr/lib/modules</code> 一堆报
+      "No such file"，最后 <code>sed: 无法读取 …/sshd_config</code> → <code>command is failed</code>。
+      现在脚本会自动带上 rootfs，失败时也会直接指出这个原因。</div>
+  </div>
+</section>
+
 <section id="args">
   <div class="wrap">
     <h2><span class="n">CLI</span>参数速查</h2>
@@ -263,6 +326,9 @@ L4T_VERSION=36.4.4</pre>
         自编 engine、预编译加速库要重建。</li>
       <li><b>厂商底板别用 devkit 配置。</b>pinmux / 串口 / CSI 相机 / 供电策略不同，
         必须换厂商 .conf，并先备份 <code>/boot</code> 与自定义 dtb。</li>
+      <li><b>QSPI 模式也要 sample rootfs。</b>36.x 的 flash.sh 即使 <code>--no-systemimg</code> 只写 QSPI，
+        也会用 rootfs 拼 recovery ramdisk；rootfs 空 → 几十行 “No such file” → <code>command is failed</code>。
+        脚本的 <code>--mode qspi</code> 现在已经自动带上 rootfs（预算 9.3 GB，不是 2 GB）。</li>
       <li><b>不能在 NTFS/exFAT 盘上准备 rootfs。</b>会丢权限和软链，刷出来必坏；脚本会拦。</li>
       <li><b>刷写中途断电＝变砖。</b>需要重新进 recovery 再刷，供电不稳就先别刷。</li>
     </ul>
