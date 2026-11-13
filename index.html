@@ -161,6 +161,7 @@ SOFTWARE.</pre></details></section>
 
   <h3 id="recovery">进入 recovery（刷机模式）</h3>
   <p class="muted" style="font-size:13.5px">刷写前板子必须处于 Force Recovery 模式。下面三种方式都出自 NVIDIA 官方文档，按板子当前状态选一种即可。</p>
+  <p class="muted" style="font-size:12.5px">刷写时脚本会在需要的情况下自动提示这三种方式，不必再回来查这一页。</p>
   <div class="method"><p class="method-t"><b>A</b> 断电进入（推荐）</p><ol class="steps"><li>断开电源，确认板子已完全断电。</li><li>用跳线帽短接 Button Header 的 9 与 10 脚（FC REC → GND）。</li><li>接回电源：板子直接进入 recovery，不启动系统。</li><li>主机检测到设备后拔掉跳线帽；一直插着会让下次上电继续进 recovery。</li></ol></div>
   <div class="method"><p class="method-t"><b>B</b> 已开机时进入</p><ol class="steps"><li>先短接 Button Header 的 9 与 10 脚。</li><li>再临时短接 7 与 8 脚触发复位。</li><li>主机检测到设备后，把两处跳线都拔掉。</li></ol></div>
   <div class="method"><p class="method-t"><b>C</b> 板内用命令进入</p><p class="steps" style="padding-left:0">已经能登录系统时，直接切到 recovery： <code>sudo reboot --force forced-recovery</code></p></div>
@@ -182,19 +183,23 @@ SOFTWARE.</pre></details></section>
 
   <div class="panel" id="panel-uart" hidden>
   <h3>串口诊断（UART）</h3>
-  <div class="command"><div class="command-head">Windows · PowerShell</div><pre>irm https://raw.githubusercontent.com/Shippuurl/jetson-jp62/main/uart-logs.ps1 | iex</pre></div>
-  <div class="command"><div class="command-head">Linux / macOS · Bash</div><pre>bash &lt;(curl -fsSL https://raw.githubusercontent.com/Shippuurl/jetson-jp62/main/uart-logs.sh)</pre></div>
-  <p><a href="UART-LOGS.md">UART logs · ZIP · GitHub rules ↗</a></p>
-  <p class="muted" style="font-size:13.5px">独立串口日志采集：连接 USB-TTL、设置串口、保存日志。不需要进入 recovery，也不执行刷写。</p>
-  <div class="method"><p class="method-t"><b>1</b> 准备</p><ul class="steps"><li>USB-TTL 串口模块（CP2102 / CH340 / FT232 一类，3.3V 电平）</li><li>杜邦线 3 根（母-母）</li></ul></div>
-  <div class="method"><p class="method-t"><b>2</b> 接线（40-pin 排针）</p><ul class="steps"><li>Pin 8 UART_TX → 适配器 RXD</li><li>Pin 10 UART_RX → 适配器 TXD</li><li>GND 共地（Pin 6 / 9 / 14 / 25 / 30 / 34 / 39 任一）</li></ul></div>
-  <p class="note" style="margin-top:4px">参数 115200 8N1、无流控。TX 与 RX 必须交叉；接成 TX-TX 会一个字都收不到。</p>
+  <p class="muted" style="font-size:13.5px">在脚本里一次做完：自动找口、抓取、按规则筛出重要行、打包 zip。文档只说明怎么接线、结果在哪、怎么读。</p>
+
+  <div class="command"><div class="command-head">Linux / macOS · Bash</div><pre><code>bash jetson-jp62.sh                     <span class="muted"># 菜单选 3 串口诊断</span>
+bash jetson-jp62.sh --mode uart --uart /dev/ttyUSB0 --uart-seconds 60</code></pre></div>
+  <div class="command"><div class="command-head">Windows · PowerShell（独立采集器，无需脚本）</div><pre>irm https://raw.githubusercontent.com/Shippuurl/jetson-jp62/main/uart-logs.ps1 | iex</pre></div>
+
+  <div class="method"><p class="method-t"><b>1</b> 接线（40-pin 排针）</p><ul class="steps"><li>Pin 8 UART_TX → 适配器 RXD</li><li>Pin 10 UART_RX → 适配器 TXD</li><li>GND 共地（Pin 6 / 9 / 14 / 25 / 30 / 34 / 39 任一）</li></ul></div>
+  <p class="note" style="margin-top:2px">115200 8N1、无流控；TX/RX 必须交叉。USB-TTL 用 3.3V 电平，VCC 不接，板子独立供电。</p>
   <figure><img src="images/uart-wiring.svg" alt="接线（40-pin 排针）" width="900" height="440"><figcaption>接线（40-pin 排针） · 3.3 V TTL</figcaption></figure>
-  <div class="method" style="margin-top:14px"><p class="method-t"><b>3</b> 抓取</p><ol class="steps"><li>脚本内置：<code>bash jetson-jp62.sh --mode uart</code>（自动找 /dev/ttyUSB*，默认 30 秒）</li><li>手工：<code>screen /dev/ttyUSB0 115200</code>（退出 Ctrl-A 再按 K），或 <code>minicom -D /dev/ttyUSB0 -b 115200</code></li><li>先开始采集，再给板子上电。只能采集此 UART 实际输出的日志；40-pin UART 不保证输出早期启动日志。</li></ol></div>
-  <p class="note">主机使用 COMx / /dev/ttyUSBx；板内 ttyTHS 编号和调试控制台端口需按载板及 BSP 核实，不能混用。无输出先查端口、接线、波特率与控制台配置。</p>
-  <figure><img src="images/uart-capture.svg" alt="抓取" width="900" height="360"><figcaption>抓取 · 115200 8N1</figcaption></figure>
-  <div class="method" style="margin-top:14px"><p class="method-t"><b>4</b> 判读卡在哪一层</p><ul class="steps"><li>没有启动日志 → 先检查采集端口、接线与控制台配置，不能据此断定固件故障</li><li>停在 UEFI → bootloader 或设备树配置</li><li>卡在 kernel → 驱动、根文件系统、存储设备</li><li>已到 getty 仍重启 → 应用或 systemd 单元</li></ul></div>
-  <p class="sources"><span class="meta">引用</span><a href="https://developerwiki.proventusnova.com/How_to_NVIDIA_Jetson_Orin_Nano_UART_Console" rel="noopener">ProventusNova · How to NVIDIA Jetson Orin Nano UART Console</a><a href="https://forums.developer.nvidia.com/t/how-to-access-uart1-on-expansion-pins-8-10/328934" rel="noopener">NVIDIA Developer Forums · UART1 on expansion pins 8/10</a><a href="https://jetsonhacks.com/2019/04/19/jetson-nano-serial-console/" rel="noopener">JetsonHacks · Serial Debug Console (115200 8N1)</a></p>
+
+  <div class="method" style="margin-top:16px"><p class="method-t"><b>2</b> 脚本产出</p><ul class="steps"><li><code>full.log</code>：解码后的全量日志（乱码也不丢原始字节 <code>full.bin</code>）</li><li><code>important.log</code>：命中规则的行 + 上下文，带原始行号</li><li><code>all-logs.zip</code> / <code>important-logs.zip</code>：给同事或厂商的两份包</li><li><code>index.html</code>：本地快捷入口，点一下就下载上面两份 zip</li></ul></div>
+  <p class="muted" style="font-size:12.5px">位置：<code>~/Downloads/Jetson-Logs/&lt;时间戳&gt;/</code>；采集结束脚本会问是否直接打开该目录。</p>
+  <figure><img src="images/uart-capture.svg" alt="脚本产出" width="900" height="360"><figcaption>115200 8N1</figcaption></figure>
+
+  <div class="method" style="margin-top:16px"><p class="method-t"><b>3</b> 判读卡在哪一层</p><ul class="steps"><li>BootROM / MB1 / MB2 无输出 → 供电、模组接触、QSPI 固件</li><li>停在 UEFI → bootloader 或设备树配置</li><li>卡在 kernel → 驱动、根文件系统、存储设备</li><li>已到 getty 仍重启 → 应用或 systemd 单元</li></ul></div>
+  <p class="note">只读串口，不发送刷写命令。规则默认从 GitHub 取，可 <code>--rules</code> 固定版本；规则只做文字匹配，命中不等于确定故障，没有输出也不能判定固件损坏。板内系统侧的设备名是 /dev/ttyTHS1（编号随版本变化）。</p>
+  <p class="sources"><span class="meta">引用</span><a href="https://developerwiki.proventusnova.com/How_to_NVIDIA_Jetson_Orin_Nano_UART_Console" rel="noopener">ProventusNova · Orin Nano UART Console</a><a href="https://forums.developer.nvidia.com/t/how-to-access-uart1-on-expansion-pins-8-10/328934" rel="noopener">NVIDIA Developer Forums · UART1 on pins 8/10</a><a href="https://jetsonhacks.com/2019/04/19/jetson-nano-serial-console/" rel="noopener">JetsonHacks · Serial Debug Console</a></p>
   </div>
 
 
