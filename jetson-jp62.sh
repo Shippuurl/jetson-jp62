@@ -502,6 +502,12 @@ cat <<EOF
   --jetpack|--jp <版本>           按 JetPack 号自动映射 L4T（6.2→36.4.3、6.2.1→36.4.4、6.2.2→36.5.0…）
   --jp-list                       打印 JetPack → L4T 映射表
   --diag                          诊断：板内看内核/系统报错，recovery 看 EEPROM/BCT，均不改动
+  --uart [设备]                   串口抓 BootROM/UEFI/DDR 启动日志并分级判断（默认自动找 /dev/ttyUSB*）
+  --uart-out <文件>               抓取日志写到指定路径
+  --uart-log <文件>               离线分析已有串口日志
+  --uart-baud <波特率>            默认 115200
+  --uart-seconds <秒>             捕获时长，默认 30
+  --uart-list                     列出可用串口设备
   --doc                           打开使用说明页（index.html）
   --doc-url <url>                 在线文档地址（无本地 index.html 时用）
   --no-doc                        跑完不提示打开文档
@@ -613,6 +619,12 @@ parse_args() {
                         fi ;;
             --matrix)   MODE="matrix"; shift ;;
             --jp-list)  MODE="jpmap"; shift ;;
+            --uart)     MODE="uart"; UART_DEV="${2:-}"; shift 2 ;;
+            --uart-log) MODE="uart"; UART_FILE="${2:-}"; shift 2 ;;
+            --uart-out) MODE="uart"; UART_OUT="${2:-}"; shift 2 ;;
+            --uart-baud) UART_BAUD="${2:-115200}"; shift 2 ;;
+            --uart-seconds) UART_SECONDS="${2:-30}"; shift 2 ;;
+            --uart-list) uart_list_ports; echo; exit 0 ;;
             --doc)      MODE="doc"; shift ;;
             --skip-recovery-check|--no-recovery-check) RECOVERY_SKIP=1; shift ;;
             --doc-url)  DOC_URL="${2:-}"; shift 2 ;;
@@ -630,7 +642,7 @@ parse_args() {
         esac
     done
     case "$MODE" in
-        ""|detect|qspi|nvme|prep|target|matrix|update|doc|jpmap|diag) ;;
+        ""|detect|qspi|nvme|prep|target|matrix|update|doc|jpmap|diag|uart) ;;
         *) die "--mode 只能是 detect / qspi / nvme / prep / target（另有 --matrix / --self-update / --doc 三个动作）" ;;
     esac
 }
@@ -1093,6 +1105,148 @@ do_diag() {
     uart_help
 }
 
+# ================================================================ 串口诊断
+# 底层开机日志(UEFI/DDR/BPMP/电源)只有串口看得到。这里做两件事：
+#   1) 实时抓串口日志（115200 8N1，ttyTCU0），存文件
+#   2) 对抓到的日志做分级判断：卡在 BootROM / MB1 / MB2 / UEFI / kernel 哪一段
+UART_BAUD="${UART_BAUD:-115200}"
+UART_SECONDS="${UART_SECONDS:-30}"
+UART_DEV="${UART_DEV:-}"
+UART_LOG="${UART_LOG:-}"
+UART_FILE="${UART_FILE:-}"
+UART_OUT="${UART_OUT:-}"
+
+# L4T 的 USB gadget（ttyACM0 / "*Linux_for_Tegra*"）不是串口控制台，抓到的是空数据，必须排除
+is_l4t_gadget() {
+    case "$1" in
+        *Linux_for_Tegra*|*NVIDIA*L4T*) return 0 ;;
+    esac
+    local dev; dev="$(readlink -f "$1" 2>/dev/null)"
+    case "$dev" in /dev/ttyACM*) return 0 ;; esac
+    return 1
+}
+
+uart_list_ports() {
+    local f found=0 note
+    for f in /dev/serial/by-id/* /dev/ttyUSB* /dev/ttyACM*; do
+        [ -e "$f" ] || continue
+        found=1
+        if is_l4t_gadget "$f"; then
+            note="${C_Y}(L4T USB gadget，不是 UART 控制台，别选这个)${C_N}"
+        elif [ -r "$f" ]; then
+            note="${C_G}可读${C_N}"
+        else
+            note="${C_Y}(需要 dialout 组或 sudo)${C_N}"
+        fi
+        printf '   %-46s → %-14s %b\n' "$f" "$(readlink -f "$f" 2>/dev/null)" "$note"
+    done
+    [ "$found" = 1 ] || printf '   %s没找到任何串口设备。板子接 USB-TTL 了没？驱动装了吗（FTDI/CP210x/CH340/PL2303）%s\n' "$C_D" "$C_N"
+}
+
+uart_auto_dev() {
+    local f base
+    for f in /dev/serial/by-id/*; do
+        [ -e "$f" ] || continue
+        is_l4t_gadget "$f" && continue          # 跳过板子自己的 gadget
+        base="$(basename "$f")"
+        case "$base" in
+            *FTDI*|*Silicon_Labs*|*CP210*|*Prolific*|*PL2303*|*CH340*|*QinHeng*|*USB_Serial*|*UART*)
+                printf '%s' "$f"; return 0 ;;
+        esac
+    done
+    # 只回退 ttyUSB*（USB-TTL 桥），不要 ttyACM*（多半是板子的 CDC gadget）
+    for f in /dev/ttyUSB0 /dev/ttyUSB1 /dev/ttyUSB2; do
+        [ -e "$f" ] && { printf '%s' "$f"; return 0; }
+    done
+    return 1
+}
+
+# 对串口日志分级：返回最后到达的阶段
+uart_analyze() {
+    local f="$1"
+    [ -s "$f" ] || { warn "日志是空的: $f"; return 1; }
+    local n=$'\n'
+    local stages=(
+        "BootROM|BootROM|Tegra Boot|Boot Rom"
+        "MB1|MB1|Primary Boot|I2C: rcm|mb1"
+        "MB2|MB2|MB2 Applet|Bootloader version|NvBootloader"
+        "UEFI|UEFI|Jetson UEFI|L4TLauncher|Device manager|Version 3\.[0-9]+"
+        "kernel|Linux version|Booting Linux|Kernel command line"
+        "userspace|systemd\[1\]|Reached target|Ubuntu "
+    )
+    printf '\n  %s── 串口日志分级（%s）──%s\n' "$C_B" "$f" "$C_N"
+    local last="(无)"
+    local entry name pat
+    for entry in "${stages[@]}"; do
+        name="${entry%%|*}"; pat="${entry#*|}"
+        if grep -qiE "$pat" "$f"; then
+            printf '    %s[ ✓ ]%s %-9s 出现过（首次在第 %s 行）\n' "$C_G" "$C_N" "$name" "$(grep -niE -m1 "$pat" "$f" | cut -d: -f1)"
+            last="$name"
+        else
+            printf '    %s[ · ]%s %-9s 未出现\n' "$C_D" "$C_N" "$name"
+        fi
+    done
+
+    printf '\n  %s── 可疑行（最多 15 条）──%s\n' "$C_B" "$C_N"
+    local hits
+    hits="$(grep -niE 'error|fail|panic|abort|timeout|assert|unable|not found|invalid|watchdog|DRAM.*(fail|error)|assert' "$f" 2>/dev/null | head -15)"
+    if [ -n "$hits" ]; then printf '%s\n' "$hits" | sed 's/^/    /'
+    else printf '    %s没有明显错误行%s\n' "$C_D" "$C_N"; fi
+
+    printf '\n  %s结论：%s' "$C_B" "$C_N"
+    case "$last" in
+        userspace|kernel) printf '%s启动链走完（到了 %s），串口层面没看到卡点%s\n' "$C_G" "$last" "$C_N" ;;
+        UEFI)             printf '%s卡在 UEFI 之后、内核之前：多半是启动项/分区/rootfs 找不到（UEFI 里 efibootmgr、extlinux.conf、PARTUUID）%s\n' "$C_Y" "$C_N" ;;
+        MB2)              printf '%s卡在 MB2：引导链在加载 UEFI 前失败（QSPI 里的 UEFI 分区或 BCT 有问题）%s\n' "$C_Y" "$C_N" ;;
+        MB1)              printf '%s卡在 MB1：内存/DDR 训练或 BCT 配置问题（先看是否有 DRAM 相关报错）%s\n' "$C_Y" "$C_N" ;;
+        BootROM)          printf '%s只到 BootROM：内存初始化就挂了，属于硬件/供电/DDR 层问题%s\n' "$C_R" "$C_N" ;;
+        *)                printf '%s没抓到任何已知阶段，检查波特率(115200)、TX/RX 是否接反、GND 是否共地%s\n' "$C_R" "$C_N" ;;
+    esac
+}
+
+uart_capture() {
+    local dev="$1" log="$2" secs="$3"
+    if [ ! -e "$dev" ]; then die "串口设备不存在: $dev（--uart-list 看可用设备）"; fi
+    if [ ! -r "$dev" ]; then
+        warn "$dev 不可读：把自己加进 dialout 组（sudo usermod -aG dialout $USER，重新登录），或用 sudo 跑"
+        return 1
+    fi
+    log "串口 $dev @ ${UART_BAUD} 8N1，捕获 ${secs}s（现在给板子断电→上电，好抓完整启动链；Ctrl-C 提前结束）"
+    log "日志: $log"
+    stty -F "$dev" "$UART_BAUD" cs8 -cstopb -parenb -crtscts raw -echo 2>/dev/null || warn "stty 设置失败（可能不是 TTY），继续尝试读取"
+    printf '  %s按回车开始抓取…%s ' "$C_Y" "$C_N"
+    if [ -t 0 ] && [ "$YES" != 1 ]; then read -r _; fi
+    timeout --foreground "$secs" cat "$dev" 2>/dev/null | tee "$log"
+    ok "捕获结束（$(wc -c < "$log" 2>/dev/null || echo 0) 字节）"
+    uart_analyze "$log"
+}
+
+do_uart() {
+    printf '\n%s── 串口诊断（UEFI / DDR / BPMP / 电源层）──%s\n' "$C_B" "$C_N"
+    # 抓取优先：给了 --uart（或 --uart-out）就去抓；只给 --uart-log 才做离线分析
+    if [ -n "$UART_DEV" ]; then
+        UART_LOG="${UART_OUT:-$WORK_DIR/uart-$(date +%Y%m%d-%H%M%S).log}"
+        uart_capture "$UART_DEV" "$UART_LOG" "$UART_SECONDS"
+        return 0
+    fi
+    if [ -n "$UART_FILE" ]; then
+        [ -f "$UART_FILE" ] || die "日志文件不存在: $UART_FILE"
+        chk_info "离线分析: $UART_FILE"
+        uart_analyze "$UART_FILE"
+        return 0
+    fi
+    chk_info "可用串口设备："; uart_list_ports
+    local auto; if auto="$(uart_auto_dev)"; then
+        UART_LOG="${UART_LOG:-$WORK_DIR/uart-$(date +%Y%m%d-%H%M%S).log}"
+        log "自动选中 $auto"
+        uart_capture "$auto" "$UART_LOG" "$UART_SECONDS"
+    else
+        warn "没检测到串口。接线（Orin Nano DevKit 40-pin）：Pin 6=GND、Pin 8=UART1_TX、Pin 10=UART1_RX，115200 8N1"
+        warn "接好后重跑：--mode uart --uart /dev/ttyUSB0 --uart-seconds 60"
+        warn "已有日志想离线分析：--mode uart --uart-log boot.log"
+    fi
+}
+
 # ==================================================================== 菜单
 menu() {
     banner
@@ -1103,7 +1257,8 @@ menu() {
     echo "    4) 只下载 + 解压（离线缓存，可带 sample rootfs）"
     echo "    5) 在 Jetson 本机：apt 升计算栈到 6.2（不重刷）"
     echo "    6) 诊断：看板子身份/EEPROM，或已启动时的内核报错（不改任何东西）"
-    echo "    7) 打开使用说明页（支持矩阵 / 参数 / 免责声明）"
+    echo "    7) 串口诊断：抓 BootROM/UEFI/DDR 启动链日志并判断卡在哪一段"
+    echo "    8) 打开使用说明页（支持矩阵 / 参数 / 免责声明）"
     echo "    0) 退出"
     printf '  输入: '
     local a; read -r a
@@ -1115,7 +1270,8 @@ menu() {
            case "$b" in y|Y) WITH_ROOTFS=1 ;; esac ;;
         5) MODE=target ;;
         6) MODE=diag ;;
-        7) MODE=doc ;;
+        7) MODE=uart ;;
+        8) MODE=doc ;;
         *) log "退出"; exit 0 ;;
     esac
 }
@@ -1499,6 +1655,9 @@ main() {
             detect_onboard || detect_recovery || DET_MODE="none"
             pick_board
             do_diag
+            exit 0 ;;
+        uart)
+            do_uart
             exit 0 ;;
     esac
 
