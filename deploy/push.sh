@@ -9,6 +9,7 @@ ECS="${ECS_PY:-/media/shippuu/A2Vec/toolchains/ecs.py}"
 REMOTE_DIR="/var/www/jetson-jp62"
 BASE="https://tool.kervein.club/jetson"
 FILES=(jetson-jp62.sh index.html guide.html a2vec-logo.svg LICENSE README.md README-刷QSPI.md .nojekyll)
+IMAGES=(images/jetson-board.jpg images/jumper-cap.jpg images/jumper-cap-installed.jpg)
 
 [ -x /usr/bin/python3 ] || true
 [ -f "$ECS" ] || { echo "找不到 ecs.py: $ECS" >&2; exit 1; }
@@ -24,7 +25,12 @@ for f in "${FILES[@]}"; do
     python3 "$ECS" put "$SRC/$f" "$REMOTE_DIR/$f" >/dev/null
     echo "  ↑ $f"
 done
-python3 "$ECS" run "chmod 755 $REMOTE_DIR/jetson-jp62.sh && ls -l $REMOTE_DIR" | tail -4
+python3 "$ECS" run "mkdir -p $REMOTE_DIR/images" >/dev/null
+for f in "${IMAGES[@]}"; do
+    python3 "$ECS" put "$SRC/$f" "$REMOTE_DIR/$f" >/dev/null
+    echo "  ↑ $f"
+done
+python3 "$ECS" run "chmod 755 $REMOTE_DIR/jetson-jp62.sh && ls -l $REMOTE_DIR $REMOTE_DIR/images" | tail -6
 
 echo "==> 等 nginx 稳定后验收"
 sleep 3
@@ -35,7 +41,7 @@ else
     echo "  ✗ sha256 不一致: remote=$remote_sha" >&2
     exit 1
 fi
-for u in "$BASE/" "$BASE/index.html" "$BASE/jetson-jp62.sh"; do
+for u in "$BASE/" "$BASE/index.html" "$BASE/guide.html" "$BASE/images/jetson-board.jpg" "$BASE/jetson-jp62.sh"; do
     printf '  %-46s ' "$u"
     curl -s -o /dev/null -w '%{http_code} %{content_type}\n' --max-time 20 "$u"
 done
