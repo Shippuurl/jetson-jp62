@@ -55,6 +55,15 @@ details h2{margin-top:18px}details pre{white-space:pre-wrap;padding:0;font-size:
 figure{margin:20px 0 0}figure img{display:block;width:100%;height:auto;border:1px solid #e3e5e7}
 figcaption{margin-top:8px;font-size:12px;color:#626a72;line-height:1.6}
 .gallery figure+figure{margin-top:16px}
+.col-wiki h3{font-size:14.5px;font-weight:650;margin:26px 0 10px;padding-top:18px;border-top:1px solid #e3e5e7}
+.method{margin:0 0 14px}
+.method-t{margin:0 0 6px;font-size:13.5px;color:#202428}
+.method-t b{display:inline-block;min-width:16px;font-weight:650;color:#9aa3ab;font-family:ui-monospace,monospace;font-size:12px}
+.steps{margin:0;padding:0 0 0 20px;color:#555e66;font-size:13.5px;line-height:1.7}
+.steps li{margin:2px 0}
+.sources{margin:16px 0 0;font-size:12.5px;color:#626a72;display:grid;gap:4px}
+.sources a{color:#555e66}
+.sources .meta{display:block;margin-bottom:2px}
 /* ---- 语言切换（放在栏底，不做顶部导航）---- */
 .lang{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;margin:26px 0 0;padding-top:16px;border-top:1px solid #e3e5e7;font-size:13px}
 .lang .meta{margin-right:4px}
@@ -131,14 +140,29 @@ SOFTWARE.</pre></details></section>
 </section>
 
 <section class="pane right col-wiki" aria-labelledby="prep">
-  <div class="pane-top"><span class="meta">PREPARATION</span></div>
+  <div class="pane-top"><span class="meta">Preparation</span></div>
   <h2 id="prep">What you need before flashing</h2>
   <ol class="checklist"><li><b>Jetson board</b><span>Orin Nano / Orin NX (t234). Module and carrier are confirmed by the EEPROM reading (Board ID / SKU).</span></li><li><b>Power supply</b><span>19 V barrel input. Do not rely on USB-C power alone while flashing or in recovery.</span></li><li><b>USB-C data cable</b><span>Connects the board to the host in recovery (APX) mode. Must carry data; charge-only cables are not detected.</span></li><li><b>Jumper cap</b><span>Shorts FC REC to GND to enter recovery. Follow the carrier silkscreen; on the DevKit it is the 12-pin header, FC REC / GND (pins 9 and 10).</span></li></ol>
-  <p class="note"><b>Remove the jumper cap about 2 s after power-on.</b><br><span class="inline-risk">Leaving it on makes the board enter recovery again at the next power-up.</span><br>Order: power off → fit the cap → power on → remove it after ~2 s → <code>lsusb</code> on the host shows <code>0955:7523</code> or <code>0955:7623</code> (APX).</p>
   <figure><img src="images/jetson-board.jpg" alt="Jetson board: 40-pin header, USB-C and 19 V input." width="1100" height="741"><figcaption>Jetson board: 40-pin header, USB-C and 19 V input.</figcaption></figure>
+
+  <h3 id="recovery">Entering recovery (flash mode)</h3>
+  <p class="muted" style="font-size:13.5px">The board must be in Force Recovery Mode before flashing. All three methods come from NVIDIA's own documentation; pick the one that matches the board's current state.</p>
+  <div class="method"><p class="method-t"><b>A</b> From power-off (recommended)</p><ol class="steps"><li>Disconnect power and confirm the board is fully off.</li><li>Fit a jumper across pins 9 and 10 of the Button Header (FC REC → GND).</li><li>Reconnect power: the board enters recovery instead of booting.</li><li>Remove the jumper once the host detects the device; leaving it fitted makes the next power-up enter recovery again.</li></ol></div>
+  <div class="method"><p class="method-t"><b>B</b> While already powered on</p><ol class="steps"><li>First fit a jumper across pins 9 and 10 of the Button Header.</li><li>Then briefly connect pins 7 and 8 to trigger a reset.</li><li>Remove both jumpers once the host detects the device.</li></ol></div>
+  <div class="method"><p class="method-t"><b>C</b> From the board itself</p><p class="steps" style="padding-left:0">If you can already log in, switch straight to recovery: <code>sudo reboot --force forced-recovery</code></p></div>
+  <p class="note"><b>Remove the jumper once the host detects the device.</b><br><span class="inline-risk">Leaving it on makes the board enter recovery again at the next power-up.</span><br>Order: power off → fit the jumper (9/10) → power on → remove it once <code>lsusb</code> shows <code>0955:7523</code> or <code>0955:7623</code>.</p>
   <div class="gallery">
     <figure><img src="images/jumper-cap.jpg" alt="Jumper cap: shorts FC REC to GND." width="1100" height="611"><figcaption>Jumper cap: shorts FC REC to GND.</figcaption></figure>
-    <figure><img src="images/jumper-cap-installed.jpg" alt="Jumper cap installed: power on while shorted, remove after ~2 s." width="901" height="575"><figcaption>Jumper cap installed: power on while shorted, remove after ~2 s.</figcaption></figure>
+    <figure><img src="images/jumper-cap-installed.jpg" alt="Jumper cap in place: power on while shorted, remove it once the host detects the device." width="901" height="575"><figcaption>Jumper cap in place: power on while shorted, remove it once the host detects the device.</figcaption></figure>
+    <figure><img src="images/lsusb-0955.png" alt="lsusb output on the host once the board is in recovery (0955:7623, Orin Nano 4GB)." width="556" height="93" style="max-width:556px"><figcaption>lsusb output on the host once the board is in recovery (0955:7623, Orin Nano 4GB).</figcaption></figure>
+  </div>
+  <p class="caution" style="margin-top:20px">Check: the host's <code>lsusb</code> shows <code>0955:&lt;nnnn&gt; NVIDIA Corp.</code> — 7523 = Orin Nano 8GB, 7623 = Orin Nano 4GB (official model table). If nothing appears, power-cycle and try again.</p>
+  <p class="sources"><span class="meta">Sources</span><a href="https://docs.nvidia.com/jetson/orin-nano-devkit/user-guide/latest/howto.html#force-recovery-mode" rel="noopener">NVIDIA · Force Recovery Mode（Orin Nano DevKit User Guide）</a><a href="https://docs.nvidia.com/jetson/archives/r36.4.3/DeveloperGuide/IN/QuickStart.html" rel="noopener">NVIDIA · Jetson Linux R36.4.3 Quick Start</a><a href="https://forums.developer.nvidia.com/t/how-to-get-into-recovery-mode/250525" rel="noopener">NVIDIA Developer Forums · How to Get Into Recovery Mode</a></p>
+
+  <h3>Flashing and verification</h3>
+  <div class="gallery">
+    <figure><img src="images/jetpack-version.png" alt="Version selection in the script: without --l4t it asks interactively and never defaults to the newest." width="792" height="426"><figcaption>Version selection in the script: without --l4t it asks interactively and never defaults to the newest.</figcaption></figure>
+    <figure><img src="images/flash-done.jpg" alt="Flash complete: flash.sh reports “The target generic has been flashed successfully”." width="1100" height="957"><figcaption>Flash complete: flash.sh reports “The target generic has been flashed successfully”.</figcaption></figure>
   </div>
   <p class="muted" style="font-size:12.5px;margin-top:18px">When ready, go back to “Get and run” on the left and run <code>--mode detect</code> before deciding whether to flash.</p>
 </section>
