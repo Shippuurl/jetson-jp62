@@ -55,6 +55,15 @@ details h2{margin-top:18px}details pre{white-space:pre-wrap;padding:0;font-size:
 figure{margin:20px 0 0}figure img{display:block;width:100%;height:auto;border:1px solid #e3e5e7}
 figcaption{margin-top:8px;font-size:12px;color:#626a72;line-height:1.6}
 .gallery figure+figure{margin-top:16px}
+.col-wiki h3{font-size:14.5px;font-weight:650;margin:26px 0 10px;padding-top:18px;border-top:1px solid #e3e5e7}
+.method{margin:0 0 14px}
+.method-t{margin:0 0 6px;font-size:13.5px;color:#202428}
+.method-t b{display:inline-block;min-width:16px;font-weight:650;color:#9aa3ab;font-family:ui-monospace,monospace;font-size:12px}
+.steps{margin:0;padding:0 0 0 20px;color:#555e66;font-size:13.5px;line-height:1.7}
+.steps li{margin:2px 0}
+.sources{margin:16px 0 0;font-size:12.5px;color:#626a72;display:grid;gap:4px}
+.sources a{color:#555e66}
+.sources .meta{display:block;margin-bottom:2px}
 /* ---- 语言切换（放在栏底，不做顶部导航）---- */
 .lang{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;margin:26px 0 0;padding-top:16px;border-top:1px solid #e3e5e7;font-size:13px}
 .lang .meta{margin-right:4px}
@@ -134,11 +143,26 @@ SOFTWARE.</pre></details></section>
   <div class="pane-top"><span class="meta">準備</span></div>
   <h2 id="prep">書き込み前に用意するもの</h2>
   <ol class="checklist"><li><b>Jetson ボード</b><span>Orin Nano / Orin NX（t234）。モジュールとキャリアは EEPROM の読み取り値（Board ID / SKU）で確認します。</span></li><li><b>電源アダプター</b><span>19V のバレルジャック給電。書き込み中や recovery 中は USB-C 給電だけに頼らないでください。</span></li><li><b>USB-C データケーブル</b><span>ボードを recovery（APX）でホストに接続します。データ通信対応が必要で、充電専用ケーブルは認識されません。</span></li><li><b>ジャンパキャップ</b><span>FC REC と GND を短絡して recovery に入ります。位置はキャリアのシルクを確認してください。DevKit では 12 ピンヘッダの FC REC / GND（9・10 番ピン）です。</span></li></ol>
-  <p class="note"><b>電源投入の約 2 秒後にジャンパキャップを外してください。</b><br><span class="inline-risk">外さないと、次回の電源投入時も recovery に入ります。</span><br>手順: 電源オフ → キャップ装着 → 電源オン → 約 2 秒後に取り外す → ホストの <code>lsusb</code> に <code>0955:7523</code> または <code>0955:7623</code>（APX）が表示される。</p>
   <figure><img src="images/jetson-board.jpg" alt="Jetson ボード: 40 ピンヘッダ、USB-C、19V 入力。" width="1100" height="741"><figcaption>Jetson ボード: 40 ピンヘッダ、USB-C、19V 入力。</figcaption></figure>
+
+  <h3 id="recovery">recovery（書き込みモード）に入る</h3>
+  <p class="muted" style="font-size:13.5px">書き込み前にボードを Force Recovery モードにする必要があります。以下の 3 通りはいずれも NVIDIA 公式ドキュメントの記載です。ボードの状態に合う方法を選んでください。</p>
+  <div class="method"><p class="method-t"><b>A</b> 電源を切った状態から（推奨）</p><ol class="steps"><li>電源を外し、ボードが完全に切れていることを確認します。</li><li>Button Header の 9 番と 10 番（FC REC → GND）にジャンパを装着します。</li><li>電源を入れ直すと、OS は起動せず recovery に入ります。</li><li>ホストがデバイスを認識したらジャンパを外します。付けたままだと次回も recovery に入ります。</li></ol></div>
+  <div class="method"><p class="method-t"><b>B</b> 電源が入った状態から</p><ol class="steps"><li>まず Button Header の 9 番と 10 番を短絡します。</li><li>続けて 7 番と 8 番を短時間短絡してリセットします。</li><li>ホストが認識したら、両方のジャンパを外します。</li></ol></div>
+  <div class="method"><p class="method-t"><b>C</b> ボード上でコマンドから</p><p class="steps" style="padding-left:0">すでにログインできる場合は、そのまま recovery に移行できます: <code>sudo reboot --force forced-recovery</code></p></div>
+  <p class="note"><b>ホストが認識したらジャンパを外してください。</b><br><span class="inline-risk">外さないと、次回の電源投入時も recovery に入ります。</span><br>手順: 電源オフ → ジャンパ装着（9/10）→ 電源オン → <code>lsusb</code> に <code>0955:7523</code> か <code>0955:7623</code> が出たら外す。</p>
   <div class="gallery">
     <figure><img src="images/jumper-cap.jpg" alt="ジャンパキャップ: FC REC と GND を短絡します。" width="1100" height="611"><figcaption>ジャンパキャップ: FC REC と GND を短絡します。</figcaption></figure>
-    <figure><img src="images/jumper-cap-installed.jpg" alt="ジャンパキャップ装着位置: 短絡したまま電源を入れ、約 2 秒後に外します。" width="901" height="575"><figcaption>ジャンパキャップ装着位置: 短絡したまま電源を入れ、約 2 秒後に外します。</figcaption></figure>
+    <figure><img src="images/jumper-cap-installed.jpg" alt="ジャンパキャップ装着位置: 短絡したまま電源を入れ、ホストが認識したら外します。" width="901" height="575"><figcaption>ジャンパキャップ装着位置: 短絡したまま電源を入れ、ホストが認識したら外します。</figcaption></figure>
+    <figure><img src="images/lsusb-0955.png" alt="recovery に入ったときのホスト側 lsusb 出力（0955:7623、Orin Nano 4GB）。" width="556" height="93" style="max-width:556px"><figcaption>recovery に入ったときのホスト側 lsusb 出力（0955:7623、Orin Nano 4GB）。</figcaption></figure>
+  </div>
+  <p class="caution" style="margin-top:20px">確認: ホストの <code>lsusb</code> に <code>0955:&lt;nnnn&gt; NVIDIA Corp.</code> が出ます。7523 = Orin Nano 8GB、7623 = Orin Nano 4GB（公式の型番表）。出ない場合は電源を入れ直して再試行してください。</p>
+  <p class="sources"><span class="meta">参考</span><a href="https://docs.nvidia.com/jetson/orin-nano-devkit/user-guide/latest/howto.html#force-recovery-mode" rel="noopener">NVIDIA · Force Recovery Mode（Orin Nano DevKit User Guide）</a><a href="https://docs.nvidia.com/jetson/archives/r36.4.3/DeveloperGuide/IN/QuickStart.html" rel="noopener">NVIDIA · Jetson Linux R36.4.3 Quick Start</a><a href="https://forums.developer.nvidia.com/t/how-to-get-into-recovery-mode/250525" rel="noopener">NVIDIA Developer Forums · How to Get Into Recovery Mode</a></p>
+
+  <h3>書き込みと確認</h3>
+  <div class="gallery">
+    <figure><img src="images/jetpack-version.png" alt="書き込み前のバージョン選択: --l4t を指定しない場合は対話で選び、最新を勝手に使いません。" width="792" height="426"><figcaption>書き込み前のバージョン選択: --l4t を指定しない場合は対話で選び、最新を勝手に使いません。</figcaption></figure>
+    <figure><img src="images/flash-done.jpg" alt="書き込み成功: flash.sh が “The target generic has been flashed successfully” を出力。" width="1100" height="957"><figcaption>書き込み成功: flash.sh が “The target generic has been flashed successfully” を出力。</figcaption></figure>
   </div>
   <p class="muted" style="font-size:12.5px;margin-top:18px">準備ができたら左欄の「入手と実行」に戻り、まず <code>--mode detect</code> を実行してから書き込むか判断してください。</p>
 </section>
