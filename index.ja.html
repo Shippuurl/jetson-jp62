@@ -198,7 +198,7 @@ bash jetson-jp62.sh --mode uart --uart /dev/ttyUSB0 --uart-seconds 60</code></pr
   <figure><img src="images/uart-capture.svg" alt="スクリプトの出力" width="900" height="360"><figcaption>115200 8N1</figcaption></figure>
 
   <div class="method" style="margin-top:16px"><p class="method-t"><b>3</b> どこで止まっているか</p><ul class="steps"><li>BootROM / MB1 / MB2 が出ない → 電源、モジュール装着、QSPI ファームウェア</li><li>UEFI で停止 → bootloader またはデバイスツリー設定</li><li>カーネルで停止 → ドライバ、ルート FS、ストレージ</li><li>getty まで到達して再起動 → アプリまたは systemd ユニット</li></ul></div>
-  <p class="note">読み取り専用で、書き込みコマンドは送りません。ルールは既定で GitHub から取得し、<code>--rules</code> で固定できます。ルールは文字一致のみで、一致＝故障確定ではありませんし、出力なし＝ファームウェア破損でもありません。ボード側のデバイス名は /dev/ttyTHS1 です（番号はリリースで変わります）。</p>
+  <p class="note">読み取り専用で、書き込みコマンドは送りません。ルールはスクリプトに同梱されており、<code>--update-rules</code> で更新（sha256 検証・版退回拒否）、<code>--rules</code> で固定できます。ルールは文字一致のみで、一致＝故障確定ではありませんし、出力なし＝ファームウェア破損でもありません。ボード側のデバイス名は /dev/ttyTHS1 です（番号はリリースで変わります）。</p>
   <p class="sources"><span class="meta">参考</span><a href="https://developerwiki.proventusnova.com/How_to_NVIDIA_Jetson_Orin_Nano_UART_Console" rel="noopener">ProventusNova · Orin Nano UART Console</a><a href="https://forums.developer.nvidia.com/t/how-to-access-uart1-on-expansion-pins-8-10/328934" rel="noopener">NVIDIA Developer Forums · UART1 on pins 8/10</a><a href="https://jetsonhacks.com/2019/04/19/jetson-nano-serial-console/" rel="noopener">JetsonHacks · Serial Debug Console</a></p>
   </div>
 
