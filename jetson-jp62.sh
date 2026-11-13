@@ -932,9 +932,10 @@ do_qspi() {
     ok "QSPI 刷写完成"
     cat <<EOF
 
-板子重启后自检（在板内跑）：
-  nvbootctrl dump-slots-info   # Current version 应为 36.4.x
-  nvpmodel -q                  # 期望 MAXN_SUPER（需 super 板型 + 36.4 UEFI）
+板子重启后自检（在板内跑，注意要 sudo）：
+  sudo nvbootctrl dump-slots-info     # Current version 应等于你刚刷的版本（本次 $L4T_VERSION）
+                                      # 不加 sudo 会报 Permission denied 且版本显示 0.0.13，属正常
+  nvpmodel -q                         # 期望 MAXN_SUPER（需 super 板型 + 36.4+ UEFI）
   head -3 /etc/nv_boot_control.conf   # TNSPEC 应带 -super
 
 EOF
