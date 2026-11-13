@@ -151,3 +151,22 @@ UART = {
     src="출처",
 ),
 }
+
+# Console output depends on the carrier and BSP configuration.
+UART['zh']['intro'] = '独立串口日志采集：连接 USB-TTL、设置串口、保存日志。不需要进入 recovery，也不执行刷写。'
+UART['zh']['run'][2] = '先开始采集，再给板子上电。只能采集此 UART 实际输出的日志；40-pin UART 不保证输出早期启动日志。'
+UART['zh']['note'] = '主机使用 COMx / /dev/ttyUSBx；板内 ttyTHS 编号和调试控制台端口需按载板及 BSP 核实，不能混用。无输出先查端口、接线、波特率与控制台配置。'
+UART['zh']['lv'][0] = '没有启动日志 → 先检查采集端口、接线与控制台配置，不能据此断定固件故障'
+UART['en']['intro'] = 'Standalone serial capture: connect USB-TTL, select the port and save logs. No recovery mode or flashing is required.'
+UART['en']['run'][2] = 'Start capture before powering on. Only output routed to this UART can be captured; early boot output on the 40-pin UART is not guaranteed.'
+UART['en']['note'] = 'Host: COMx / /dev/ttyUSBx. Board-side ttyTHS numbering and the debug console depend on the carrier and BSP. Verify the actual console routing.'
+UART['en']['lv'][0] = 'No boot output: check port, wiring and console configuration first; this does not establish a firmware fault'
+for lang, intro, run, note in [
+ ('ja','独立した UART ログ取得です。recovery や書き込み操作は不要です。','取得を開始してから電源を入れます。この UART に出力されるログのみ取得でき、40 ピン UART で初期起動ログが出る保証はありません。','ホストは COMx / /dev/ttyUSBx を使います。ボード側 ttyTHS とデバッグコンソールはキャリアと BSP に依存します。無出力だけで故障と判断せず、ポートと配線、設定を確認してください。'),
+ ('de','Eigenständige UART-Protokollierung, ohne Recovery-Modus oder Flash-Vorgang.','Aufzeichnung vor dem Einschalten starten. Nur auf diesem UART ausgegebene Daten werden erfasst; frühe Boot-Logs am 40-Pin-UART sind nicht garantiert.','Host: COMx / /dev/ttyUSBx. ttyTHS und Debug-Konsole hängen von Trägerplatine und BSP ab. Fehlende Ausgabe beweist keinen Firmwarefehler; Port, Verdrahtung und Konfiguration prüfen.'),
+ ('fr','Capture UART indépendante, sans mode recovery ni opération de flash.','Démarrer la capture avant la mise sous tension. Seules les données émises sur cet UART sont capturées ; les journaux de démarrage précoce sur le connecteur 40 broches ne sont pas garantis.','Hôte : COMx / /dev/ttyUSBx. ttyTHS et la console dépendent de la carte porteuse et du BSP. Une absence de sortie ne prouve pas une panne du firmware ; vérifier le port, le câblage et la configuration.'),
+ ('ko','recovery 모드나 플래시 작업 없이 독립적으로 UART 로그를 수집합니다.','캡처를 시작한 뒤 전원을 켜십시오. 해당 UART로 출력되는 로그만 수집하며 40핀 UART의 초기 부팅 로그는 보장되지 않습니다.','호스트: COMx / /dev/ttyUSBx. 보드의 ttyTHS 및 디버그 콘솔은 캐리어와 BSP에 따라 다릅니다. 출력이 없다고 펌웨어 고장으로 판단하지 말고 포트, 배선, 설정을 확인하십시오.')]:
+    UART[lang]['intro']=intro
+    UART[lang]['run'][2]=run
+    UART[lang]['note']=note
+    UART[lang]['lv'][0]=note
