@@ -198,7 +198,7 @@ bash jetson-jp62.sh --mode uart --uart /dev/ttyUSB0 --uart-seconds 60</code></pr
   <figure><img src="images/uart-capture.svg" alt="脚本产出" width="900" height="360"><figcaption>115200 8N1</figcaption></figure>
 
   <div class="method" style="margin-top:16px"><p class="method-t"><b>3</b> 判读卡在哪一层</p><ul class="steps"><li>BootROM / MB1 / MB2 无输出 → 供电、模组接触、QSPI 固件</li><li>停在 UEFI → bootloader 或设备树配置</li><li>卡在 kernel → 驱动、根文件系统、存储设备</li><li>已到 getty 仍重启 → 应用或 systemd 单元</li></ul></div>
-  <p class="note">只读串口，不发送刷写命令。规则默认从 GitHub 取，可 <code>--rules</code> 固定版本；规则只做文字匹配，命中不等于确定故障，没有输出也不能判定固件损坏。板内系统侧的设备名是 /dev/ttyTHS1（编号随版本变化）。</p>
+  <p class="note">只读串口，不发送刷写命令。规则随脚本内置；<code>--update-rules</code> 可更新（校验 sha256、拒绝版本回退），<code>--rules</code> 可固定本地版本；规则只做文字匹配，命中不等于确定故障，没有输出也不能判定固件损坏。板内系统侧的设备名是 /dev/ttyTHS1（编号随版本变化）。</p>
   <p class="sources"><span class="meta">引用</span><a href="https://developerwiki.proventusnova.com/How_to_NVIDIA_Jetson_Orin_Nano_UART_Console" rel="noopener">ProventusNova · Orin Nano UART Console</a><a href="https://forums.developer.nvidia.com/t/how-to-access-uart1-on-expansion-pins-8-10/328934" rel="noopener">NVIDIA Developer Forums · UART1 on pins 8/10</a><a href="https://jetsonhacks.com/2019/04/19/jetson-nano-serial-console/" rel="noopener">JetsonHacks · Serial Debug Console</a></p>
   </div>
 
