@@ -9,6 +9,7 @@ ECS="${ECS_PY:-/media/shippuu/A2Vec/toolchains/ecs.py}"
 REMOTE_DIR="/var/www/jetson-jp62"
 BASE="https://tool.kervein.club/jetson"
 FILES=(uart-logs.py uart-logs.sh uart-logs.ps1 UART-LOGS.md jetson-jp62.sh index.html index.en.html index.ja.html index.de.html index.fr.html index.ko.html guide.html a2vec-logo.svg LICENSE README.md README-刷QSPI.md .nojekyll)
+RULES=(rules/index.json rules/common.json rules/jetson.json rules/raspberrypi.json)
 IMAGES=(images/jetson-board.jpg images/jumper-cap.jpg images/jumper-cap-installed.jpg \
         images/lsusb-0955.png images/jetpack-version.png images/flash-done.jpg images/uart-wiring.svg images/uart-capture.svg)
 
@@ -26,7 +27,11 @@ for f in "${FILES[@]}"; do
     python3 "$ECS" put "$SRC/$f" "$REMOTE_DIR/$f" >/dev/null
     echo "  ↑ $f"
 done
-python3 "$ECS" run "mkdir -p $REMOTE_DIR/images" >/dev/null
+python3 "$ECS" run "mkdir -p $REMOTE_DIR/images $REMOTE_DIR/rules" >/dev/null
+for f in "${RULES[@]}"; do
+    python3 "$ECS" put "$SRC/$f" "$REMOTE_DIR/$f" >/dev/null
+    echo "  ↑ $f"
+done
 for f in "${IMAGES[@]}"; do
     python3 "$ECS" put "$SRC/$f" "$REMOTE_DIR/$f" >/dev/null
     echo "  ↑ $f"
