@@ -732,7 +732,28 @@ extract_rootfs() {
 }
 
 # ================================================================ recovery
-recovery_present() { lsusb 2>/dev/null | grep -qiE "0955:7(523|22)"; }
+RECOVERY_PIDS="7523|7522"        # t234(Orin) recovery/APX
+recovery_present() { lsusb 2>/dev/null | grep -qiE "0955:(${RECOVERY_PIDS})"; }
+
+# 把当前所有 NVIDIA USB 设备分类打出来：区分"进了 recovery"和"其实板子已经正常启动"
+usb_state_hint() {
+    local lines; lines="$(lsusb 2>/dev/null | grep -i '0955:' || true)"
+    [ -n "$lines" ] || { printf '  当前 USB 上没有任何 NVIDIA 设备（0955:*）\n'; return 0; }
+    printf '%s  当前看到的 NVIDIA USB 设备:%s\n' "$C_D" "$C_N"
+    local pid
+    while IFS= read -r l; do
+        [ -n "$l" ] || continue
+        pid="$(printf '%s' "$l" | grep -oiE '0955:[0-9a-f]{4}' | head -1 | cut -d: -f2 | tr 'A-F' 'a-f')"
+        case "$pid" in
+            7523|7522) printf '    %s · 0955:%s → recovery/APX，✓ 就是这个，按回车即可\n' "$C_G" "$pid" ;;
+            7020|7018|7418)
+                printf '    %s · 0955:%s → L4T 已经正常启动（USB device/gadget 模式），不是 recovery\n' "$C_R" "$pid"
+                printf '      %s 说明线是好的、板子有电，只是没进 recovery：断电 → 保持短接 → 上电 2 秒后再松开\n' "$C_D"
+                printf '      %s 顺带：这种状态下主机通常有 usb0/192.168.55.x，可 ssh ubuntu@192.168.55.1 确认是哪块板\n' "$C_D" ;;
+            *) printf '    %s · 0955:%s → 未知/其它模式\n' "$C_Y" "$pid" ;;
+        esac
+    done <<< "$lines"
+}
 
 print_recovery_howto() {
     cat <<EOF
@@ -760,6 +781,7 @@ wait_recovery() {
     fi
 
     print_recovery_howto
+    usb_state_hint
     local key n=0
     while :; do
         n=$((n + 1))
@@ -776,7 +798,8 @@ wait_recovery() {
             s|S) warn "跳过 recovery 检测，直接进入刷写（失败请回来重跑）"; return 0 ;;
         esac
         if recovery_present; then ok "检测到 recovery 设备（第 ${n} 次刷新）"; return 0; fi
-        warn "还是没看到 0955:7523。常见原因：短接没接上 / 接上后没断电重启 / USB 线只充电不传数据 / 板子其实已经进系统了"
+        warn "还是没进 recovery。常见原因：没在断电状态下保持短接就上电 / 短错脚位 / USB 线只充电不传数据"
+        usb_state_hint
         log "弄好后继续按 [回车] 刷新，我这边一直等着"
     done
 }
