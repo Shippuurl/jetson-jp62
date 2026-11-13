@@ -74,6 +74,7 @@ bash jetson-jp62.sh --mode qspi --l4t 36.4.3
 <p>默认 TOFU 清单在首次获取资源后记录摘要，后续用于检查一致性；它不能独立证明首次获取文件的真实性。可使用 <code>--manifest-url &lt;URL&gt;</code> 指定来自可信渠道的 SHA-256 清单。</p>
 <p>首次交互运行需确认使用声明，当前记录位于 <code>~/.config/jetson-jp62/agreed-v2</code>（设置 <code>XDG_CONFIG_HOME</code> 时使用该目录）。<code>--accept</code> 明确接受声明；<code>--yes</code> 还会自动确认后续操作，请仅在已审阅命令和参数的自动化流程中使用。</p>
 <p><code>--dry-run</code> 用于预检查和查看计划，不替代实际硬件验证。<code>--no-deps</code> 禁止自动安装主机依赖。设置 <code>NO_COLOR=1</code> 可禁用 ANSI 颜色；重定向输出自动禁用颜色。</p>
+<p><strong>界面语言</strong>：<code>--lang zh|en</code>，或环境变量 <code>JETSON_JP62_LANG</code>，未指定时按 <code>LANG</code> 自动判定（<code>zh*</code> → 中文，<code>en*</code> → English，其余回落中文）。界面层（Banner、菜单、帮助、使用声明、状态标签）与固定检查文案均已双语；含变量的诊断明细暂保留中文，与文档中的技术描述一致。</p>
 <h2>诊断与日志</h2>
 <pre><code class="language-bash">bash jetson-jp62.sh --diag
 bash jetson-jp62.sh --uart-list
