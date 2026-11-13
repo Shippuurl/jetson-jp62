@@ -55,6 +55,15 @@ details h2{margin-top:18px}details pre{white-space:pre-wrap;padding:0;font-size:
 figure{margin:20px 0 0}figure img{display:block;width:100%;height:auto;border:1px solid #e3e5e7}
 figcaption{margin-top:8px;font-size:12px;color:#626a72;line-height:1.6}
 .gallery figure+figure{margin-top:16px}
+.col-wiki h3{font-size:14.5px;font-weight:650;margin:26px 0 10px;padding-top:18px;border-top:1px solid #e3e5e7}
+.method{margin:0 0 14px}
+.method-t{margin:0 0 6px;font-size:13.5px;color:#202428}
+.method-t b{display:inline-block;min-width:16px;font-weight:650;color:#9aa3ab;font-family:ui-monospace,monospace;font-size:12px}
+.steps{margin:0;padding:0 0 0 20px;color:#555e66;font-size:13.5px;line-height:1.7}
+.steps li{margin:2px 0}
+.sources{margin:16px 0 0;font-size:12.5px;color:#626a72;display:grid;gap:4px}
+.sources a{color:#555e66}
+.sources .meta{display:block;margin-bottom:2px}
 /* ---- 语言切换（放在栏底，不做顶部导航）---- */
 .lang{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;margin:26px 0 0;padding-top:16px;border-top:1px solid #e3e5e7;font-size:13px}
 .lang .meta{margin-right:4px}
@@ -134,11 +143,26 @@ SOFTWARE.</pre></details></section>
   <div class="pane-top"><span class="meta">准备工作</span></div>
   <h2 id="prep">刷写前需要准备</h2>
   <ol class="checklist"><li><b>Jetson 主板</b><span>Orin Nano / Orin NX（t234）。实际模组与载板以 EEPROM 读数（Board ID / SKU）为准。</span></li><li><b>电源适配器</b><span>19V 桶形供电。刷写与 recovery 期间不要仅依赖 USB-C 供电。</span></li><li><b>USB-C 数据线</b><span>把板子以 recovery（APX）方式连到主机。需支持数据传输，纯充电线无法被识别。</span></li><li><b>跳线帽</b><span>短接 FC REC 与 GND 进入 recovery。短接位置以载板丝印为准，DevKit 为 12 针排针的 FC REC / GND（第 9、10 脚）。</span></li></ol>
-  <p class="note"><b>上电约 2 秒后拔掉跳线帽。</b><br><span class="inline-risk">不拔会导致下次上电继续进入 recovery。</span><br>顺序：断电 → 戴跳线帽 → 上电 → 约 2 秒后拔下 → 主机 <code>lsusb</code> 出现 <code>0955:7523</code> 或 <code>0955:7623</code>（APX）。</p>
   <figure><img src="images/jetson-board.jpg" alt="Jetson 主板：40-pin 排针、USB-C 与 19V 供电口位置。" width="1100" height="741"><figcaption>Jetson 主板：40-pin 排针、USB-C 与 19V 供电口位置。</figcaption></figure>
+
+  <h3 id="recovery">进入 recovery（刷机模式）</h3>
+  <p class="muted" style="font-size:13.5px">刷写前板子必须处于 Force Recovery 模式。下面三种方式都出自 NVIDIA 官方文档，按板子当前状态选一种即可。</p>
+  <div class="method"><p class="method-t"><b>A</b> 断电进入（推荐）</p><ol class="steps"><li>断开电源，确认板子已完全断电。</li><li>用跳线帽短接 Button Header 的 9 与 10 脚（FC REC → GND）。</li><li>接回电源：板子直接进入 recovery，不启动系统。</li><li>主机检测到设备后拔掉跳线帽；一直插着会让下次上电继续进 recovery。</li></ol></div>
+  <div class="method"><p class="method-t"><b>B</b> 已开机时进入</p><ol class="steps"><li>先短接 Button Header 的 9 与 10 脚。</li><li>再临时短接 7 与 8 脚触发复位。</li><li>主机检测到设备后，把两处跳线都拔掉。</li></ol></div>
+  <div class="method"><p class="method-t"><b>C</b> 板内用命令进入</p><p class="steps" style="padding-left:0">已经能登录系统时，直接切到 recovery： <code>sudo reboot --force forced-recovery</code></p></div>
+  <p class="note"><b>主机检测到设备后拔掉跳线帽。</b><br><span class="inline-risk">不拔会导致下次上电继续进入 recovery。</span><br>顺序：断电 → 戴跳线帽（9/10）→ 上电 → <code>lsusb</code> 出现 <code>0955:7523</code> 或 <code>0955:7623</code> 后拔下。</p>
   <div class="gallery">
     <figure><img src="images/jumper-cap.jpg" alt="跳线帽：用于短接 FC REC 与 GND。" width="1100" height="611"><figcaption>跳线帽：用于短接 FC REC 与 GND。</figcaption></figure>
-    <figure><img src="images/jumper-cap-installed.jpg" alt="跳线帽接入位置：保持短接状态下上电，约 2 秒后拔下。" width="901" height="575"><figcaption>跳线帽接入位置：保持短接状态下上电，约 2 秒后拔下。</figcaption></figure>
+    <figure><img src="images/jumper-cap-installed.jpg" alt="跳线帽接入位置：保持短接状态下上电，主机检测到设备后拔下。" width="901" height="575"><figcaption>跳线帽接入位置：保持短接状态下上电，主机检测到设备后拔下。</figcaption></figure>
+    <figure><img src="images/lsusb-0955.png" alt="进入 recovery 后主机 lsusb 的输出（0955:7623，Orin Nano 4GB）。" width="556" height="93" style="max-width:556px"><figcaption>进入 recovery 后主机 lsusb 的输出（0955:7623，Orin Nano 4GB）。</figcaption></figure>
+  </div>
+  <p class="caution" style="margin-top:20px">校验：主机 lsusb 应出现 <code>0955:&lt;nnnn&gt; NVIDIA Corp.</code> —— 7523 = Orin Nano 8GB，7623 = Orin Nano 4GB（官方型号表）。看不到设备就断电重来一次。</p>
+  <p class="sources"><span class="meta">引用</span><a href="https://docs.nvidia.com/jetson/orin-nano-devkit/user-guide/latest/howto.html#force-recovery-mode" rel="noopener">NVIDIA · Force Recovery Mode（Orin Nano DevKit User Guide）</a><a href="https://docs.nvidia.com/jetson/archives/r36.4.3/DeveloperGuide/IN/QuickStart.html" rel="noopener">NVIDIA · Jetson Linux R36.4.3 Quick Start</a><a href="https://forums.developer.nvidia.com/t/how-to-get-into-recovery-mode/250525" rel="noopener">NVIDIA Developer Forums · How to Get Into Recovery Mode</a></p>
+
+  <h3>刷写与校验</h3>
+  <div class="gallery">
+    <figure><img src="images/jetpack-version.png" alt="刷写前在脚本里选版本：不给 --l4t 就交互选择，不会默认最新。" width="792" height="426"><figcaption>刷写前在脚本里选版本：不给 --l4t 就交互选择，不会默认最新。</figcaption></figure>
+    <figure><img src="images/flash-done.jpg" alt="刷写成功：flash.sh 输出 “The target generic has been flashed successfully”。" width="1100" height="957"><figcaption>刷写成功：flash.sh 输出 “The target generic has been flashed successfully”。</figcaption></figure>
   </div>
   <p class="muted" style="font-size:12.5px;margin-top:18px">准备完成后回到左栏「获取与运行」，先执行 <code>--mode detect</code> 再决定是否刷写。</p>
 </section>
