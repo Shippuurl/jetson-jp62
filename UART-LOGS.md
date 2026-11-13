@@ -6,6 +6,9 @@ Windows PowerShell（需要 Python 3）：
 irm https://raw.githubusercontent.com/Shippuurl/jetson-jp62/main/uart-logs.ps1 | iex
 ```
 
+国内网络取不到 GitHub 时，把上面地址的域名换成镜像：
+`https://tool.kervein.club/jetson/uart-logs.ps1` / `https://tool.kervein.club/jetson/uart-logs.sh`。
+
 Linux/macOS（需要 Python 3 与 venv）：
 
 ```bash
