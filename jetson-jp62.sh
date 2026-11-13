@@ -73,31 +73,194 @@ AGREE_STAMP="$AGREE_DIR/agreed-v2"
 C_R=$'\033[31m'; C_G=""; C_Y=$'\033[33m'; C_B=""; C_D=$'\033[2m'; C_N=$'\033[0m'
 { [ -t 1 ] && [ -z "${NO_COLOR+x}" ] && [ "${TERM:-}" != dumb ]; } || { C_R=""; C_G=""; C_Y=""; C_B=""; C_D=""; C_N=""; }
 
-log()  { printf '%s[信息]%s %s\n' "$C_B" "$C_N" "$*"; }
-ok()   { printf '%s[完成]%s %s\n' "$C_G" "$C_N" "$*"; }
-warn() { printf '%s[注意]%s %s\n' "$C_Y" "$C_N" "$*"; }
-die()  { printf '%s[错误]%s %s\n' "$C_R" "$C_N" "$*" >&2; exit 1; }
+# ---------------- 界面语言（zh / en）：--lang、JETSON_JP62_LANG、或按 LANG 自动判定 --------
+UI_LANG="${JETSON_JP62_LANG:-}"
+if [ -z "$UI_LANG" ]; then
+    case "$(printf '%s' "${LC_ALL:-${LANG:-}}")" in
+        zh*|*[Zz][Hh]*) UI_LANG=zh ;;
+        en*)            UI_LANG=en ;;
+        *)              UI_LANG=zh ;;
+    esac
+fi
+case "$UI_LANG" in zh|en) ;; *) UI_LANG=zh ;; esac
+# T "中文" "English"  → 按当前界面语言取一条；两参数都必给，避免漏译时静默出错
+T() { if [ "$UI_LANG" = en ]; then printf '%s' "$2"; else printf '%s' "$1"; fi; }
+
+# ---------------- 英文消息表：只覆盖固定文案（含变量的诊断明细仍为中文，便于与文档对照）----
+declare -A EN_MSG=(
+  ["recovery 设备 0955:7523（Orin 系列 t234）"]="recovery device 0955:7523 (Orin family, t234)"
+  ["主机架构 x86_64"]="host architecture x86_64"
+  ["基础命令 curl/tar/bzip2/python3 齐全"]="base commands curl/tar/bzip2/python3 present"
+  ["BSP 未解压（detect 模式不拦）"]="BSP not extracted (detect does not block)"
+  ["BSP 未解压，本次会下载解压"]="BSP not extracted; it will be downloaded and extracted"
+  ["rootfs 已 apply_binaries"]="rootfs already has apply_binaries applied"
+  ["rootfs 未准备，本次会下 1.83G sample rootfs 并 apply_binaries"]="rootfs missing; this run downloads the 1.83G sample rootfs and applies binaries"
+  ["读不到 USB 链路速率（不影响刷，但慢）"]="USB link speed unreadable (flashing still works, but slowly)"
+  ["当前没有 recovery 设备（不致命：刷写前会等你短接，按回车一直刷新到检测到为止）"]="no recovery device yet (not fatal: before flashing you short the pins, press Enter to re-check)"
+  ["sudo 可用（免密）"]="sudo available without a password"
+  ["sudo 需要输入密码，运行时会提示你输入"]="sudo requires a password; you will be prompted when needed"
+  ["extlinux 未指定自定义 FDT（用 UEFI 按 TNSPEC 自动选 dtb）"]="extlinux specifies no custom FDT (UEFI selects the dtb from TNSPEC)"
+  ["检查项全部通过"]="all checks passed"
+  ["用 --jetpack <版本> 或 --l4t <L4T版本>"]="use --jetpack <version> or --l4t <L4T version>"
+  ["--mode 只能是 detect / qspi / nvme / prep / target（另有 --matrix / --self-update / --doc 三个动作）"]="--mode accepts detect / qspi / nvme / prep / target (plus the --matrix / --self-update / --doc actions)"
+  ["跳过依赖安装（--no-deps）"]="skipping dependency install (--no-deps)"
+  ["安装 NVIDIA 官方列出的主机依赖"]="installing the host dependencies listed by NVIDIA"
+  ["依赖安装失败；可手工装好后加 --no-deps 重跑"]="dependency install failed; install them manually and rerun with --no-deps"
+  ["基础依赖安装失败"]="base dependency install failed"
+  ["主机依赖就绪"]="host dependencies ready"
+  ["该源失败，换下一个"]="source failed, trying the next one"
+  ["解压 BSP 失败"]="BSP extraction failed"
+  ["rootfs 看起来已经 apply 过，跳过解压"]="rootfs looks already applied; skipping extraction"
+  ["解压 sample rootfs"]="extracting the sample rootfs"
+  ["解压 rootfs 失败"]="rootfs extraction failed"
+  ["apply_binaries.sh 失败"]="apply_binaries.sh failed"
+  ["rootfs 准备完成"]="rootfs ready"
+  ["[dry-run] 跳过 recovery 检测"]="[dry-run] recovery check skipped"
+  ["recovery 设备已就位"]="recovery device ready"
+  ["按 --skip-recovery-check 跳过检测，直接刷（recovery 没进的话刷写必然失败）"]="use --skip-recovery-check to bypass the check (flashing will fail if the board is not in recovery)"
+  ["没有检测到 recovery 设备，且当前不是交互终端（无法按键刷新）"]="no recovery device and no interactive terminal (cannot poll by keypress)"
+  ["请在终端里重跑本命令，或先在别的终端把板子切到 recovery 再回来"]="rerun this command in a terminal, or switch the board to recovery from another terminal first"
+  ["输入结束，放弃"]="input closed; aborting"
+  ["已退出（板子没进 recovery）"]="exited (board never entered recovery)"
+  ["跳过 recovery 检测，直接进入刷写（失败请回来重跑）"]="recovery check skipped, flashing starts (rerun if it fails)"
+  ["还是没进 recovery。常见原因：没在断电状态下保持短接就上电 / 短错脚位 / USB 线只充电不传数据"]="still no recovery. Usual causes: pins not held while powering on / wrong pins / charge-only USB cable"
+  ["弄好后继续按 [回车] 刷新，我这边一直等着"]="press Enter to re-check once the board is ready; this side keeps waiting"
+  ["已取消"]="cancelled"
+  ["刷写日志里没找到 Board ID 行，无法二次核对板型"]="no Board ID line in the flash log; cannot cross-check the board"
+  ["缺 flash.sh，先跑 --mode prep"]="flash.sh missing; run --mode prep first"
+  ["没有进入 recovery，已放弃本次刷写（板子就绪后重跑同一条命令即可）"]="board never entered recovery; flashing abandoned (rerun the same command once it is ready)"
+  ["[dry-run] 到此为止，不执行"]="[dry-run] stopping here, nothing executed"
+  ["QSPI 刷写完成"]="QSPI flash complete"
+  ["缺 l4t_initrd_flash.sh（先 --mode prep --with-rootfs）"]="l4t_initrd_flash.sh missing (run --mode prep --with-rootfs first)"
+  ["rootfs 未准备：先 --mode prep --with-rootfs"]="rootfs not prepared: run --mode prep --with-rootfs first"
+  ["整机刷写完成（用户名/密码在首启创建，可用 tools/l4t_create_default_user.sh 预置）"]="full flash complete (user/password are created on first boot; tools/l4t_create_default_user.sh can preset them)"
+  ["[dry-run] 把 nvidia-l4t-apt-source.list 里的 r36.x 改成 r36.4 后 apt dist-upgrade"]="[dry-run] change r36.x to r36.4 in nvidia-l4t-apt-source.list, then apt dist-upgrade"
+  ["这条会升级板上 BSP 包：TensorRT 8.x→10.x、cuDNN 8.x→9.x，自编 engine 需重建"]="this upgrades onboard BSP packages: TensorRT 8.x→10.x, cuDNN 8.x→9.x; self-built engines must be rebuilt"
+  ["dist-upgrade 有报错，继续尝试修复"]="dist-upgrade reported errors; attempting repair"
+  ["完成，物理重启后 nvbootctrl dump-slots-info 应显示 36.4.x"]="done; after a physical reboot nvbootctrl dump-slots-info should show 36.4.x"
+  ["模式：板内诊断（系统已启动）"]="mode: onboard diagnostics (system booted)"
+  ["CSI 相机(i2c 9/10) 探测失败 → 相机排线/供电/设备树，与刷机无关"]="CSI camera (i2c 9/10) probe failed → camera cable/power/device tree; unrelated to flashing"
+  ["fusb301(USB-C PD) 读不到 ID → 载板没这颗器件或板型号不匹配"]="fusb301 (USB-C PD) ID unreadable → carrier lacks the part or the board model does not match"
+  ["注意：这一层能看内核/系统报错，但看不到 UEFI 与 DDR 训练的日志"]="note: this layer shows kernel/system errors but not UEFI or DDR training logs"
+  ["缺 Linux_for_Tegra/bootloader 工具，先跑 --mode prep（只下载解压即可）"]="Linux_for_Tegra/bootloader tools missing; run --mode prep (download and extract only)"
+  ["模式：recovery 诊断（板子未启动）"]="mode: recovery diagnostics (board not booted)"
+  ["recovery 模式看不到内核/UEFI 运行时日志，也看不到 DDR 训练与电源问题"]="recovery mode exposes no kernel/UEFI runtime log, nor DDR training or power issues"
+  ["既不在板内（无 /etc/nv_tegra_release），也没有 recovery 设备"]="neither onboard (no /etc/nv_tegra_release) nor in recovery"
+  ["把板子接上：正常启动 → 本机可 ssh，脚本走板内诊断；未启动 → 短接进 recovery 走 EEPROM/BCT 诊断"]="connect the board: normal boot → ssh in and run onboard diagnostics; not booted → short the pins and run EEPROM/BCT diagnostics"
+  ["stty 设置失败（可能不是 TTY），继续尝试读取"]="stty failed (possibly not a TTY); still trying to read"
+  ["可用串口设备："]="available serial devices:"
+  ["没检测到串口。接线（Orin Nano DevKit 40-pin）：Pin 6=GND、Pin 8=UART1_TX、Pin 10=UART1_RX，115200 8N1"]="no serial device found. Wiring (Orin Nano DevKit 40-pin): Pin 6=GND, Pin 8=UART1_TX, Pin 10=UART1_RX, 115200 8N1"
+  ["接好后重跑：--mode uart --uart /dev/ttyUSB0 --uart-seconds 60"]="once wired, rerun: --mode uart --uart /dev/ttyUSB0 --uart-seconds 60"
+  ["已有日志想离线分析：--mode uart --uart-log boot.log"]="to analyse an existing log: --mode uart --uart-log boot.log"
+  ["运行在 Jetson 本机（板内识别最准）"]="running on the Jetson itself (most accurate identification)"
+  ["主机端看到 recovery 设备（板子型号需刷写时由 EEPROM 读出）"]="recovery device visible from the host (model is read from EEPROM during flashing)"
+  ["既不在板内，也没有 recovery 设备（板子没连、或没进 recovery）"]="neither onboard nor in recovery (board not connected, or not in recovery)"
+  ["当前板子不是 super 版；要 Super 必须先刷 QSPI 到 36.4，再 nvpmodel 切 MAXN_SUPER"]="this board is not the Super variant; for Super you must flash QSPI to 36.4, then switch nvpmodel to MAXN_SUPER"
+  ["取不到可用版本列表，回落 auto"]="available versions unavailable; falling back to auto"
+  ["已退出"]="exited"
+  ["请输入序号或版本号"]="enter an index or a version"
+  ["序号超出范围"]="index out of range"
+  ["换个版本：--l4t <版本>，或 --l4t latest 自动挑最新的"]="pick another version: --l4t <version>, or --l4t latest to take the newest"
+  ["文件不在，跳过校验"]="file absent; verification skipped"
+  ["没给更新源：--update-from <url|路径>，或配 JETSON_SCRIPT_URL"]="no update source: --update-from <url|path>, or set JETSON_SCRIPT_URL"
+  ["新版本语法检查没过，放弃更新"]="new version failed the syntax check; update abandoned"
+  ["已经是当前最新版（sha256 相同）"]="already the current version (identical sha256)"
+  ["新版本说明（头部 12 行）："]="new version notes (first 12 lines):"
+  ["没找到 index.html（应与脚本同目录），也没配 --doc-url；跳过"]="no index.html (expected next to the script) and no --doc-url; skipping"
+  ["非交互环境，版本回落 auto（最新可刷）"]="non-interactive; version falls back to auto (newest flashable)"
+  ["板内体检通过。板内只能 --mode target（升计算栈）；要刷 QSPI/整机请接 x86_64 主机"]="onboard check passed. Only --mode target (compute stack) works onboard; use an x86_64 host to flash QSPI or the whole system"
+  ["主机侧体检通过。板子进 recovery 后：--mode qspi（写入启动固件）或 --mode nvme（整机重刷）"]="host check passed. Once the board is in recovery: --mode qspi (boot firmware) or --mode nvme (full reflash)"
+  ["全部完成"]="all done"
+)
+en_msg() {  # 中文原文 → 英文；没有映射时原样返回
+    [ "$UI_LANG" = en ] || { printf '%s' "$1"; return; }
+    local v="${EN_MSG[$1]:-}"
+    printf '%s' "${v:-$1}"
+}
+log()  { printf '%s[%s]%s %s\n' "$C_B" "$(T 信息 info)" "$C_N" "$(en_msg "$*")"; }
+ok()   { printf '%s[%s]%s %s\n' "$C_G" "$(T 完成 done)" "$C_N" "$(en_msg "$*")"; }
+warn() { printf '%s[%s]%s %s\n' "$C_Y" "$(T 注意 warn)" "$C_N" "$(en_msg "$*")"; }
+die()  { printf '%s[%s]%s %s\n' "$C_R" "$(T 错误 error)" "$C_N" "$(en_msg "$*")" >&2; exit 1; }
 
 FAILS=0
-chk_ok()   { printf '  %s[ ✓ ]%s %s\n' "$C_G" "$C_N" "$*"; }
-chk_bad()  { printf '  %s[ ✗ ]%s %s\n' "$C_R" "$C_N" "$1"; [ -n "${2:-}" ] && printf '        %s修法: %s%s\n' "$C_D" "$2" "$C_N"; FAILS=$((FAILS+1)); }
-chk_warn() { printf '  %s[ ! ]%s %s\n' "$C_Y" "$C_N" "$*"; }
-chk_info() { printf '  %s[ - ]%s %s\n' "$C_D" "$C_N" "$*"; }
+chk_ok()   { printf '  %s[ ✓ ]%s %s\n' "$C_G" "$C_N" "$(en_msg "$*")"; }
+chk_bad()  { printf '  %s[ ✗ ]%s %s\n' "$C_R" "$C_N" "$1"; [ -n "${2:-}" ] && printf '        %s%s: %s%s\n' "$C_D" "$(T 修法 fix)" "$2" "$C_N"; FAILS=$((FAILS+1)); }
+chk_warn() { printf '  %s[ ! ]%s %s\n' "$C_Y" "$C_N" "$(en_msg "$*")"; }
+chk_info() { printf '  %s[ - ]%s %s\n' "$C_D" "$C_N" "$(en_msg "$*")"; }
 
 banner() {
-cat <<EOF
+cat <<'ART'
 
-  A 2 V E C   /   FIELD TOOLS
-  ------------------------------------------------------------
-  Jetson 固件维护  ·  jetson-jp62.sh
-  L4T: ${L4T_VERSION:-待选择}  |  模式: ${MODE:-交互菜单}
-  独立维护工具 · MIT License · 非 NVIDIA 官方产品
+                   ,----,
+                 .'   .' \
+               ,----,'    |
+               |    :  .  ;   .---.
+   ,--.--.     ;    |.'  /  /.  ./|  ,---.     ,---.
+  /       \    `----'/  ; .-' . ' | /     \   /     \
+ .--.  .-. |     /  ;  / /___/ \: |/    /  | /    / '
+  \__\/: . .    ;  /  /-,.   \  ' .    ' / |.    ' /
+  ," .--.; |   /  /  /.`| \   \   '   ;   /|'   ; :__
+ /  /  ,.  | ./__;      :  \   \  '   |  / |'   | '.'|
+;  :   .'   \|   :    .'    \   \ |   :    ||   :    :
+|  ,     .-./;   | .'        '---" \   \  /  \   \  /
+ `--`---'    `---'                  `----'    `----'
+ART
+    printf '  %sA2VEC%s · FIELD TOOLS / JETSON · jetson-jp62.sh\n' "$C_B" "$C_N"
+    printf '  %s\n' "----------------------------------------------------------------"
+    printf '  %s\n' "$(T "Jetson 固件维护（QSPI / NVMe / 诊断）" "Jetson firmware maintenance (QSPI / NVMe / diagnostics)")"
+    printf '  L4T: %s  |  %s: %s\n' "${L4T_VERSION:-$(T 待选择 to-select)}" "$(T 模式 mode)" "${MODE:-$(T 交互菜单 interactive-menu)}"
+    printf '  %s\n' "$(T "独立维护工具 · MIT License · 非 NVIDIA 官方产品" "Independent tool · MIT License · not an NVIDIA product")"
+    printf '\n'
+}
+
+# ============================================================ 协议与安全声明
+agreement_text_en() {
+cat <<EOF
+Statement of use / version 2
+--------------------------------------------------------------
+
+1. Tool and licence
+   An independent A2VEC maintenance tool. Script and documentation are
+   provided under the MIT License.
+   Copyright (c) 2026 Shippuurl. Redistributions must keep the copyright
+   and licence notice.
+   Licence text: https://github.com/Shippuurl/jetson-jp62/blob/main/LICENSE
+   This tool has no affiliation with or endorsement by NVIDIA. NVIDIA,
+   Jetson and JetPack are trademarks of NVIDIA Corporation.
+
+2. Third-party components
+   The published script contains no NVIDIA firmware or proprietary SDK.
+   Components downloaded at runtime are governed by their own licences.
+   Check those licences before downloading, using or redistributing.
+   Accepting this statement does not replace third-party licence terms.
+
+3. Operational risk
+   The NVMe mode rewrites the target storage and erases data. The QSPI mode
+   writes boot firmware; it does not target the system disk, but faulty
+   firmware or a power loss can leave the board unbootable. Confirm that you
+   are authorised to service the device, and that you have backups, stable
+   power and a recovery path. Third-party carrier boards must use the
+   vendor's adaptation files. Package upgrades may require rebuilding
+   applications and models. A reachable download, a version probe or a
+   passing pre-check is not a guarantee of compatibility or success.
+
+4. Warranty and liability
+   The software is provided AS IS. To the maximum extent permitted by
+   applicable law no express or implied warranty is given; liability of the
+   authors and copyright holders is limited as stated in the MIT text. This
+   statement does not exclude or limit liability that applicable law does
+   not allow to be excluded or limited.
+
+Reference: NVIDIA Jetson Linux R36.4.3 / Flashing Support
+https://docs.nvidia.com/jetson/archives/r36.4.3/DeveloperGuide/SD/FlashingSupport.html
+For other versions consult the matching documentation.
 
 EOF
 }
 
-# ============================================================ 协议与安全声明
-agreement_text() {
+agreement_text() { if [ "$UI_LANG" = en ]; then agreement_text_en; else agreement_text_zh; fi; }
+
+agreement_text_zh() {
 cat <<EOF
 使用声明 / 第 2 版
 --------------------------------------------------------------
@@ -139,11 +302,11 @@ ensure_agreement() {
     banner
     agreement_text
     if [ "$YES" = 1 ]; then
-        warn "--yes 已给出，视为同意上述协议"
+        warn "$(T "--yes 已给出，视为同意上述协议" "--yes supplied; treated as agreement")"
     else
-        printf '输入 %s同意%s 继续（其他任何输入则退出）: ' "$C_G" "$C_N"
+        printf '%s' "$(T "输入 同意 继续（其他任何输入则退出）: " "Type agree to continue (anything else exits): ")"
         local a; read -r a
-        [ "$a" = "同意" ] || [ "$a" = "agree" ] || { log "未同意协议，退出"; exit 0; }
+        [ "$a" = "同意" ] || [ "$a" = "agree" ] || { log "$(T "未同意协议，退出" "Agreement not accepted; exiting")"; exit 0; }
     fi
     mkdir -p "$AGREE_DIR" 2>/dev/null && date -Is > "$AGREE_STAMP" 2>/dev/null
     ok "已记录同意（$AGREE_STAMP，删除该文件可重新显示协议）"
@@ -479,7 +642,73 @@ check_requirements() {
 }
 
 # ================================================================ 参数/工具
-usage() {
+usage_en() {
+cat <<EOF
+A2VEC / Jetson firmware maintenance tool
+MIT License · not an NVIDIA official product
+
+Usage: bash jetson-jp62.sh [options]
+
+Common:
+  bash jetson-jp62.sh                         interactive menu
+  bash jetson-jp62.sh --mode detect           environment check
+  bash jetson-jp62.sh --mode qspi --l4t 36.4.3  QSPI flash, pinned version
+
+Risk: nvme rewrites the target storage; qspi writes boot firmware. Back up data and
+verify the board before proceeding. A version listed here is not a compatibility
+recommendation, and a reachable download URL does not prove suitability.
+
+Options:
+
+  --mode <detect|qspi|nvme|prep|target>  execution mode (omit for the menu)
+  --board <name>                  force a board config (auto-detected by default; --list-boards)
+  --dir <path>                    working directory (default: script dir / \$JETSON_DIR)
+  --mirror <src[,src2...]>        download sources: http/https/file:// or a local dir
+  --offline --src <dir>           fully offline: take tbzs from a local directory
+  --with-rootfs                   prep also fetches the sample rootfs
+  --rootdev <dev>                 rootdev for flash.sh (inferred from the boot disk)
+  --skip-recovery-check           skip the recovery check (may make flashing fail)
+  --no-deps                       do not install host dependencies automatically
+  --accept                        skip the agreement prompt (same as agreed)
+  --yes                           auto-confirm the notice and subsequent prompts
+  --cache-dir <path>              package cache directory (= --resource; same disk as --dir by default)
+  --auto-dir                      pick the partition with the most free space as working dir
+  --config <file>                 read config (default ~/.config/jetson-jp62/config, KEY=VALUE)
+  --l4t <version|latest>          target L4T version (prompted when omitted; falls back to auto when non-interactive)
+  --jetpack|--jp <version>        map a JetPack number to L4T (6.2→36.4.3, 6.2.1→36.4.4, 6.2.2→36.5.0 …)
+  --jp-list                       print the JetPack → L4T mapping
+  --diag                          diagnostics: kernel/system errors onboard, EEPROM/BCT in recovery; read-only
+  --uart [device]                 capture BootROM/UEFI/DDR serial log and classify it (auto: /dev/ttyUSB*)
+  --uart-out <file>               write the captured log to a path
+  --uart-log <file>               analyse an existing serial log offline
+  --uart-baud <baud>              default 115200
+  --uart-seconds <sec>            capture duration, default 30
+  --uart-list                     list serial devices
+  --doc                            open the documentation page (index.html)
+  --doc-url <url>                 online documentation URL (used when no local index.html)
+  --no-doc                        do not offer to open the documentation
+  --matrix                        print the QSPI/flash support matrix (live apt repo + download probe)
+  --refresh                       force a refresh of the matrix cache
+  --manifest-url <url>            verify downloads against an external sha256 manifest
+  --self-update                   update this script from --update-from / JETSON_SCRIPT_URL
+  --update-from <url|path>        update source
+  --dry-run                       check and print only; no download, no changes
+  --list-boards                   list board configs available in the BSP
+  --lang <zh|en>                  interface language (default: from \$LANG)
+  -h, --help                      show this help
+
+Environment: JETSON_MIRROR  JETSON_DIR  JETSON_BOARD  L4T_VERSION  JETSON_JP62_LANG
+             NO_COLOR (disable ANSI colour); colour is disabled automatically when not a terminal
+Examples:
+  bash jetson-jp62.sh --mode detect
+  bash jetson-jp62.sh --mode qspi --mirror http://192.168.1.10/l4t/r36.4.3/
+  JETSON_MIRROR=file:///mnt/nas/l4t bash jetson-jp62.sh --mode prep --with-rootfs
+EOF
+}
+
+usage() { if [ "$UI_LANG" = en ]; then usage_en; else usage_zh; fi; }
+
+usage_zh() {
 cat <<EOF
 A2VEC / Jetson 固件维护工具
 MIT License · 非 NVIDIA 官方产品
@@ -530,6 +759,7 @@ MIT License · 非 NVIDIA 官方产品
   --update-from <url|路径>        更新源
   --dry-run                       只体检、只打印，不下载不改动
   --list-boards                   列出 BSP 里可用的板型配置
+  --lang <zh|en>                  界面语言（默认按 \$LANG 判定）
   -h, --help                      显示本帮助
 
 环境变量: JETSON_MIRROR  JETSON_DIR  JETSON_BOARD  L4T_VERSION
@@ -650,10 +880,14 @@ parse_args() {
             --yes|-y)   YES=1; shift ;;
             --dry-run)  DRY_RUN=1; shift ;;
             --list-boards) list_boards; exit 0 ;;
-            -h|--help)  usage ;;
+            --lang)     UI_LANG="${2:-zh}"; shift 2 ;;
+            --lang=*)   UI_LANG="${1#*=}"; shift ;;
+            -h|--help)  WANT_HELP=1; shift ;;
             *) die "未知参数: $1（--help 看用法）" ;;
         esac
     done
+    [ "${WANT_HELP:-0}" = 1 ] && { usage; exit 0; }
+    case "$UI_LANG" in zh|en) ;; *) die "--lang 只能是 zh / en（--lang accepts zh / en only）" ;; esac
     case "$MODE" in
         ""|detect|qspi|nvme|prep|target|matrix|update|doc|jpmap|diag|uart) ;;
         *) die "--mode 只能是 detect / qspi / nvme / prep / target（另有 --matrix / --self-update / --doc 三个动作）" ;;
@@ -1263,30 +1497,32 @@ do_uart() {
 # ==================================================================== 菜单
 menu() {
     banner
-    printf '  检查与诊断\n'
-    echo "    1  环境检查     设备识别与运行条件检查"
-    echo "    6  设备诊断     采集身份信息及诊断日志"
-    echo "    7  串口诊断     采集启动日志并提供排查线索"
-    printf '\n  资源与维护\n'
-    echo "    4  准备资源     下载并解压 BSP / 可选 rootfs"
-    echo "    5  板内更新     通过 apt 更新软件包"
-    printf '    2  QSPI 刷写    %s写入启动固件；请核对板型与版本%s\n' "$C_Y" "$C_N"
-    printf '    3  NVMe 刷写    %s重写目标存储，清除数据%s\n' "$C_R" "$C_N"
-    printf '\n    8  操作手册     参数、许可与官方参考\n'
-    echo "    0  退出"
-    printf '\n  选择 [0-8] > '
+    # 中文按字符数补齐（printf 的 %-Ns 对多字节按字节计算，会把中文标签吞掉）
+    _pad() { local s="$1" w="$2" n; n=${#s}; printf '%s' "$s"; [ $((w - n)) -gt 0 ] && printf '%*s' $((w - n)) ''; return 0; }
+    printf '  %s\n' "$(T "检查与诊断" "Check and diagnose")"
+    printf '    1  %s %s\n' "$(_pad "$(T 环境检查 "env check")" 12)"    "$(T "设备识别与运行条件检查" "Device identification and host prerequisites")"
+    printf '    6  %s %s\n' "$(_pad "$(T 设备诊断 "diagnose")" 12)"     "$(T "采集身份信息及诊断日志" "Collect identity data and diagnostic logs")"
+    printf '    7  %s %s\n' "$(_pad "$(T 串口诊断 "UART diag")" 12)"    "$(T "采集启动日志并提供排查线索" "Capture boot log and localise the stall")"
+    printf '\n  %s\n' "$(T "资源与维护" "Resources and upkeep")"
+    printf '    4  %s %s\n' "$(_pad "$(T 准备资源 "prepare")" 12)"      "$(T "下载并解压 BSP / 可选 rootfs" "Download and extract BSP / optional rootfs")"
+    printf '    5  %s %s\n' "$(_pad "$(T 板内更新 "onboard apt")" 12)"  "$(T "通过 apt 更新软件包" "Update packages on the Jetson via apt")"
+    printf '    2  %s %s%s%s\n' "$(_pad "$(T "QSPI 刷写" "QSPI flash")" 12)" "$C_Y" "$(T "写入启动固件；请核对板型与版本" "Writes boot firmware; verify board and version")" "$C_N"
+    printf '    3  %s %s%s%s\n' "$(_pad "$(T "NVMe 刷写" "NVMe flash")" 12)" "$C_R" "$(T "重写目标存储，清除数据" "Rewrites target storage, erases data")" "$C_N"
+    printf '\n    8  %s %s\n' "$(_pad "$(T 操作手册 "manual")" 12)"   "$(T "参数、许可与官方参考" "Options, licence and official references")"
+    printf '    0  %s\n' "$(T 退出 quit)"
+    printf '\n  %s [0-8] > ' "$(T 选择 select)"
     local a; read -r a
     case "$a" in
         1) MODE=detect ;;
         2) MODE=qspi ;;
         3) MODE=nvme; WITH_ROOTFS=1 ;;
-        4) MODE=prep; printf '  一并下载 sample rootfs（1.83G，整机刷才需要）？[y/N] '; local b; read -r b
+        4) MODE=prep; printf '  %s [y/N] ' "$(T "一并下载 sample rootfs（1.83G，整机刷才需要）？" "Also fetch the sample rootfs (1.83G, only needed for a full flash)?")"; local b; read -r b
            case "$b" in y|Y) WITH_ROOTFS=1 ;; esac ;;
         5) MODE=target ;;
         6) MODE=diag ;;
         7) MODE=uart ;;
         8) MODE=doc ;;
-        *) log "退出"; exit 0 ;;
+        *) log "$(T 退出 quit)"; exit 0 ;;
     esac
 }
 
