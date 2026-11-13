@@ -472,6 +472,7 @@ bash jetson-jp62.sh</code></pre></div><div id="copy-status" class="status" role=
 
   <h3 id="recovery">{rec_h}</h3>
   <p class="muted" style="font-size:13.5px">{rec_intro}</p>
+  <p class="muted" style="font-size:12.5px">{rec_menu_hint}</p>
   <div class="method"><p class="method-t"><b>A</b> {rec_a_t}</p><ol class="steps">{rec_a}</ol></div>
   <div class="method"><p class="method-t"><b>B</b> {rec_b_t}</p><ol class="steps">{rec_b}</ol></div>
   <div class="method"><p class="method-t"><b>C</b> {rec_c_t}</p><p class="steps" style="padding-left:0">{rec_c_body} <code>sudo reboot --force forced-recovery</code></p></div>
@@ -493,18 +494,22 @@ bash jetson-jp62.sh</code></pre></div><div id="copy-status" class="status" role=
 
   <div class="panel" id="panel-uart" hidden>
   <h3>{uart_h}</h3>
-  <div class="command"><div class="command-head">Windows · PowerShell</div><pre>irm https://raw.githubusercontent.com/Shippuurl/jetson-jp62/main/uart-logs.ps1 | iex</pre></div>
-  <div class="command"><div class="command-head">Linux / macOS · Bash</div><pre>bash &lt;(curl -fsSL https://raw.githubusercontent.com/Shippuurl/jetson-jp62/main/uart-logs.sh)</pre></div>
-  <p><a href="UART-LOGS.md">UART logs · ZIP · GitHub rules ↗</a></p>
   <p class="muted" style="font-size:13.5px">{uart_intro}</p>
-  <div class="method"><p class="method-t"><b>1</b> {uart_hw_t}</p><ul class="steps">{uart_hw}</ul></div>
-  <div class="method"><p class="method-t"><b>2</b> {uart_wire_t}</p><ul class="steps">{uart_wire}</ul></div>
-  <p class="note" style="margin-top:4px">{uart_par}</p>
+
+  <div class="command"><div class="command-head">Linux / macOS · Bash</div><pre><code>bash jetson-jp62.sh                     <span class="muted">{uart_cmd_note}</span>
+bash jetson-jp62.sh --mode uart --uart /dev/ttyUSB0 --uart-seconds 60</code></pre></div>
+  <div class="command"><div class="command-head">Windows · PowerShell（独立采集器，无需脚本）</div><pre>irm https://raw.githubusercontent.com/Shippuurl/jetson-jp62/main/uart-logs.ps1 | iex</pre></div>
+
+  <div class="method"><p class="method-t"><b>1</b> {uart_wire_t}</p><ul class="steps">{uart_wire}</ul></div>
+  <p class="note" style="margin-top:2px">{uart_par}</p>
   <figure><img src="images/uart-wiring.svg" alt="{uart_wire_t}" width="900" height="440"><figcaption>{uart_wire_t} · 3.3 V TTL</figcaption></figure>
-  <div class="method" style="margin-top:14px"><p class="method-t"><b>3</b> {uart_run_t}</p><ol class="steps">{uart_run}</ol></div>
+
+  <div class="method" style="margin-top:16px"><p class="method-t"><b>2</b> {uart_out_t}</p><ul class="steps">{uart_out}</ul></div>
+  <p class="muted" style="font-size:12.5px">{uart_out_path}</p>
+  <figure><img src="images/uart-capture.svg" alt="{uart_out_t}" width="900" height="360"><figcaption>115200 8N1</figcaption></figure>
+
+  <div class="method" style="margin-top:16px"><p class="method-t"><b>3</b> {uart_lv_t}</p><ul class="steps">{uart_lv}</ul></div>
   <p class="note">{uart_note}</p>
-  <figure><img src="images/uart-capture.svg" alt="{uart_run_t}" width="900" height="360"><figcaption>{uart_run_t} · 115200 8N1</figcaption></figure>
-  <div class="method" style="margin-top:14px"><p class="method-t"><b>4</b> {uart_lv_t}</p><ul class="steps">{uart_lv}</ul></div>
   <p class="sources"><span class="meta">{uart_src}</span>{uart_links}</p>
   </div>
 
@@ -577,15 +582,15 @@ def build(code):
         prep_close=t["prep_close"],
         grp_prep=rec["grp_prep"], grp_result=rec["grp_result"], tut_label=TUT_LABEL[code],
         uart_h=uart["h"], uart_intro=uart["intro"],
-        uart_hw_t=uart["hw_t"], uart_hw="".join(f"<li>{x}</li>" for x in uart["hw"]),
+        uart_cmd_note=uart["cmd_note"], uart_cmd2_note=uart["cmd2_note"],
         uart_wire_t=uart["wire_t"], uart_wire="".join(f"<li>{x}</li>" for x in uart["wire"]),
-        uart_par=uart["par"], uart_run_t=uart["run_t"],
-        uart_run="".join(f"<li>{x}</li>" for x in uart["run"]),
-        uart_note=uart["note"], uart_lv_t=uart["lv_t"],
+        uart_par=uart["par"], uart_out_t=uart["out_t"],
+        uart_out="".join(f"<li>{x}</li>" for x in uart["out"]),
+        uart_out_path=uart["out_path"], uart_note=uart["note"], uart_lv_t=uart["lv_t"],
         uart_lv="".join(f"<li>{x}</li>" for x in uart["lv"]),
         uart_src=uart["src"],
         uart_links="".join(f'<a href="{u}" rel="noopener">{ti}</a>' for ti, u in UART_SOURCES),
-        rec_h=rec["h"], rec_intro=rec["intro"],
+        rec_h=rec["h"], rec_intro=rec["intro"], rec_menu_hint=rec["menu_hint"],
         rec_a_t=rec["a_t"], rec_a="".join(f"<li>{x}</li>" for x in rec["a"]),
         rec_b_t=rec["b_t"], rec_b="".join(f"<li>{x}</li>" for x in rec["b"]),
         rec_c_t=rec["c_t"], rec_c_body=rec["c_body"],
