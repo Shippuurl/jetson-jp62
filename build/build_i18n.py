@@ -10,6 +10,10 @@
 """
 import os, sys
 from i18n_recovery import REC, SOURCES
+from i18n_uart import UART, SOURCES as UART_SOURCES
+
+TUT_LABEL = {"zh": "分步指引", "en": "Guides", "ja": "手順", "de": "Anleitungen",
+             "fr": "Guides", "ko": "단계별 안내"}
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -336,30 +340,31 @@ a{color:inherit;text-underline-offset:4px}a:hover{color:#925700}
 a:focus-visible,button:focus-visible,summary:focus-visible{outline:2px solid #995b00;outline-offset:5px}
 .meta{font:11.5px ui-monospace,SFMono-Regular,Consolas,monospace;letter-spacing:.09em;color:#626a72;text-transform:uppercase}
 .muted{color:#626a72}
-h1{font-size:clamp(25px,2.4vw,33px);font-weight:600;line-height:1.3;letter-spacing:-.03em;margin:10px 0 14px}
-h2{font-size:16.5px;font-weight:650;margin:0 0 12px}
-p{margin:10px 0}
+h1{font-size:clamp(23px,2vw,27px);font-weight:600;line-height:1.25;letter-spacing:-.02em;margin:6px 0 10px}
+h2{font-size:15.5px;font-weight:650;margin:0 0 9px}
+p{margin:8px 0}
 /* ---- 正中严格对半 ---- */
-.page{display:grid;grid-template-columns:1fr 1fr;align-items:start}
-.pane{min-width:0;padding:40px clamp(22px,3.2vw,56px) 56px}
+.page{display:grid;grid-template-columns:1fr 1fr;align-items:stretch}
+.pane{min-width:0;padding:20px clamp(20px,2.4vw,44px) 18px}
 .pane.right{border-left:1px solid #e3e5e7}
-.pane-top{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:38px;margin-bottom:26px}
+.pane-top{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:30px;margin-bottom:14px}
+.pane-top .meta{white-space:nowrap}
 .brand{display:flex;align-items:center;gap:11px;font-size:19px;font-weight:750;letter-spacing:.08em;text-decoration:none}
 .brand img{width:38px;height:38px}
-.intro{max-width:38em;color:#555e66}
-.links{display:flex;flex-wrap:wrap;gap:10px 22px;margin:18px 0 0;font-size:14.5px}.primary{font-weight:650}
-section{padding:26px 0;border-bottom:1px solid #e3e5e7}
+.intro{max-width:42em;color:#555e66;font-size:13px;line-height:1.66}
+.links{display:flex;flex-wrap:wrap;gap:8px 20px;margin:12px 0 0;font-size:13.5px}.primary{font-weight:650}
+section{padding:15px 0;border-bottom:1px solid #e3e5e7}
 section:last-of-type{border-bottom:0;padding-bottom:8px}
-.command{border:1px solid #d7dbdf;margin-top:14px}
+.command{border:1px solid #d7dbdf;margin-top:10px}
 .command-head{display:flex;align-items:center;justify-content:space-between;padding:7px 14px;border-bottom:1px solid #e3e5e7;font-size:11.5px;color:#626a72}
 button{background:#fff;color:#202428;border:1px solid #c7ccd1;padding:4px 11px;cursor:pointer;font:inherit;font-size:12.5px}
-pre{padding:14px;margin:0;overflow:auto;font:12px/1.85 ui-monospace,SFMono-Regular,Consolas,monospace}
+pre{padding:11px 13px;margin:0;overflow:auto;font:11.5px/1.62 ui-monospace,SFMono-Regular,Consolas,monospace}
 code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.92em}
-.caution{border-left:3px solid #ad6800;padding-left:14px;margin:20px 0 0;font-size:13.5px}.caution strong{color:#925700}
-.modes{margin:0}.modes div{display:grid;grid-template-columns:96px 1fr;gap:12px;padding:8px 0;border-bottom:1px solid #eff0f1}
-.modes div:last-child{border:0}dt{font-family:ui-monospace,monospace;font-size:13.5px}dd{margin:0;color:#555e66;font-size:14px}
+.caution{border-left:3px solid #ad6800;padding-left:13px;margin:14px 0 0;font-size:12.8px;line-height:1.65}.caution strong{color:#925700}
+.modes{margin:0}.modes div{display:grid;grid-template-columns:84px 1fr;gap:10px;padding:3.5px 0;border-bottom:1px solid #eff0f1}
+.modes div:last-child{border:0}dt{font-family:ui-monospace,monospace;font-size:12.6px}dd{margin:0;color:#555e66;font-size:12.6px}
 .danger{color:#a83224;font-weight:600}
-details{font-size:13px;color:#555e66}summary{cursor:pointer;color:#202428;font-weight:600}
+details{font-size:12.5px;color:#555e66}summary{cursor:pointer;color:#202428;font-weight:600}
 details h2{margin-top:18px}details pre{white-space:pre-wrap;padding:0;font-size:11px}
 .status{min-height:20px;font-size:12px;color:#626a72}
 /* ---- 右栏 ---- */
@@ -384,17 +389,20 @@ figcaption{margin-top:8px;font-size:12px;color:#626a72;line-height:1.6}
 .sources{margin:16px 0 0;font-size:12.5px;color:#626a72;display:grid;gap:4px}
 .sources a{color:#555e66}
 .sources .meta{display:block;margin-bottom:2px}
-/* ---- 语言切换（放在栏底，不做顶部导航）---- */
-.lang{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;margin:26px 0 0;padding-top:16px;border-top:1px solid #e3e5e7;font-size:13px}
-.lang .meta{margin-right:4px}
-.lang a{text-decoration:none;border-bottom:1px solid #d7dbdf;padding-bottom:1px}
-.lang a:hover{border-color:#925700}
+/* ---- 语言切换：放在原 FIELD TOOLS 位置的右上角 ---- */
+.lang{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;font-size:12.5px;justify-content:flex-end}
+.lang a{text-decoration:none;color:#626a72;border-bottom:1px solid transparent;padding-bottom:1px}
+.lang a:hover{color:#202428;border-color:#d7dbdf}
 .lang [aria-current]{color:#202428;font-weight:650}
-footer{padding:0;margin:22px 0 0;font-size:11.5px;color:#626a72;display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px}
+/* ---- 教程下拉框 ---- */
+.tutsel{display:flex;align-items:center;gap:8px;justify-content:flex-end;flex:0 1 auto;min-width:0}
+.tutsel select{font:inherit;font-size:12.5px;padding:4px 8px;border:1px solid #c7ccd1;background:#fff;color:#202428;max-width:100%;text-overflow:ellipsis}
+.panel[hidden]{display:none}
+
+footer{padding:0;margin:12px 0 0;font-size:11px;color:#626a72;display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px}
 /* ---- 移动端：单栏堆叠 ---- */
 @media(min-width:921px){
-  .page{min-height:100vh}
-  .pane{height:100vh;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable}
+  .page{min-height:100vh}          /* 整页滚动，不做栏内滚动：中线处不会多出滚动条 */
 }
 @media(max-width:920px){
   .page{grid-template-columns:1fr}
@@ -418,8 +426,8 @@ TPL = """<!doctype html>
 
 <section class="pane left">
   <div class="pane-top">
-    <a class="brand" href="{self_href}" aria-label="A2VEC"><img src="a2vec-logo.svg" alt="" width="38" height="38">A2VEC</a>
-    <span class="meta">{meta}</span>
+    <a class="brand" href="{self_href}" aria-label="A2VEC"><img src="a2vec-logo.svg" alt="" width="34" height="34">A2VEC</a>
+    <nav class="lang" aria-label="{lang_label}">{langs}</nav>
   </div>
 
   <div class="meta">{kicker}</div>
@@ -430,28 +438,35 @@ TPL = """<!doctype html>
   <section aria-labelledby="run"><h2 id="run">{s1}</h2><p class="muted">{s1muted}</p>
     <div class="command"><div class="command-head"><span>BASH / jetson-jp62.sh</span><button type="button" id="copy" hidden>{copy}</button></div><pre><code id="command">curl -fL --proto '=https' -o jetson-jp62.sh \\
   https://tool.kervein.club/jetson/jetson-jp62.sh
-{ccomment}
-bash jetson-jp62.sh --help
+bash jetson-jp62.sh --help   {ccomment}
 bash jetson-jp62.sh</code></pre></div><div id="copy-status" class="status" role="status" aria-live="polite"></div>
     <p class="caution"><strong>{caut_t}</strong><br>{caut_b}</p>
   </section>
 
-  <section aria-labelledby="modes"><h2 id="modes">{s2}</h2><dl class="modes">{modes}</dl><p class="muted">{usage}</p></section>
+  <section aria-labelledby="modes"><h2 id="modes">{s2}</h2><dl class="modes">{modes}</dl><p class="muted" style="font-size:12.5px">{usage}</p></section>
 
   <section id="legal"><details><summary>{legal_sum}</summary><h2>{legal_h2}</h2>
     {legal}
     <h2>{mit_h2}</h2><pre>{mit}</pre></details></section>
 
-  <nav class="lang" aria-label="{lang_label}"><span class="meta">{lang_label}</span>{langs}</nav>
   <footer><span>{foot_l}</span><a href="LICENSE">{foot_r}</a></footer>
 </section>
 
 <section class="pane right col-wiki" aria-labelledby="prep">
-  <div class="pane-top"><span class="meta">{grp_prep}</span></div>
+  <div class="pane-top">
+    <label class="meta" for="tut">{tut_label}</label>
+    <div class="tutsel">
+      <select id="tut" aria-label="{tut_label}">
+        <option value="recovery">{rec_h}</option>
+        <option value="uart">{uart_h}</option>
+      </select>
+    </div>
+  </div>
   <h2 id="prep">{prep_h2}</h2>
   <ol class="checklist">{items}</ol>
   <figure><img src="images/jetson-board.jpg" alt="{fig1alt}" width="1100" height="741"><figcaption>{fig1}</figcaption></figure>
 
+  <div class="panel" id="panel-recovery">
   <h3 id="recovery">{rec_h}</h3>
   <p class="muted" style="font-size:13.5px">{rec_intro}</p>
   <div class="method"><p class="method-t"><b>A</b> {rec_a_t}</p><ol class="steps">{rec_a}</ol></div>
@@ -465,6 +480,19 @@ bash jetson-jp62.sh</code></pre></div><div id="copy-status" class="status" role=
   </div>
   <p class="caution" style="margin-top:20px">{rec_verify}</p>
   <p class="sources"><span class="meta">{rec_src}</span>{rec_links}</p>
+  </div>
+
+  <div class="panel" id="panel-uart" hidden>
+  <h3>{uart_h}</h3>
+  <p class="muted" style="font-size:13.5px">{uart_intro}</p>
+  <div class="method"><p class="method-t"><b>1</b> {uart_hw_t}</p><ul class="steps">{uart_hw}</ul></div>
+  <div class="method"><p class="method-t"><b>2</b> {uart_wire_t}</p><ul class="steps">{uart_wire}</ul></div>
+  <p class="note" style="margin-top:4px">{uart_par}</p>
+  <div class="method" style="margin-top:14px"><p class="method-t"><b>3</b> {uart_run_t}</p><ol class="steps">{uart_run}</ol></div>
+  <p class="note">{uart_note}</p>
+  <div class="method" style="margin-top:14px"><p class="method-t"><b>4</b> {uart_lv_t}</p><ul class="steps">{uart_lv}</ul></div>
+  <p class="sources"><span class="meta">{uart_src}</span>{uart_links}</p>
+  </div>
 
   <h3>{grp_result}</h3>
   <div class="gallery">
@@ -475,7 +503,8 @@ bash jetson-jp62.sh</code></pre></div><div id="copy-status" class="status" role=
 </section>
 
 </div>
-<script>const b=document.getElementById('copy');b.hidden=false;b.addEventListener('click',async()=>{const s=document.getElementById('copy-status');try{await navigator.clipboard.writeText(document.getElementById('command').textContent);s.textContent={copied};}catch{s.textContent={copyfail};}});</script>
+<script>const ts=document.getElementById('tut');if(ts){const show=v=>{document.getElementById('panel-recovery').hidden=v!=='recovery';document.getElementById('panel-uart').hidden=v!=='uart';};ts.addEventListener('change',()=>show(ts.value));show(ts.value);}
+const b=document.getElementById('copy');b.hidden=false;b.addEventListener('click',async()=>{const s=document.getElementById('copy-status');try{await navigator.clipboard.writeText(document.getElementById('command').textContent);s.textContent={copied};}catch{s.textContent={copyfail};}});</script>
 </body></html>
 """
 
@@ -502,6 +531,7 @@ def bold(s):
 def build(code):
     t = T[code]
     rec = REC[code]
+    uart = UART[code]
     alt = "\n".join(
         f'<link rel="alternate" hreflang="{hl}" href="{fn}">' for _, hl, fn, _, _ in LANGS
     ) + '\n<link rel="alternate" hreflang="x-default" href="index.html">'
@@ -527,7 +557,7 @@ def build(code):
         dl=t["dl"], guide=t["guide"], gh=t["gh"],
         s1=t["s1"], s1muted=t["s1muted"], ccomment=t["ccomment"],
         caut_t=t["caut_t"], caut_b=t["caut_b"], s2=t["s2"], modes=modes,
-        usage=t["usage"], legal_sum=t["legal_sum"], legal_h2=t["legal_h2"],
+        usage=t["usage"].replace("<br>", " · "), legal_sum=t["legal_sum"], legal_h2=t["legal_h2"],
         legal=legal, mit_h2=t["mit_h2"], mit=esc(MIT),
         lang_label=t["lang_label"], langs=langs,
         foot_l=t["foot_l"], foot_r=t["foot_r"],
@@ -536,7 +566,16 @@ def build(code):
         fig1=t["figs"][0], fig2=t["figs"][1], fig3=t["figs"][2],
         fig1alt=esc(t["figs"][0]), fig2alt=esc(t["figs"][1]), fig3alt=esc(t["figs"][2]),
         prep_close=t["prep_close"],
-        grp_prep=rec["grp_prep"], grp_result=rec["grp_result"],
+        grp_prep=rec["grp_prep"], grp_result=rec["grp_result"], tut_label=TUT_LABEL[code],
+        uart_h=uart["h"], uart_intro=uart["intro"],
+        uart_hw_t=uart["hw_t"], uart_hw="".join(f"<li>{x}</li>" for x in uart["hw"]),
+        uart_wire_t=uart["wire_t"], uart_wire="".join(f"<li>{x}</li>" for x in uart["wire"]),
+        uart_par=uart["par"], uart_run_t=uart["run_t"],
+        uart_run="".join(f"<li>{x}</li>" for x in uart["run"]),
+        uart_note=uart["note"], uart_lv_t=uart["lv_t"],
+        uart_lv="".join(f"<li>{x}</li>" for x in uart["lv"]),
+        uart_src=uart["src"],
+        uart_links="".join(f'<a href="{u}" rel="noopener">{ti}</a>' for ti, u in UART_SOURCES),
         rec_h=rec["h"], rec_intro=rec["intro"],
         rec_a_t=rec["a_t"], rec_a="".join(f"<li>{x}</li>" for x in rec["a"]),
         rec_b_t=rec["b_t"], rec_b="".join(f"<li>{x}</li>" for x in rec["b"]),
