@@ -8,7 +8,7 @@ SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ECS="${ECS_PY:-/media/shippuu/A2Vec/toolchains/ecs.py}"
 REMOTE_DIR="/var/www/jetson-jp62"
 BASE="https://tool.kervein.club/jetson"
-FILES=(jetson-jp62.sh index.html guide.html a2vec-logo.svg LICENSE README.md README-刷QSPI.md .nojekyll)
+FILES=(jetson-jp62.sh index.html index.en.html index.ja.html index.de.html index.fr.html index.ko.html guide.html a2vec-logo.svg LICENSE README.md README-刷QSPI.md .nojekyll)
 IMAGES=(images/jetson-board.jpg images/jumper-cap.jpg images/jumper-cap-installed.jpg)
 
 [ -x /usr/bin/python3 ] || true
