@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "context": 3,
+  "rules": [
+    {
+      "id": "fault",
+      "terms": [
+        "error",
+        "fail",
+        "panic",
+        "timeout",
+        "watchdog",
+        "assert",
+        "abort",
+        "unable"
+      ]
+    },
+    {
+      "id": "boot-stage",
+      "terms": [
+        "MB1",
+        "MB2",
+        "UEFI",
+        "Linux version",
+        "Booting Linux",
+        "systemd[1]",
+        "Reached target"
+      ]
+    }
+  ]
+}
