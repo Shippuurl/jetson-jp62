@@ -116,6 +116,7 @@
     <a href="#checks">刷前检查</a>
     <a href="#disk">硬盘预算</a>
     <a href="#diag">诊断能力</a>
+    <a href="#uart">串口诊断</a>
     <a href="#args">参数</a>
     <a href="#pitfalls">已知坑</a>
     <a href="#legal">免责声明</a>
@@ -393,6 +394,60 @@ L4T_VERSION=36.4.4</pre>
   [ - ] 功耗模式: NV Power Mode: MAXN_SUPER
   [ ! ] CSI 相机(i2c 9/10) 探测失败 → 相机排线/供电/设备树，与刷机无关
   [ ✓ ] 完整日志: ./diag-20261113-191339/onboard.txt</pre>
+  </div>
+</section>
+
+<section id="uart">
+  <div class="wrap">
+    <h2><span class="n">UART DIAG</span>串口诊断：把「卡在哪一段」直接说出来</h2>
+    <p>UEFI、DDR 训练、BPMP、电源时序这些日志在系统起来之前就产生了，SSH 和刷机工具都拿不到，
+      只有串口（<code>ttyTCU0</code>，115200 8N1）能看到。<code>--mode uart</code> 负责抓日志 + 自动判断卡点。</p>
+
+    <h3>接线（Orin Nano DevKit 40-pin）</h3>
+    <table>
+      <tr><th>排针</th><th>信号</th><th>USB-TTL</th></tr>
+      <tr><td>Pin 6</td><td>GND</td><td>GND（必须共地）</td></tr>
+      <tr><td>Pin 8</td><td>UART1_TX</td><td>RX</td></tr>
+      <tr><td>Pin 10</td><td>UART1_RX</td><td>TX</td></tr>
+    </table>
+
+    <pre class="block"># 自动找串口（会跳过板子自己的 L4T USB gadget），抓 60 秒并分析
+$ bash jetson-jp62.sh --mode uart --uart-seconds 60
+
+# 手动指定设备
+$ bash jetson-jp62.sh --mode uart --uart /dev/ttyUSB0 --uart-seconds 60 --uart-out boot.log
+
+# 只分析已有日志（不用接板子）
+$ bash jetson-jp62.sh --mode uart --uart-log boot.log
+
+# 列出串口设备
+$ bash jetson-jp62.sh --uart-list</pre>
+
+    <p class="hint">抓取前给板子断电 → 上电，才能抓到从 BootROM 开始的完整启动链。没读权限时把自己加进
+      <code>dialout</code> 组（<code>sudo usermod -aG dialout $USER</code>，重新登录）或用 sudo。</p>
+
+    <h3>分级逻辑与结论</h3>
+    <table>
+      <tr><th>日志里最后出现的阶段</th><th>脚本给出的结论</th></tr>
+      <tr><td>userspace / kernel</td><td class="ok">启动链走完，串口层面看不到卡点</td></tr>
+      <tr><td>UEFI</td><td class="mid">卡在 UEFI 之后、内核之前：启动项 / 分区 / rootfs 找不到（efibootmgr、extlinux.conf、PARTUUID）</td></tr>
+      <tr><td>MB2</td><td class="mid">卡在 MB2：加载 UEFI 前失败，QSPI 里的 UEFI 分区或 BCT 有问题</td></tr>
+      <tr><td>MB1</td><td class="mid">卡在 MB1：内存/DDR 训练或 BCT 配置问题</td></tr>
+      <tr><td>BootROM</td><td class="no">只到 BootROM：内存初始化就挂了，硬件/供电/DDR 层</td></tr>
+      <tr><td>都没有</td><td class="no">波特率不对 / TX-RX 接反 / 没共地</td></tr>
+    </table>
+
+    <pre class="block">$ bash jetson-jp62.sh --mode uart --uart-log boot.log
+  ── 串口日志分级（boot.log）──
+    [ ✓ ] BootROM   出现过（首次在第 2 行）
+    [ ✓ ] MB1       出现过（首次在第 1 行）
+    [ ✓ ] MB2       出现过（首次在第 4 行）
+    [ ✓ ] UEFI      出现过（首次在第 5 行）
+    [ · ] kernel    未出现
+  ── 可疑行 ──
+    8:[0007.200] E> L4TLauncher: Unable to open extlinux.conf
+    9:[0007.300] E> Error: Boot failure
+  结论：卡在 UEFI 之后、内核之前：多半是启动项/分区/rootfs 找不到</pre>
   </div>
 </section>
 
