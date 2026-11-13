@@ -1,0 +1,21 @@
+{
+  "version": 3,
+  "context": 3,
+  "files": [
+    {
+      "name": "common.json",
+      "board": "common",
+      "sha256": "b5102a8e42a3ac91ec205ea09fa2e7d843aca5a4b3b0188945e1d27ca5afd012"
+    },
+    {
+      "name": "jetson.json",
+      "board": "jetson",
+      "sha256": "6b6c2a14c164701c88975f2a5cd2726564ec051cd4e37e7cc037f1e72d38c3da"
+    },
+    {
+      "name": "raspberrypi.json",
+      "board": "raspberrypi",
+      "sha256": "cbf35f50409fe44594cf71911007da28e65a066acfdbb13237ec2af4a1971a3a"
+    }
+  ]
+}
