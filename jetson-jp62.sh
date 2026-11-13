@@ -732,8 +732,16 @@ extract_rootfs() {
 }
 
 # ================================================================ recovery
-RECOVERY_PIDS="7523|7522"        # t234(Orin) recovery/APX
-recovery_present() { lsusb 2>/dev/null | grep -qiE "0955:(${RECOVERY_PIDS})"; }
+# recovery 判定别写死 PID：不同模组/载板组合下 APX 的 PID 不一样
+# 实测见过 0955:7523、0955:7623（两者 lsusb 描述都是 "NVIDIA Corp. APX"）。
+# 所以判据 = 厂商 0955 + 描述里带 APX；再兜一组已知 PID 防止描述缺失。
+RECOVERY_PIDS="7523|7522|7623|7418|7c18|7e19|7018"
+recovery_present() {
+    local lines; lines="$(lsusb 2>/dev/null | grep -iE '0955:[0-9a-f]{4}' || true)"
+    [ -n "$lines" ] || return 1
+    printf '%s' "$lines" | grep -qiE 'APX' && return 0
+    printf '%s' "$lines" | grep -qiE "0955:(${RECOVERY_PIDS})"
+}
 
 # 把当前所有 NVIDIA USB 设备分类打出来：区分"进了 recovery"和"其实板子已经正常启动"
 usb_state_hint() {
@@ -744,8 +752,18 @@ usb_state_hint() {
     while IFS= read -r l; do
         [ -n "$l" ] || continue
         pid="$(printf '%s' "$l" | grep -oiE '0955:[0-9a-f]{4}' | head -1 | cut -d: -f2 | tr 'A-F' 'a-f')"
+        if printf '%s' "$l" | grep -qiE 'APX'; then
+            printf '    %s · 0955:%s → recovery/APX，✓ 就是这个，按回车即可\n' "$C_G" "$pid"
+            local prod
+            prod="$(lsusb -v -d "0955:$pid" 2>/dev/null | grep -i 'iProduct' | head -1 | sed 's/.*iProduct *//; s/^ *[0-9]* *//')"
+            case "$prod" in
+                ""|APX) printf '      %s 产品串是 "%s"，APX 模式不会告诉你模组型号；板型以刷写日志里的 Board ID/sku 为准%s\n' "$C_D" "${prod:-空}" "$C_N" ;;
+                *)      printf '      %s 产品串: %s（可据此核对模组/载板）%s\n' "$C_D" "$prod" "$C_N" ;;
+            esac
+            continue
+        fi
         case "$pid" in
-            7523|7522) printf '    %s · 0955:%s → recovery/APX，✓ 就是这个，按回车即可\n' "$C_G" "$pid" ;;
+            7523|7522|7623) printf '    %s · 0955:%s → recovery/APX，✓ 就是这个，按回车即可\n' "$C_G" "$pid" ;;
             7020|7018|7418)
                 printf '    %s · 0955:%s → L4T 已经正常启动（USB device/gadget 模式），不是 recovery\n' "$C_R" "$pid"
                 printf '      %s 说明线是好的、板子有电，只是没进 recovery：断电 → 保持短接 → 上电 2 秒后再松开\n' "$C_D"
