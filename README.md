@@ -120,6 +120,15 @@ JETSON_MIRROR=file:///mnt/nas/l4t
 JETSON_BOARD=jetson-orin-nano-devkit-super
 ```
 
+## 诊断能力（`--mode diag`）
+
+| 板子状态 | 能看到 | 看不到 |
+|---|---|---|
+| 已启动 | L4T/内核版本、UEFI(QSPI) 版本、A/B 槽位、功耗模式、cmdline、dmesg 错误、journalctl -b -p err、失败服务、外设探测失败 | UEFI 自检、DDR 训练、BootROM/MB1/MB2、电源时序 |
+| recovery | 芯片信息、EEPROM(BoardID/SKU/FAB/Rev/MAC)、BCT 与 custinfo | 内核/UEFI 运行时日志、系统盘内容 |
+
+底层开机报错只能看串口：40-pin Pin 6=GND、Pin 8=UART1_TX、Pin 10=UART1_RX，115200 8N1，设备 `ttyTCU0`。
+
 ## 已知坑
 
 - **Super 不在镜像里**：Orin Nano 的 MAXN_SUPER 来自 36.4 UEFI/QSPI，插系统盘拿不到，必须刷 QSPI
