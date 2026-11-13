@@ -55,6 +55,15 @@ details h2{margin-top:18px}details pre{white-space:pre-wrap;padding:0;font-size:
 figure{margin:20px 0 0}figure img{display:block;width:100%;height:auto;border:1px solid #e3e5e7}
 figcaption{margin-top:8px;font-size:12px;color:#626a72;line-height:1.6}
 .gallery figure+figure{margin-top:16px}
+.col-wiki h3{font-size:14.5px;font-weight:650;margin:26px 0 10px;padding-top:18px;border-top:1px solid #e3e5e7}
+.method{margin:0 0 14px}
+.method-t{margin:0 0 6px;font-size:13.5px;color:#202428}
+.method-t b{display:inline-block;min-width:16px;font-weight:650;color:#9aa3ab;font-family:ui-monospace,monospace;font-size:12px}
+.steps{margin:0;padding:0 0 0 20px;color:#555e66;font-size:13.5px;line-height:1.7}
+.steps li{margin:2px 0}
+.sources{margin:16px 0 0;font-size:12.5px;color:#626a72;display:grid;gap:4px}
+.sources a{color:#555e66}
+.sources .meta{display:block;margin-bottom:2px}
 /* ---- 语言切换（放在栏底，不做顶部导航）---- */
 .lang{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;margin:26px 0 0;padding-top:16px;border-top:1px solid #e3e5e7;font-size:13px}
 .lang .meta{margin-right:4px}
@@ -134,11 +143,26 @@ SOFTWARE.</pre></details></section>
   <div class="pane-top"><span class="meta">준비물</span></div>
   <h2 id="prep">플래시 전 준비물</h2>
   <ol class="checklist"><li><b>Jetson 보드</b><span>Orin Nano / Orin NX(t234). 모듈과 캐리어는 EEPROM 판독값(Board ID / SKU)으로 확인합니다.</span></li><li><b>전원 어댑터</b><span>19V 배럴 잭 전원. 플래시와 recovery 중에는 USB-C 전원에만 의존하지 마십시오.</span></li><li><b>USB-C 데이터 케이블</b><span>보드를 recovery(APX) 모드로 호스트에 연결합니다. 데이터 전송을 지원해야 하며, 충전 전용 케이블은 인식되지 않습니다.</span></li><li><b>점퍼 캡</b><span>FC REC와 GND를 단락해 recovery로 진입합니다. 위치는 캐리어 실크를 확인하십시오. DevKit은 12핀 헤더의 FC REC / GND(9·10번 핀)입니다.</span></li></ol>
-  <p class="note"><b>전원 인가 약 2초 후 점퍼 캡을 제거하십시오.</b><br><span class="inline-risk">제거하지 않으면 다음 전원 인가 시에도 recovery로 진입합니다.</span><br>순서: 전원 차단 → 캡 장착 → 전원 인가 → 약 2초 후 제거 → 호스트 <code>lsusb</code>에 <code>0955:7523</code> 또는 <code>0955:7623</code>(APX) 표시.</p>
   <figure><img src="images/jetson-board.jpg" alt="Jetson 보드: 40핀 헤더, USB-C, 19V 입력." width="1100" height="741"><figcaption>Jetson 보드: 40핀 헤더, USB-C, 19V 입력.</figcaption></figure>
+
+  <h3 id="recovery">recovery(플래시 모드) 진입</h3>
+  <p class="muted" style="font-size:13.5px">플래시 전에 보드는 Force Recovery 모드여야 합니다. 아래 세 가지 방법은 모두 NVIDIA 공식 문서에 따른 것이며, 보드 상태에 맞는 방법을 선택하십시오.</p>
+  <div class="method"><p class="method-t"><b>A</b> 전원을 끈 상태에서 (권장)</p><ol class="steps"><li>전원을 분리하고 보드가 완전히 꺼졌는지 확인합니다.</li><li>Button Header의 9번과 10번 핀(FC REC → GND)에 점퍼를 장착합니다.</li><li>전원을 다시 연결하면 시스템 대신 recovery로 진입합니다.</li><li>호스트가 장치를 인식하면 점퍼를 제거합니다. 장착한 채 두면 다음 전원 인가 시 다시 recovery로 진입합니다.</li></ol></div>
+  <div class="method"><p class="method-t"><b>B</b> 이미 전원이 켜진 상태에서</p><ol class="steps"><li>먼저 Button Header의 9번과 10번 핀을 단락합니다.</li><li>이어서 7번과 8번 핀을 잠시 단락해 리셋합니다.</li><li>호스트가 장치를 인식하면 두 점퍼를 모두 제거합니다.</li></ol></div>
+  <div class="method"><p class="method-t"><b>C</b> 보드 안에서 명령으로</p><p class="steps" style="padding-left:0">이미 로그인할 수 있다면 바로 recovery로 전환하십시오: <code>sudo reboot --force forced-recovery</code></p></div>
+  <p class="note"><b>호스트가 장치를 인식하면 점퍼를 제거하십시오.</b><br><span class="inline-risk">제거하지 않으면 다음 전원 인가 시에도 recovery로 진입합니다.</span><br>순서: 전원 차단 → 점퍼 장착(9/10) → 전원 인가 → <code>lsusb</code>에 <code>0955:7523</code> 또는 <code>0955:7623</code> 표시되면 제거.</p>
   <div class="gallery">
     <figure><img src="images/jumper-cap.jpg" alt="점퍼 캡: FC REC와 GND를 단락합니다." width="1100" height="611"><figcaption>점퍼 캡: FC REC와 GND를 단락합니다.</figcaption></figure>
-    <figure><img src="images/jumper-cap-installed.jpg" alt="점퍼 캡 장착 위치: 단락 상태로 전원을 인가하고 약 2초 후 제거합니다." width="901" height="575"><figcaption>점퍼 캡 장착 위치: 단락 상태로 전원을 인가하고 약 2초 후 제거합니다.</figcaption></figure>
+    <figure><img src="images/jumper-cap-installed.jpg" alt="점퍼 캡 장착 위치: 단락 상태로 전원을 인가하고 호스트가 인식하면 제거합니다." width="901" height="575"><figcaption>점퍼 캡 장착 위치: 단락 상태로 전원을 인가하고 호스트가 인식하면 제거합니다.</figcaption></figure>
+    <figure><img src="images/lsusb-0955.png" alt="보드가 recovery에 있을 때 호스트의 lsusb 출력(0955:7623, Orin Nano 4GB)." width="556" height="93" style="max-width:556px"><figcaption>보드가 recovery에 있을 때 호스트의 lsusb 출력(0955:7623, Orin Nano 4GB).</figcaption></figure>
+  </div>
+  <p class="caution" style="margin-top:20px">확인: 호스트의 <code>lsusb</code>에 <code>0955:&lt;nnnn&gt; NVIDIA Corp.</code>가 표시됩니다. 7523 = Orin Nano 8GB, 7623 = Orin Nano 4GB(공식 모델 표). 표시되지 않으면 전원을 다시 인가해 재시도하십시오.</p>
+  <p class="sources"><span class="meta">출처</span><a href="https://docs.nvidia.com/jetson/orin-nano-devkit/user-guide/latest/howto.html#force-recovery-mode" rel="noopener">NVIDIA · Force Recovery Mode（Orin Nano DevKit User Guide）</a><a href="https://docs.nvidia.com/jetson/archives/r36.4.3/DeveloperGuide/IN/QuickStart.html" rel="noopener">NVIDIA · Jetson Linux R36.4.3 Quick Start</a><a href="https://forums.developer.nvidia.com/t/how-to-get-into-recovery-mode/250525" rel="noopener">NVIDIA Developer Forums · How to Get Into Recovery Mode</a></p>
+
+  <h3>플래시와 검증</h3>
+  <div class="gallery">
+    <figure><img src="images/jetpack-version.png" alt="스크립트에서 버전 선택: --l4t를 주지 않으면 대화형으로 선택하며 최신을 임의로 쓰지 않습니다." width="792" height="426"><figcaption>스크립트에서 버전 선택: --l4t를 주지 않으면 대화형으로 선택하며 최신을 임의로 쓰지 않습니다.</figcaption></figure>
+    <figure><img src="images/flash-done.jpg" alt="플래시 성공: flash.sh가 “The target generic has been flashed successfully”를 출력." width="1100" height="957"><figcaption>플래시 성공: flash.sh가 “The target generic has been flashed successfully”를 출력.</figcaption></figure>
   </div>
   <p class="muted" style="font-size:12.5px;margin-top:18px">준비가 끝나면 왼쪽 «받기와 실행»으로 돌아가 먼저 <code>--mode detect</code>를 실행한 뒤 플래시 여부를 결정하십시오.</p>
 </section>
