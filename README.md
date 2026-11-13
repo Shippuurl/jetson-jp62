@@ -4,6 +4,18 @@
 
 [工具首页](https://tool.kervein.club/jetson/) · [操作手册](https://tool.kervein.club/jetson/guide.html) · [MIT License](LICENSE)
 
+## 站点与多语言
+
+说明页为左右各占一半的分栏布局：左栏为工具说明与许可，右栏为刷写前的准备清单与实物照片。页面提供中文、English、日本語、Deutsch、Français、한국어 六种语言，切换入口在左栏底部（不使用顶部导航）。
+
+页面由 `build/build_i18n.py` 生成，不要直接手改 `index*.html`：文案集中在该脚本的 `T` 字典中，改完执行
+
+```bash
+python3 build/build_i18n.py     # 重新生成 index.html + index.<lang>.html
+bash deploy/push.sh             # 上线到 tool.kervein.club
+python3 deploy/github-publish.py
+```
+
 ## 获取与运行
 
 ```bash
