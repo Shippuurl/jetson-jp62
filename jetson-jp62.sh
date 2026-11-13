@@ -53,6 +53,7 @@ BOARD="${JETSON_BOARD:-}"          # 留空 = 自动识别
 CONFIG_FILE="${JETSON_CONFIG:-}"
 AUTO_DIR=0
 REFRESH=0
+SPEC_FROM=""        # l4t | jp | auto（决定版本不满足时的处理方式）
 UPDATE_FROM=""
 OPEN_DOC=1          # 跑完是否提示/自动打开 HTML 说明页（0=关）
 DOC_URL="${JETSON_DOC_URL:-}"
@@ -497,7 +498,9 @@ cat <<EOF
   --cache-dir <路径>              下载包存放/复用目录（= --resource，默认跟 --dir 同一个盘）
   --auto-dir                      自动挑余量最大的分区当工作目录（含下载缓存）
   --config <文件>                 读取配置（默认 ~/.config/jetson-jp62/config，KEY=VALUE）
-  --l4t <版本|latest>             目标 L4T 版本，默认 auto=向上游探测最新有 BSP 的版本
+  --l4t <版本|latest>             目标 L4T 版本（不给则交互选择，非交互回落 auto）
+  --jetpack|--jp <版本>           按 JetPack 号自动映射 L4T（6.2→36.4.3、6.2.1→36.4.4、6.2.2→36.5.0…）
+  --jp-list                       打印 JetPack → L4T 映射表
   --doc                           打开使用说明页（index.html）
   --doc-url <url>                 在线文档地址（无本地 index.html 时用）
   --no-doc                        跑完不提示打开文档
@@ -597,8 +600,18 @@ parse_args() {
             --with-rootfs) WITH_ROOTFS=1; shift ;;
             --rootdev)  ROOTDEV="${2:-}"; shift 2 ;;
             --no-deps)  SKIP_DEPS=1; shift ;;
-            --l4t)      L4T_VERSION="${2:-}"; shift 2 ;;
+            --l4t)      L4T_VERSION="${2:-}"; SPEC_FROM="l4t"; shift 2 ;;
+            --jetpack|--jp)
+                        local jpv="${2:-}"; shift 2
+                        local l4t; if l4t="$(jp_to_l4t "$jpv")"; then
+                            L4T_VERSION="$l4t"; SPEC_FROM="jp"
+                            log "JetPack $jpv → L4T $L4T_VERSION"
+                        else
+                            printf '未知 JetPack 版本: %s\n' "$jpv" >&2; jp_list >&2
+                            die "用 --jetpack <版本> 或 --l4t <L4T版本>"
+                        fi ;;
             --matrix)   MODE="matrix"; shift ;;
+            --jp-list)  MODE="jpmap"; shift ;;
             --doc)      MODE="doc"; shift ;;
             --skip-recovery-check|--no-recovery-check) RECOVERY_SKIP=1; shift ;;
             --doc-url)  DOC_URL="${2:-}"; shift 2 ;;
@@ -616,7 +629,7 @@ parse_args() {
         esac
     done
     case "$MODE" in
-        ""|detect|qspi|nvme|prep|target|matrix|update|doc) ;;
+        ""|detect|qspi|nvme|prep|target|matrix|update|doc|jpmap) ;;
         *) die "--mode 只能是 detect / qspi / nvme / prep / target（另有 --matrix / --self-update / --doc 三个动作）" ;;
     esac
 }
@@ -1109,6 +1122,50 @@ matrix_print() {
     printf '只刷 QSPI 的第三方实现参考: osrbot/mfi-qspi-forge（量产 MFI 包）、Hi5808/turing-pi-2.5-jetson-eeprom-fix（先备份载板 EEPROM 再只刷 QSPI）\n\n'
 }
 
+# JetPack → Jetson Linux(L4T) 映射。数据源：NVIDIA 各 JetPack 发布页原文
+#   JP 6.0    → 36.3.0   "This JetPack 6.0 release includes Jetson Linux 36.3"
+#   JP 6.1    → 36.4.0   "This release includes Jetson Linux 36.4"
+#   JP 6.2    → 36.4.3   "includes Jetson Linux 36.4.3"
+#   JP 6.2.1  → 36.4.4   "includes Jetson Linux 36.4.4"
+#   JP 6.2.2  → 36.5.0   "includes Jetson Linux 36.5"
+#   JP 6.2.3  → 36.5.2   "includes Jetson Linux 36.5.2"
+#   JP 5.1.3  → 35.4.1
+# 注意：映射到具体 L4T 后还要校验"这个 L4T 有没有 BSP 包"，没有就退到最近的可用版本。
+jp_to_l4t() {
+    local v="$1"
+    v="${v#jp}"; v="${v#JP}"; v="${v#v}"; v="${v#JetPack}"; v="${v# }"
+    case "$v" in
+        6.0|6.0.0)      echo 36.3.0 ;;
+        6.1|6.1.0)      echo 36.4.0 ;;
+        6.2|6.2.0)      echo 36.4.3 ;;
+        6.2.1)          echo 36.4.4 ;;
+        6.2.2)          echo 36.5.0 ;;
+        6.2.3)          echo 36.5.2 ;;
+        5.1.3)          echo 35.4.1 ;;
+        5.1.1)          echo 35.3.1 ;;
+        *)              return 1 ;;
+    esac
+}
+
+jp_list() {
+    cat <<'EOF'
+   JetPack → Jetson Linux(L4T)
+     6.0     → 36.3.0     6.2    → 36.4.3     5.1.3 → 35.4.1
+     6.1     → 36.4.0     6.2.1  → 36.4.4     5.1.1 → 35.3.1
+                          6.2.2  → 36.5.0
+                          6.2.3  → 36.5.2   （apt/OTA 才有，无 BSP 包）
+EOF
+}
+
+# 给定 L4T，取"不高于它、且确实有 BSP 包"的最近版本
+nearest_available() {
+    local want="$1" v
+    available_versions 2>/dev/null | while IFS= read -r v; do
+        [ -n "$v" ] || continue
+        [ "$(printf '%s\n%s\n' "$v" "$want" | sort -V | head -1)" = "$v" ] && { printf '%s' "$v"; break; }
+    done
+}
+
 jp_hint() {
     case "$1" in
         36.5.*) printf 'JetPack 6.2.2' ;;
@@ -1152,13 +1209,26 @@ pick_l4t_interactive() {
             "")  L4T_VERSION="${arr[0]}"; break ;;
             *[!0-9]*) ;;   # 非纯数字 → 当作版本号处理
         esac
+        # 先认 L4T 号（36.x），再认 JetPack 号（6.x / 5.x / jp6.2 …）
         if printf '%s' "$a" | grep -qE '^36\.[0-9]+(\.[0-9]+)?$'; then
             case "$a" in
                 *.*.*) L4T_VERSION="$a" ;;
                 *)     L4T_VERSION="$(printf '%s\n' "$vers" | grep -E "^$a\." | head -1)" ;;
             esac
             [ -n "$L4T_VERSION" ] && break
-            L4T_VERSION=""; warn "没找到 $a 对应的可刷版本，重选"; continue
+            L4T_VERSION=""; warn "没找到 L4T $a 的可刷版本，重选"; continue
+        fi
+        if printf '%s' "$a" | grep -qiE '^(jp)?[0-9]+(\.[0-9]+)+$'; then
+            local l4t; if l4t="$(jp_to_l4t "$a")"; then
+                if printf '%s\n' "$vers" | grep -qx "$l4t"; then L4T_VERSION="$l4t"; break; fi
+                local nv; nv="$(nearest_available "$l4t")"
+                if [ -n "$nv" ]; then
+                    warn "JetPack $a → L4T $l4t 官方无 BSP 包，退到最近的 $nv"
+                    L4T_VERSION="$nv"; break
+                fi
+                warn "JetPack $a → L4T $l4t，但当前没有可刷的 BSP 版本"; continue
+            fi
+            warn "没有 JetPack $a 这个映射（--jp-list 看映射表）"; continue
         fi
         case "$a" in
             ''|*[!0-9]*) warn "请输入序号或版本号"; continue ;;
@@ -1182,6 +1252,14 @@ resolve_l4t() {
     esac
     refresh_filenames
     if ! url_exists "$(bsp_url "$L4T_VERSION")"; then
+        if [ "$SPEC_FROM" = "jp" ]; then
+            build_matrix 0
+            local nv; nv="$(nearest_available "$L4T_VERSION")"
+            if [ -n "$nv" ]; then
+                warn "JetPack 映射到的 L4T $L4T_VERSION 官方没有可直接刷的 BSP 包（只走 apt/OTA）→ 退到最近的 $nv"
+                L4T_VERSION="$nv"; refresh_filenames; return 0
+            fi
+        fi
         warn "L4T $L4T_VERSION 的 BSP 包在官方下载目录不存在（可能只有 apt/OTA 发布）"
         build_matrix 0
         printf '可选版本（有 BSP 包）: %s\n' "$(awk -F'|' '$4!=""{print $4}' "$MATRIX_FILE" 2>/dev/null | sort -V | tr '\n' ' ')"
@@ -1315,6 +1393,7 @@ main() {
         matrix) build_matrix "$REFRESH"; matrix_print; exit 0 ;;
         update) self_update; exit 0 ;;
         doc)    open_doc; exit 0 ;;
+        jpmap)  echo "可刷版本: $(available_versions 2>/dev/null | tr '\n' ' ')"; jp_list; exit 0 ;;
     esac
 
     case "$MODE" in nvme|qspi) WITH_ROOTFS=1 ;; esac   # 这两种都要 rootfs，先定下来再算空间
