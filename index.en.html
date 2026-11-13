@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>A2VEC · Jetson Maintenance Tool</title><meta name="description" content="A2VEC Jetson command-line maintenance tool: environment checks, QSPI firmware flashing, full NVMe flashing. Source, prerequisites, manual and MIT license.">
+<link rel="icon" href="a2vec-logo.svg" type="image/svg+xml">
+<link rel="alternate" hreflang="zh-CN" href="index.html">
+<link rel="alternate" hreflang="en" href="index.en.html">
+<link rel="alternate" hreflang="ja" href="index.ja.html">
+<link rel="alternate" hreflang="de" href="index.de.html">
+<link rel="alternate" hreflang="fr" href="index.fr.html">
+<link rel="alternate" hreflang="ko" href="index.ko.html">
+<link rel="alternate" hreflang="x-default" href="index.html">
+<style>
+*{box-sizing:border-box}html{color-scheme:light}
+body{margin:0;background:#fff;color:#202428;font:15px/1.8 system-ui,-apple-system,"Segoe UI","Hiragino Sans","Microsoft YaHei","Malgun Gothic",sans-serif}
+a{color:inherit;text-underline-offset:4px}a:hover{color:#925700}
+a:focus-visible,button:focus-visible,summary:focus-visible{outline:2px solid #995b00;outline-offset:5px}
+.meta{font:11.5px ui-monospace,SFMono-Regular,Consolas,monospace;letter-spacing:.09em;color:#626a72;text-transform:uppercase}
+.muted{color:#626a72}
+h1{font-size:clamp(25px,2.4vw,33px);font-weight:600;line-height:1.3;letter-spacing:-.03em;margin:10px 0 14px}
+h2{font-size:16.5px;font-weight:650;margin:0 0 12px}
+p{margin:10px 0}
+/* ---- 正中严格对半 ---- */
+.page{display:grid;grid-template-columns:1fr 1fr;align-items:start}
+.pane{min-width:0;padding:40px clamp(22px,3.2vw,56px) 56px}
+.pane.right{border-left:1px solid #e3e5e7}
+.pane-top{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:38px;margin-bottom:26px}
+.brand{display:flex;align-items:center;gap:11px;font-size:19px;font-weight:750;letter-spacing:.08em;text-decoration:none}
+.brand img{width:38px;height:38px}
+.intro{max-width:38em;color:#555e66}
+.links{display:flex;flex-wrap:wrap;gap:10px 22px;margin:18px 0 0;font-size:14.5px}.primary{font-weight:650}
+section{padding:26px 0;border-bottom:1px solid #e3e5e7}
+section:last-of-type{border-bottom:0;padding-bottom:8px}
+.command{border:1px solid #d7dbdf;margin-top:14px}
+.command-head{display:flex;align-items:center;justify-content:space-between;padding:7px 14px;border-bottom:1px solid #e3e5e7;font-size:11.5px;color:#626a72}
+button{background:#fff;color:#202428;border:1px solid #c7ccd1;padding:4px 11px;cursor:pointer;font:inherit;font-size:12.5px}
+pre{padding:14px;margin:0;overflow:auto;font:12px/1.85 ui-monospace,SFMono-Regular,Consolas,monospace}
+code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.92em}
+.caution{border-left:3px solid #ad6800;padding-left:14px;margin:20px 0 0;font-size:13.5px}.caution strong{color:#925700}
+.modes{margin:0}.modes div{display:grid;grid-template-columns:96px 1fr;gap:12px;padding:8px 0;border-bottom:1px solid #eff0f1}
+.modes div:last-child{border:0}dt{font-family:ui-monospace,monospace;font-size:13.5px}dd{margin:0;color:#555e66;font-size:14px}
+.danger{color:#a83224;font-weight:600}
+details{font-size:13px;color:#555e66}summary{cursor:pointer;color:#202428;font-weight:600}
+details h2{margin-top:18px}details pre{white-space:pre-wrap;padding:0;font-size:11px}
+.status{min-height:20px;font-size:12px;color:#626a72}
+/* ---- 右栏 ---- */
+.col-wiki{font-size:14px;line-height:1.75}
+.checklist{margin:14px 0 0;padding:0;list-style:none;counter-reset:c}
+.checklist li{counter-increment:c;position:relative;padding:12px 0 12px 32px;border-bottom:1px solid #eff0f1}
+.checklist li:last-child{border-bottom:0}
+.checklist li::before{content:counter(c,decimal-leading-zero);position:absolute;left:0;top:13px;font:11px/1.9 ui-monospace,monospace;color:#9aa3ab;letter-spacing:.08em}
+.checklist b{display:block;font-weight:650;font-size:14.5px;margin-bottom:2px}
+.checklist span{color:#555e66;font-size:13.5px}
+.inline-risk{color:#a83224;font-weight:600}
+.note{border-left:3px solid #ad6800;padding-left:14px;margin:18px 0 0;font-size:13.5px;color:#555e66}.note b{color:#925700}
+figure{margin:20px 0 0}figure img{display:block;width:100%;height:auto;border:1px solid #e3e5e7}
+figcaption{margin-top:8px;font-size:12px;color:#626a72;line-height:1.6}
+.gallery figure+figure{margin-top:16px}
+/* ---- 语言切换（放在栏底，不做顶部导航）---- */
+.lang{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;margin:26px 0 0;padding-top:16px;border-top:1px solid #e3e5e7;font-size:13px}
+.lang .meta{margin-right:4px}
+.lang a{text-decoration:none;border-bottom:1px solid #d7dbdf;padding-bottom:1px}
+.lang a:hover{border-color:#925700}
+.lang [aria-current]{color:#202428;font-weight:650}
+footer{padding:0;margin:22px 0 0;font-size:11.5px;color:#626a72;display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px}
+/* ---- 移动端：单栏堆叠 ---- */
+@media(min-width:921px){
+  .page{min-height:100vh}
+  .pane{height:100vh;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable}
+}
+@media(max-width:920px){
+  .page{grid-template-columns:1fr}
+  .pane{padding:28px 20px 40px;height:auto;overflow:visible}
+  .pane.right{border-left:0;border-top:1px solid #e3e5e7}
+  .pane-top{margin-bottom:18px;min-height:32px}
+  .brand{font-size:17px}.brand img{width:34px;height:34px}
+  .modes div{grid-template-columns:74px 1fr;gap:10px}
+  h1{font-size:24px}
+}
+</style></head>
+<body>
+<div class="page">
+
+<section class="pane left">
+  <div class="pane-top">
+    <a class="brand" href="index.en.html" aria-label="A2VEC"><img src="a2vec-logo.svg" alt="" width="38" height="38">A2VEC</a>
+    <span class="meta">FIELD TOOLS / JETSON</span>
+  </div>
+
+  <div class="meta">MAINTENANCE TOOL · 01</div>
+  <h1>Jetson Firmware Maintenance Script</h1>
+  <p class="intro">A Bash front-end to the NVIDIA flashing tools: environment checks, resource preparation, QSPI or NVMe flashing. Targets the Jetson Orin family; the supported range depends on the selected BSP, board configuration and vendor documentation.</p>
+  <div class="links"><a class="primary" href="jetson-jp62.sh" download>Download script ↓</a><a href="guide.html">Detailed guide ↗</a><a href="https://github.com/Shippuurl/jetson-jp62">Source on GitHub ↗</a></div>
+
+  <section aria-labelledby="run"><h2 id="run">Get and run</h2><p class="muted">Review the script after downloading, then check the options or open the interactive menu. Select a verified L4T version explicitly before flashing.</p>
+    <div class="command"><div class="command-head"><span>BASH / jetson-jp62.sh</span><button type="button" id="copy" hidden>Copy</button></div><pre><code id="command">curl -fL --proto '=https' -o jetson-jp62.sh \
+  https://tool.kervein.club/jetson/jetson-jp62.sh
+# after reviewing the script
+bash jetson-jp62.sh --help
+bash jetson-jp62.sh</code></pre></div><div id="copy-status" class="status" role="status" aria-live="polite"></div>
+    <p class="caution"><strong>Before flashing</strong><br>QSPI mode writes boot firmware; a wrong configuration can leave the board unbootable. NVMe mode rewrites the target storage and erases data. Back up your data and confirm carrier support, stable power and a recovery path. Required disk space is determined by the runtime pre-check.</p>
+  </section>
+
+  <section aria-labelledby="modes"><h2 id="modes">Script modes</h2><dl class="modes"><div><dt>detect</dt><dd>Inspect the host and device state; performs no flashing.</dd></div><div><dt>prep</dt><dd>Download and prepare the BSP; optionally prepare a sample rootfs.</dd></div><div><dt>qspi</dt><dd>Flash QSPI boot firmware; the system disk is not the target.</dd></div><div><dt>nvme</dt><dd><span class="danger">Rewrites target storage, erases data.</span> Uses the official initrd flash.</dd></div><div><dt>target</dt><dd>Update packages on the Jetson via apt; not equivalent to a QSPI upgrade.</dd></div></dl><p class="muted">Usage: <code>bash jetson-jp62.sh --mode &lt;mode&gt;</code><br>Version, diagnostics, UART and offline options: see <code>--help</code> or the <a href="guide.html">manual</a>.</p></section>
+
+  <section id="legal"><details><summary>Legal notice · MIT License · Third-party licences</summary><h2>Legal notice and licence</h2>
+    <p>This tool is an independent maintenance helper published under the A2VEC brand. It is not an NVIDIA product and has no affiliation with, authorisation from or endorsement by NVIDIA. NVIDIA, Jetson and JetPack are trademarks of NVIDIA Corporation.</p><p>The script and documentation are provided under the <a href="LICENSE">MIT License</a>; redistributions must keep the copyright and licence notice. The original copyright notice is Copyright (c) 2026 Shippuurl; brand presentation does not change that ownership. MIT grants no rights to third-party trademarks or NVIDIA software.</p><p>The software is provided “AS IS”. To the maximum extent permitted by applicable law no express or implied warranty is given, including merchantability, fitness for a particular purpose and non-infringement; liability is limited as stated in the MIT text. This notice does not exclude liability that applicable law does not allow to be excluded.</p><p>The published script contains no NVIDIA firmware, bootloader or proprietary SDK. Third-party components obtained at runtime are governed by their own licences and the <a href="https://docs.nvidia.com/jetson/archives/r36.4.3/DeveloperGuide/SD/SoftwarePackagesAndTheUpdateMechanism.html">NVIDIA software package documentation</a>; check the licence of the matching version before downloading, using or redistributing. Acknowledgement of this tool does not replace third-party licence requirements.</p><p>Users must confirm they are authorised to operate the device, prepare backups and a recovery plan, and verify module, carrier, BSP and system versions against official documentation. A passing pre-check or an available download URL is not a guarantee of compatibility, safety or flashing success. Third-party carriers are governed by their vendor's adaptation material.</p>
+    <h2>MIT License · full text</h2><pre>MIT License
+
+Copyright (c) 2026 Shippuurl
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.</pre></details></section>
+
+  <nav class="lang" aria-label="Language"><span class="meta">Language</span><a href="index.html" hreflang="zh-CN" lang="zh-CN">中文</a><span aria-current="true">English</span><a href="index.ja.html" hreflang="ja" lang="ja">日本語</a><a href="index.de.html" hreflang="de" lang="de">Deutsch</a><a href="index.fr.html" hreflang="fr" lang="fr">Français</a><a href="index.ko.html" hreflang="ko" lang="ko">한국어</a></nav>
+  <footer><span>A2VEC · Independent maintenance tool / not an NVIDIA product</span><a href="LICENSE">MIT License · © 2026 Shippuurl</a></footer>
+</section>
+
+<section class="pane right col-wiki" aria-labelledby="prep">
+  <div class="pane-top"><span class="meta">PREPARATION</span></div>
+  <h2 id="prep">What you need before flashing</h2>
+  <ol class="checklist"><li><b>Jetson board</b><span>Orin Nano / Orin NX (t234). Module and carrier are confirmed by the EEPROM reading (Board ID / SKU).</span></li><li><b>Power supply</b><span>19 V barrel input. Do not rely on USB-C power alone while flashing or in recovery.</span></li><li><b>USB-C data cable</b><span>Connects the board to the host in recovery (APX) mode. Must carry data; charge-only cables are not detected.</span></li><li><b>Jumper cap</b><span>Shorts FC REC to GND to enter recovery. Follow the carrier silkscreen; on the DevKit it is the 12-pin header, FC REC / GND (pins 9 and 10).</span></li></ol>
+  <p class="note"><b>Remove the jumper cap about 2 s after power-on.</b><br><span class="inline-risk">Leaving it on makes the board enter recovery again at the next power-up.</span><br>Order: power off → fit the cap → power on → remove it after ~2 s → <code>lsusb</code> on the host shows <code>0955:7523</code> or <code>0955:7623</code> (APX).</p>
+  <figure><img src="images/jetson-board.jpg" alt="Jetson board: 40-pin header, USB-C and 19 V input." width="1100" height="741"><figcaption>Jetson board: 40-pin header, USB-C and 19 V input.</figcaption></figure>
+  <div class="gallery">
+    <figure><img src="images/jumper-cap.jpg" alt="Jumper cap: shorts FC REC to GND." width="1100" height="611"><figcaption>Jumper cap: shorts FC REC to GND.</figcaption></figure>
+    <figure><img src="images/jumper-cap-installed.jpg" alt="Jumper cap installed: power on while shorted, remove after ~2 s." width="901" height="575"><figcaption>Jumper cap installed: power on while shorted, remove after ~2 s.</figcaption></figure>
+  </div>
+  <p class="muted" style="font-size:12.5px;margin-top:18px">When ready, go back to “Get and run” on the left and run <code>--mode detect</code> before deciding whether to flash.</p>
+</section>
+
+</div>
+<script>const b=document.getElementById('copy');b.hidden=false;b.addEventListener('click',async()=>{const s=document.getElementById('copy-status');try{await navigator.clipboard.writeText(document.getElementById('command').textContent);s.textContent='Copied. Review the script first.';}catch{s.textContent='Clipboard unavailable; copy manually.';}});</script>
+</body></html>
