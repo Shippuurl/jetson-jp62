@@ -1,0 +1,152 @@
+{
+  "version": 3,
+  "board": "common",
+  "context": 3,
+  "rules": [
+    {
+      "id": "fault",
+      "severity": "error",
+      "context": 3,
+      "terms": [
+        "panic",
+        "kernel panic",
+        "Oops",
+        "BUG:",
+        "general protection fault",
+        "segfault"
+      ],
+      "advice": "内核崩溃：看崩溃点的驱动名与调用栈，先排除内存/驱动版本不匹配。"
+    },
+    {
+      "id": "error",
+      "severity": "error",
+      "context": 2,
+      "terms": [
+        "error",
+        "fail",
+        "failed",
+        "failure"
+      ],
+      "advice": "按同一驱动/服务的重复报错归类，重复出现才是线索。"
+    },
+    {
+      "id": "timeout",
+      "severity": "warn",
+      "context": 2,
+      "terms": [
+        "timeout",
+        "timed out",
+        "no response"
+      ],
+      "advice": "超时多与供电、线材、设备未就绪有关；配合上一行看是谁在等谁。"
+    },
+    {
+      "id": "watchdog",
+      "severity": "error",
+      "context": 3,
+      "terms": [
+        "watchdog",
+        "watchdog bark",
+        "hung task"
+      ],
+      "advice": "看门狗触发通常说明有任务长时间不返回：结合 hung task 里的进程名。"
+    },
+    {
+      "id": "oom",
+      "severity": "error",
+      "context": 2,
+      "terms": [
+        "oom-killer",
+        "Out of memory",
+        "Killed process"
+      ],
+      "advice": "内存不足被 OOM 杀掉：确认模型/服务是否超出板子内存。"
+    },
+    {
+      "id": "fs-error",
+      "severity": "error",
+      "context": 3,
+      "terms": [
+        "EXT4-fs error",
+        "I/O error",
+        "read-only file system",
+        "fsck",
+        "mount failed"
+      ],
+      "advice": "存储或文件系统问题：先检查存储介质与线缆，必要时离线 fsck。"
+    },
+    {
+      "id": "usb-enum",
+      "severity": "warn",
+      "context": 2,
+      "terms": [
+        "usb 1-",
+        "usb 2-",
+        "device descriptor read",
+        "enumeration"
+      ],
+      "advice": "USB 枚举反复出现说明外设供电或线材有问题。"
+    },
+    {
+      "id": "boot-stage",
+      "severity": "info",
+      "context": 2,
+      "terms": [
+        "MB1",
+        "MB2",
+        "UEFI",
+        "Booting Linux",
+        "Linux version",
+        "Reached target",
+        "Starting Kernel"
+      ],
+      "advice": "这是启动阶段标记，用来判断日志停在哪一层。"
+    },
+    {
+      "id": "login-ready",
+      "severity": "info",
+      "context": 1,
+      "terms": [
+        "login:",
+        "Reached target Multi-User",
+        "Started Getty"
+      ],
+      "advice": "出现登录提示说明启动已完成。"
+    },
+    {
+      "id": "power",
+      "severity": "warn",
+      "context": 2,
+      "terms": [
+        "undervoltage",
+        "brownout",
+        "power supply",
+        "vdd_",
+        "rail"
+      ],
+      "advice": "电压/供电异常：换电源或去掉外设复测。"
+    },
+    {
+      "id": "thermal",
+      "severity": "warn",
+      "context": 2,
+      "terms": [
+        "thermal",
+        "throttl",
+        "over-temperature",
+        "critical temperature"
+      ],
+      "advice": "过热降频：检查散热与风道。"
+    },
+    {
+      "id": "permission",
+      "severity": "warn",
+      "context": 1,
+      "terms": [
+        "permission denied",
+        "access denied"
+      ],
+      "advice": "权限问题：把自己加入相应组（如 dialout），别用 root 绕过。"
+    }
+  ]
+}
