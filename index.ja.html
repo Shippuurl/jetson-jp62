@@ -16,30 +16,31 @@ a{color:inherit;text-underline-offset:4px}a:hover{color:#925700}
 a:focus-visible,button:focus-visible,summary:focus-visible{outline:2px solid #995b00;outline-offset:5px}
 .meta{font:11.5px ui-monospace,SFMono-Regular,Consolas,monospace;letter-spacing:.09em;color:#626a72;text-transform:uppercase}
 .muted{color:#626a72}
-h1{font-size:clamp(25px,2.4vw,33px);font-weight:600;line-height:1.3;letter-spacing:-.03em;margin:10px 0 14px}
-h2{font-size:16.5px;font-weight:650;margin:0 0 12px}
-p{margin:10px 0}
+h1{font-size:clamp(23px,2vw,27px);font-weight:600;line-height:1.25;letter-spacing:-.02em;margin:6px 0 10px}
+h2{font-size:15.5px;font-weight:650;margin:0 0 9px}
+p{margin:8px 0}
 /* ---- 正中严格对半 ---- */
-.page{display:grid;grid-template-columns:1fr 1fr;align-items:start}
-.pane{min-width:0;padding:40px clamp(22px,3.2vw,56px) 56px}
+.page{display:grid;grid-template-columns:1fr 1fr;align-items:stretch}
+.pane{min-width:0;padding:20px clamp(20px,2.4vw,44px) 18px}
 .pane.right{border-left:1px solid #e3e5e7}
-.pane-top{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:38px;margin-bottom:26px}
+.pane-top{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:30px;margin-bottom:14px}
+.pane-top .meta{white-space:nowrap}
 .brand{display:flex;align-items:center;gap:11px;font-size:19px;font-weight:750;letter-spacing:.08em;text-decoration:none}
 .brand img{width:38px;height:38px}
-.intro{max-width:38em;color:#555e66}
-.links{display:flex;flex-wrap:wrap;gap:10px 22px;margin:18px 0 0;font-size:14.5px}.primary{font-weight:650}
-section{padding:26px 0;border-bottom:1px solid #e3e5e7}
+.intro{max-width:42em;color:#555e66;font-size:13px;line-height:1.66}
+.links{display:flex;flex-wrap:wrap;gap:8px 20px;margin:12px 0 0;font-size:13.5px}.primary{font-weight:650}
+section{padding:15px 0;border-bottom:1px solid #e3e5e7}
 section:last-of-type{border-bottom:0;padding-bottom:8px}
-.command{border:1px solid #d7dbdf;margin-top:14px}
+.command{border:1px solid #d7dbdf;margin-top:10px}
 .command-head{display:flex;align-items:center;justify-content:space-between;padding:7px 14px;border-bottom:1px solid #e3e5e7;font-size:11.5px;color:#626a72}
 button{background:#fff;color:#202428;border:1px solid #c7ccd1;padding:4px 11px;cursor:pointer;font:inherit;font-size:12.5px}
-pre{padding:14px;margin:0;overflow:auto;font:12px/1.85 ui-monospace,SFMono-Regular,Consolas,monospace}
+pre{padding:11px 13px;margin:0;overflow:auto;font:11.5px/1.62 ui-monospace,SFMono-Regular,Consolas,monospace}
 code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.92em}
-.caution{border-left:3px solid #ad6800;padding-left:14px;margin:20px 0 0;font-size:13.5px}.caution strong{color:#925700}
-.modes{margin:0}.modes div{display:grid;grid-template-columns:96px 1fr;gap:12px;padding:8px 0;border-bottom:1px solid #eff0f1}
-.modes div:last-child{border:0}dt{font-family:ui-monospace,monospace;font-size:13.5px}dd{margin:0;color:#555e66;font-size:14px}
+.caution{border-left:3px solid #ad6800;padding-left:13px;margin:14px 0 0;font-size:12.8px;line-height:1.65}.caution strong{color:#925700}
+.modes{margin:0}.modes div{display:grid;grid-template-columns:84px 1fr;gap:10px;padding:3.5px 0;border-bottom:1px solid #eff0f1}
+.modes div:last-child{border:0}dt{font-family:ui-monospace,monospace;font-size:12.6px}dd{margin:0;color:#555e66;font-size:12.6px}
 .danger{color:#a83224;font-weight:600}
-details{font-size:13px;color:#555e66}summary{cursor:pointer;color:#202428;font-weight:600}
+details{font-size:12.5px;color:#555e66}summary{cursor:pointer;color:#202428;font-weight:600}
 details h2{margin-top:18px}details pre{white-space:pre-wrap;padding:0;font-size:11px}
 .status{min-height:20px;font-size:12px;color:#626a72}
 /* ---- 右栏 ---- */
@@ -64,17 +65,20 @@ figcaption{margin-top:8px;font-size:12px;color:#626a72;line-height:1.6}
 .sources{margin:16px 0 0;font-size:12.5px;color:#626a72;display:grid;gap:4px}
 .sources a{color:#555e66}
 .sources .meta{display:block;margin-bottom:2px}
-/* ---- 语言切换（放在栏底，不做顶部导航）---- */
-.lang{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;margin:26px 0 0;padding-top:16px;border-top:1px solid #e3e5e7;font-size:13px}
-.lang .meta{margin-right:4px}
-.lang a{text-decoration:none;border-bottom:1px solid #d7dbdf;padding-bottom:1px}
-.lang a:hover{border-color:#925700}
+/* ---- 语言切换：放在原 FIELD TOOLS 位置的右上角 ---- */
+.lang{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;font-size:12.5px;justify-content:flex-end}
+.lang a{text-decoration:none;color:#626a72;border-bottom:1px solid transparent;padding-bottom:1px}
+.lang a:hover{color:#202428;border-color:#d7dbdf}
 .lang [aria-current]{color:#202428;font-weight:650}
-footer{padding:0;margin:22px 0 0;font-size:11.5px;color:#626a72;display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px}
+/* ---- 教程下拉框 ---- */
+.tutsel{display:flex;align-items:center;gap:8px;justify-content:flex-end;flex:0 1 auto;min-width:0}
+.tutsel select{font:inherit;font-size:12.5px;padding:4px 8px;border:1px solid #c7ccd1;background:#fff;color:#202428;max-width:100%;text-overflow:ellipsis}
+.panel[hidden]{display:none}
+
+footer{padding:0;margin:12px 0 0;font-size:11px;color:#626a72;display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px}
 /* ---- 移动端：单栏堆叠 ---- */
 @media(min-width:921px){
-  .page{min-height:100vh}
-  .pane{height:100vh;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable}
+  .page{min-height:100vh}          /* 整页滚动，不做栏内滚动：中线处不会多出滚动条 */
 }
 @media(max-width:920px){
   .page{grid-template-columns:1fr}
@@ -91,8 +95,8 @@ footer{padding:0;margin:22px 0 0;font-size:11.5px;color:#626a72;display:flex;fle
 
 <section class="pane left">
   <div class="pane-top">
-    <a class="brand" href="index.ja.html" aria-label="A2VEC"><img src="a2vec-logo.svg" alt="" width="38" height="38">A2VEC</a>
-    <span class="meta">FIELD TOOLS / JETSON</span>
+    <a class="brand" href="index.ja.html" aria-label="A2VEC"><img src="a2vec-logo.svg" alt="" width="34" height="34">A2VEC</a>
+    <nav class="lang" aria-label="言語"><a href="index.html" hreflang="zh-CN" lang="zh-CN">中文</a><a href="index.en.html" hreflang="en" lang="en">English</a><span aria-current="true">日本語</span><a href="index.de.html" hreflang="de" lang="de">Deutsch</a><a href="index.fr.html" hreflang="fr" lang="fr">Français</a><a href="index.ko.html" hreflang="ko" lang="ko">한국어</a></nav>
   </div>
 
   <div class="meta">メンテナンスツール · 01</div>
@@ -103,13 +107,12 @@ footer{padding:0;margin:22px 0 0;font-size:11.5px;color:#626a72;display:flex;fle
   <section aria-labelledby="run"><h2 id="run">入手と実行</h2><p class="muted">ダウンロード後にスクリプトを確認し、オプションを確認するか対話メニューを開いてください。書き込み前に、確認済みの L4T バージョンを明示的に選択します。</p>
     <div class="command"><div class="command-head"><span>BASH / jetson-jp62.sh</span><button type="button" id="copy" hidden>コピー</button></div><pre><code id="command">curl -fL --proto '=https' -o jetson-jp62.sh \
   https://tool.kervein.club/jetson/jetson-jp62.sh
-# スクリプトを確認してから実行
-bash jetson-jp62.sh --help
+bash jetson-jp62.sh --help   # スクリプトを確認してから実行
 bash jetson-jp62.sh</code></pre></div><div id="copy-status" class="status" role="status" aria-live="polite"></div>
     <p class="caution"><strong>書き込み前の確認</strong><br>QSPI モードは起動ファームウェアを書き込むため、設定を誤ると起動できなくなる可能性があります。NVMe モードは対象ストレージを書き換え、データを消去します。データをバックアップし、キャリアの適合性、安定した電源、復旧手順を確認してください。必要なディスク容量は実行時の事前チェックで判定されます。</p>
   </section>
 
-  <section aria-labelledby="modes"><h2 id="modes">スクリプトのモード</h2><dl class="modes"><div><dt>detect</dt><dd>実行環境とデバイス状態を確認します。書き込みは行いません。</dd></div><div><dt>prep</dt><dd>BSP をダウンロードして準備します。sample rootfs の準備も可能です。</dd></div><div><dt>qspi</dt><dd>QSPI 起動ファームウェアを書き込みます。システムディスクの書き換えは目的ではありません。</dd></div><div><dt>nvme</dt><dd><span class="danger">対象ストレージを書き換え、データを消去します。</span> 公式 initrd flash を呼び出します。</dd></div><div><dt>target</dt><dd>Jetson 上で apt によりパッケージを更新します。QSPI の更新とは異なります。</dd></div></dl><p class="muted">使い方: <code>bash jetson-jp62.sh --mode &lt;モード&gt;</code><br>バージョン、診断、UART、オフラインの各オプションは <code>--help</code> または<a href="guide.html">手順書</a>を参照してください。</p></section>
+  <section aria-labelledby="modes"><h2 id="modes">スクリプトのモード</h2><dl class="modes"><div><dt>detect</dt><dd>実行環境とデバイス状態を確認します。書き込みは行いません。</dd></div><div><dt>prep</dt><dd>BSP をダウンロードして準備します。sample rootfs の準備も可能です。</dd></div><div><dt>qspi</dt><dd>QSPI 起動ファームウェアを書き込みます。システムディスクの書き換えは目的ではありません。</dd></div><div><dt>nvme</dt><dd><span class="danger">対象ストレージを書き換え、データを消去します。</span> 公式 initrd flash を呼び出します。</dd></div><div><dt>target</dt><dd>Jetson 上で apt によりパッケージを更新します。QSPI の更新とは異なります。</dd></div></dl><p class="muted" style="font-size:12.5px">使い方: <code>bash jetson-jp62.sh --mode &lt;モード&gt;</code> · バージョン、診断、UART、オフラインの各オプションは <code>--help</code> または<a href="guide.html">手順書</a>を参照してください。</p></section>
 
   <section id="legal"><details><summary>法的通知 · MIT License · 第三者ライセンス</summary><h2>法的通知とライセンス</h2>
     <p>本ツールは A2VEC ブランドで公開される独立したメンテナンス補助プロジェクトであり、NVIDIA の公式製品ではありません。NVIDIA との提携、代理、推奨関係はありません。NVIDIA、Jetson、JetPack は NVIDIA Corporation の商標です。</p><p>スクリプトとドキュメントは <a href="LICENSE">MIT License</a> で提供されます。再配布時は著作権表示とライセンス表示を保持してください。原著作権表示は Copyright (c) 2026 Shippuurl であり、ブランド表示は帰属を変更しません。MIT は第三者の商標や NVIDIA ソフトウェアの使用権を許諾しません。</p><p>本ソフトウェアは「現状のまま」（AS IS）提供されます。適用法が許す最大限の範囲で、明示または黙示の保証（商品性、特定目的への適合性、非侵害を含む）を行いません。責任の制限は MIT 原文に従います。本通知は、適用法上排除できない責任を排除するものではありません。</p><p>公開スクリプトには NVIDIA のファームウェア、ブートローダー、専有 SDK は含まれません。実行時に取得する第三者コンポーネントは、その付属ライセンスおよび <a href="https://docs.nvidia.com/jetson/archives/r36.4.3/DeveloperGuide/SD/SoftwarePackagesAndTheUpdateMechanism.html">NVIDIA ソフトウェアパッケージの説明</a>に従います。ダウンロード、使用、再配布の前に該当バージョンのライセンスを確認してください。本ツールへの同意は第三者ライセンスの要件を代替しません。</p><p>利用者は、デバイスの操作権限、バックアップ、復旧手順を確認し、モジュール、キャリア、BSP、システムのバージョンを公式ドキュメントに照らして確認してください。事前チェックの通過やダウンロード URL の可用性は、互換性・安全性・書き込み成功を保証しません。第三者キャリアはベンダーの適合資料に従います。</p>
@@ -135,16 +138,24 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.</pre></details></section>
 
-  <nav class="lang" aria-label="言語"><span class="meta">言語</span><a href="index.html" hreflang="zh-CN" lang="zh-CN">中文</a><a href="index.en.html" hreflang="en" lang="en">English</a><span aria-current="true">日本語</span><a href="index.de.html" hreflang="de" lang="de">Deutsch</a><a href="index.fr.html" hreflang="fr" lang="fr">Français</a><a href="index.ko.html" hreflang="ko" lang="ko">한국어</a></nav>
   <footer><span>A2VEC · 独立メンテナンスツール / NVIDIA 公式製品ではありません</span><a href="LICENSE">MIT License · © 2026 Shippuurl</a></footer>
 </section>
 
 <section class="pane right col-wiki" aria-labelledby="prep">
-  <div class="pane-top"><span class="meta">準備</span></div>
+  <div class="pane-top">
+    <label class="meta" for="tut">手順</label>
+    <div class="tutsel">
+      <select id="tut" aria-label="手順">
+        <option value="recovery">recovery（書き込みモード）に入る</option>
+        <option value="uart">シリアル診断（UART）</option>
+      </select>
+    </div>
+  </div>
   <h2 id="prep">書き込み前に用意するもの</h2>
   <ol class="checklist"><li><b>Jetson ボード</b><span>Orin Nano / Orin NX（t234）。モジュールとキャリアは EEPROM の読み取り値（Board ID / SKU）で確認します。</span></li><li><b>電源アダプター</b><span>19V のバレルジャック給電。書き込み中や recovery 中は USB-C 給電だけに頼らないでください。</span></li><li><b>USB-C データケーブル</b><span>ボードを recovery（APX）でホストに接続します。データ通信対応が必要で、充電専用ケーブルは認識されません。</span></li><li><b>ジャンパキャップ</b><span>FC REC と GND を短絡して recovery に入ります。位置はキャリアのシルクを確認してください。DevKit では 12 ピンヘッダの FC REC / GND（9・10 番ピン）です。</span></li></ol>
   <figure><img src="images/jetson-board.jpg" alt="Jetson ボード: 40 ピンヘッダ、USB-C、19V 入力。" width="1100" height="741"><figcaption>Jetson ボード: 40 ピンヘッダ、USB-C、19V 入力。</figcaption></figure>
 
+  <div class="panel" id="panel-recovery">
   <h3 id="recovery">recovery（書き込みモード）に入る</h3>
   <p class="muted" style="font-size:13.5px">書き込み前にボードを Force Recovery モードにする必要があります。以下の 3 通りはいずれも NVIDIA 公式ドキュメントの記載です。ボードの状態に合う方法を選んでください。</p>
   <div class="method"><p class="method-t"><b>A</b> 電源を切った状態から（推奨）</p><ol class="steps"><li>電源を外し、ボードが完全に切れていることを確認します。</li><li>Button Header の 9 番と 10 番（FC REC → GND）にジャンパを装着します。</li><li>電源を入れ直すと、OS は起動せず recovery に入ります。</li><li>ホストがデバイスを認識したらジャンパを外します。付けたままだと次回も recovery に入ります。</li></ol></div>
@@ -158,6 +169,19 @@ SOFTWARE.</pre></details></section>
   </div>
   <p class="caution" style="margin-top:20px">確認: ホストの <code>lsusb</code> に <code>0955:&lt;nnnn&gt; NVIDIA Corp.</code> が出ます。7523 = Orin Nano 8GB、7623 = Orin Nano 4GB（公式の型番表）。出ない場合は電源を入れ直して再試行してください。</p>
   <p class="sources"><span class="meta">参考</span><a href="https://docs.nvidia.com/jetson/orin-nano-devkit/user-guide/latest/howto.html#force-recovery-mode" rel="noopener">NVIDIA · Force Recovery Mode（Orin Nano DevKit User Guide）</a><a href="https://docs.nvidia.com/jetson/archives/r36.4.3/DeveloperGuide/IN/QuickStart.html" rel="noopener">NVIDIA · Jetson Linux R36.4.3 Quick Start</a><a href="https://forums.developer.nvidia.com/t/how-to-get-into-recovery-mode/250525" rel="noopener">NVIDIA Developer Forums · How to Get Into Recovery Mode</a></p>
+  </div>
+
+  <div class="panel" id="panel-uart" hidden>
+  <h3>シリアル診断（UART）</h3>
+  <p class="muted" style="font-size:13.5px">起動しない、書き込みに失敗する、起動画面で止まる——こうした症状はシリアルログで起動チェーンのどの段階かを切り分けられます。SSH や recovery より低層の出力が取れます。</p>
+  <div class="method"><p class="method-t"><b>1</b> 用意するもの</p><ul class="steps"><li>USB-TTL シリアル変換（CP2102 / CH340 / FT232 など、3.3V レベル）</li><li>ジャンパ線 3 本（メス-メス）</li></ul></div>
+  <div class="method"><p class="method-t"><b>2</b> 配線（40 ピンヘッダ）</p><ul class="steps"><li>Pin 8 UART_TX → アダプタの RXD</li><li>Pin 10 UART_RX → アダプタの TXD</li><li>GND を共通化（Pin 6 / 9 / 14 / 25 / 30 / 34 / 39 のいずれか）</li></ul></div>
+  <p class="note" style="margin-top:4px">115200 8N1、フロー制御なし。TX と RX は必ず交差させます。TX-TX で繋ぐと 1 文字も受信できません。</p>
+  <div class="method" style="margin-top:14px"><p class="method-t"><b>3</b> 取得</p><ol class="steps"><li>スクリプト内蔵: <code>bash jetson-jp62.sh --mode uart</code>（/dev/ttyUSB* を自動検出、既定 30 秒）</li><li>手動: <code>screen /dev/ttyUSB0 115200</code>（終了は Ctrl-A の後 K）、または <code>minicom -D /dev/ttyUSB0 -b 115200</code></li><li>先に取得を開始し、その後にボードの電源を入れ直すと、BootROM からカーネルまでの全ログが残ります</li></ol></div>
+  <p class="note">ボード側のデバイス名は /dev/ttyTHS1（番号はリリースごとに動的に割り当てられ、ttyTHS0 固定ではありません）。権限不足なら dialout グループに追加してください。</p>
+  <div class="method" style="margin-top:14px"><p class="method-t"><b>4</b> どこで止まっているか</p><ul class="steps"><li>BootROM / MB1 / MB2 が出ない → 電源、モジュールの装着、QSPI ファームウェア</li><li>UEFI で停止 → bootloader またはデバイスツリー設定</li><li>カーネルで停止 → ドライバ、ルートファイルシステム、ストレージ</li><li>getty まで到達して再起動 → アプリまたは systemd ユニット</li></ul></div>
+  <p class="sources"><span class="meta">参考</span><a href="https://developerwiki.proventusnova.com/How_to_NVIDIA_Jetson_Orin_Nano_UART_Console" rel="noopener">ProventusNova · How to NVIDIA Jetson Orin Nano UART Console</a><a href="https://forums.developer.nvidia.com/t/how-to-access-uart1-on-expansion-pins-8-10/328934" rel="noopener">NVIDIA Developer Forums · UART1 on expansion pins 8/10</a><a href="https://jetsonhacks.com/2019/04/19/jetson-nano-serial-console/" rel="noopener">JetsonHacks · Serial Debug Console (115200 8N1)</a></p>
+  </div>
 
   <h3>書き込みと確認</h3>
   <div class="gallery">
@@ -168,5 +192,6 @@ SOFTWARE.</pre></details></section>
 </section>
 
 </div>
-<script>const b=document.getElementById('copy');b.hidden=false;b.addEventListener('click',async()=>{const s=document.getElementById('copy-status');try{await navigator.clipboard.writeText(document.getElementById('command').textContent);s.textContent='コピーしました。先にスクリプトを確認してください。';}catch{s.textContent='クリップボードを使用できません。手動でコピーしてください。';}});</script>
+<script>const ts=document.getElementById('tut');if(ts){const show=v=>{document.getElementById('panel-recovery').hidden=v!=='recovery';document.getElementById('panel-uart').hidden=v!=='uart';};ts.addEventListener('change',()=>show(ts.value));show(ts.value);}
+const b=document.getElementById('copy');b.hidden=false;b.addEventListener('click',async()=>{const s=document.getElementById('copy-status');try{await navigator.clipboard.writeText(document.getElementById('command').textContent);s.textContent='コピーしました。先にスクリプトを確認してください。';}catch{s.textContent='クリップボードを使用できません。手動でコピーしてください。';}});</script>
 </body></html>
