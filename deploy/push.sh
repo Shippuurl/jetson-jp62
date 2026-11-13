@@ -8,7 +8,7 @@ SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ECS="${ECS_PY:-/media/shippuu/A2Vec/toolchains/ecs.py}"
 REMOTE_DIR="/var/www/jetson-jp62"
 BASE="https://tool.kervein.club/jetson"
-FILES=(jetson-jp62.sh index.html README-刷QSPI.md)
+FILES=(jetson-jp62.sh index.html guide.html a2vec-logo.svg LICENSE README.md README-刷QSPI.md)
 
 [ -x /usr/bin/python3 ] || true
 [ -f "$ECS" ] || { echo "找不到 ecs.py: $ECS" >&2; exit 1; }
