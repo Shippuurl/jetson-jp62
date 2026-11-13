@@ -402,7 +402,10 @@ figcaption{margin-top:8px;font-size:12px;color:#626a72;line-height:1.6}
 footer{padding:0;margin:12px 0 0;font-size:11px;color:#626a72;display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px}
 /* ---- 移动端：单栏堆叠 ---- */
 @media(min-width:921px){
-  .page{min-height:100vh}          /* 整页滚动，不做栏内滚动：中线处不会多出滚动条 */
+  .page{min-height:100vh}
+  .pane.left{align-self:start;padding-top:14px;padding-bottom:10px}
+  .pane.left{position:sticky;top:var(--sticky-top,0px)}
+  .pane.left section{padding-top:12px;padding-bottom:12px}
 }
 @media(max-width:920px){
   .page{grid-template-columns:1fr}
@@ -462,11 +465,11 @@ bash jetson-jp62.sh</code></pre></div><div id="copy-status" class="status" role=
       </select>
     </div>
   </div>
+  <div class="panel" id="panel-recovery">
   <h2 id="prep">{prep_h2}</h2>
   <ol class="checklist">{items}</ol>
   <figure><img src="images/jetson-board.jpg" alt="{fig1alt}" width="1100" height="741"><figcaption>{fig1}</figcaption></figure>
 
-  <div class="panel" id="panel-recovery">
   <h3 id="recovery">{rec_h}</h3>
   <p class="muted" style="font-size:13.5px">{rec_intro}</p>
   <div class="method"><p class="method-t"><b>A</b> {rec_a_t}</p><ol class="steps">{rec_a}</ol></div>
@@ -480,30 +483,36 @@ bash jetson-jp62.sh</code></pre></div><div id="copy-status" class="status" role=
   </div>
   <p class="caution" style="margin-top:20px">{rec_verify}</p>
   <p class="sources"><span class="meta">{rec_src}</span>{rec_links}</p>
-  </div>
-
-  <div class="panel" id="panel-uart" hidden>
-  <h3>{uart_h}</h3>
-  <p class="muted" style="font-size:13.5px">{uart_intro}</p>
-  <div class="method"><p class="method-t"><b>1</b> {uart_hw_t}</p><ul class="steps">{uart_hw}</ul></div>
-  <div class="method"><p class="method-t"><b>2</b> {uart_wire_t}</p><ul class="steps">{uart_wire}</ul></div>
-  <p class="note" style="margin-top:4px">{uart_par}</p>
-  <div class="method" style="margin-top:14px"><p class="method-t"><b>3</b> {uart_run_t}</p><ol class="steps">{uart_run}</ol></div>
-  <p class="note">{uart_note}</p>
-  <div class="method" style="margin-top:14px"><p class="method-t"><b>4</b> {uart_lv_t}</p><ul class="steps">{uart_lv}</ul></div>
-  <p class="sources"><span class="meta">{uart_src}</span>{uart_links}</p>
-  </div>
-
   <h3>{grp_result}</h3>
   <div class="gallery">
     <figure><img src="images/jetpack-version.png" alt="{fig6alt}" width="792" height="426"><figcaption>{fig6}</figcaption></figure>
     <figure><img src="images/flash-done.jpg" alt="{fig5alt}" width="1100" height="957"><figcaption>{fig5}</figcaption></figure>
   </div>
   <p class="muted" style="font-size:12.5px;margin-top:18px">{prep_close}</p>
+  </div>
+
+  <div class="panel" id="panel-uart" hidden>
+  <h3>{uart_h}</h3>
+  <div class="command"><div class="command-head">Windows · PowerShell</div><pre>irm https://raw.githubusercontent.com/Shippuurl/jetson-jp62/main/uart-logs.ps1 | iex</pre></div>
+  <div class="command"><div class="command-head">Linux / macOS · Bash</div><pre>bash &lt;(curl -fsSL https://raw.githubusercontent.com/Shippuurl/jetson-jp62/main/uart-logs.sh)</pre></div>
+  <p><a href="UART-LOGS.md">UART logs · ZIP · GitHub rules ↗</a></p>
+  <p class="muted" style="font-size:13.5px">{uart_intro}</p>
+  <div class="method"><p class="method-t"><b>1</b> {uart_hw_t}</p><ul class="steps">{uart_hw}</ul></div>
+  <div class="method"><p class="method-t"><b>2</b> {uart_wire_t}</p><ul class="steps">{uart_wire}</ul></div>
+  <p class="note" style="margin-top:4px">{uart_par}</p>
+  <figure><img src="images/uart-wiring.svg" alt="{uart_wire_t}" width="900" height="440"><figcaption>{uart_wire_t} · 3.3 V TTL</figcaption></figure>
+  <div class="method" style="margin-top:14px"><p class="method-t"><b>3</b> {uart_run_t}</p><ol class="steps">{uart_run}</ol></div>
+  <p class="note">{uart_note}</p>
+  <figure><img src="images/uart-capture.svg" alt="{uart_run_t}" width="900" height="360"><figcaption>{uart_run_t} · 115200 8N1</figcaption></figure>
+  <div class="method" style="margin-top:14px"><p class="method-t"><b>4</b> {uart_lv_t}</p><ul class="steps">{uart_lv}</ul></div>
+  <p class="sources"><span class="meta">{uart_src}</span>{uart_links}</p>
+  </div>
+
+
 </section>
 
 </div>
-<script>const ts=document.getElementById('tut');if(ts){const show=v=>{document.getElementById('panel-recovery').hidden=v!=='recovery';document.getElementById('panel-uart').hidden=v!=='uart';};ts.addEventListener('change',()=>show(ts.value));show(ts.value);}
+<script>const left=document.querySelector('.pane.left');const fit=()=>left.style.setProperty('--sticky-top',Math.min(0,window.innerHeight-left.getBoundingClientRect().height)+'px');new ResizeObserver(fit).observe(left);window.addEventListener('resize',fit);fit();const ts=document.getElementById('tut');if(ts){const show=v=>{document.getElementById('panel-recovery').hidden=v!=='recovery';document.getElementById('panel-uart').hidden=v!=='uart';};ts.addEventListener('change',()=>show(ts.value));show(ts.value);}
 const b=document.getElementById('copy');b.hidden=false;b.addEventListener('click',async()=>{const s=document.getElementById('copy-status');try{await navigator.clipboard.writeText(document.getElementById('command').textContent);s.textContent={copied};}catch{s.textContent={copyfail};}});</script>
 </body></html>
 """
