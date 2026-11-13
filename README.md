@@ -1,182 +1,107 @@
-# jetson-jp62.sh
+# A2VEC · Jetson 维护工具
 
-> 一条命令在 Jetson Orin 上刷 JetPack 6.2 的 QSPI（UEFI/bootloader），不装 SDK Manager、不点图形界面。
+`jetson-jp62.sh` 是面向 Jetson Orin 的 Bash 维护辅助脚本，用于环境检查、资源准备及调用 NVIDIA 刷写工具。A2VEC 为项目展示品牌；本项目不是 NVIDIA 官方产品。
 
-```bash
-bash <(curl -fsSL https://tool.kervein.club/jetson/jetson-jp62.sh)
-# 或
-curl -fsSL https://tool.kervein.club/jetson/jetson-jp62.sh | bash -s -- --mode detect
-```
+[工具首页](https://tool.kervein.club/jetson/) · [操作手册](https://tool.kervein.club/jetson/guide.html) · [MIT License](LICENSE)
 
-详细说明（支持矩阵 / 参数 / 免责声明 / FAQ）：**<https://tool.kervein.club/jetson/>**
-GitHub 镜像：`https://raw.githubusercontent.com/Shippuurl/jetson-jp62/main/jetson-jp62.sh`
-
-## 它做什么
-
-| 模式 | 说明 |
-|---|---|
-| `--mode detect` | 只体检：自动识别板子 + 10 项刷前检查，不改任何东西 |
-| `--mode qspi` | 只刷 QSPI（走官方 `flash.sh -c flash_t234_qspi.xml`），NVMe/系统盘数据不动 |
-| `--mode nvme` | 整机刷到 NVMe（官方 initrd flash，会格式化目标盘） |
-| `--mode prep` | 只下载 + 解压 BSP（离线缓存、多台设备复用） |
-| `--mode target` | 在 Jetson 本机执行，apt 把计算栈升到 6.2（不重刷） |
-| `--matrix` | 打印 QSPI / 刷机支持矩阵（上游实时探测） |
-| `--self-update` | 更新脚本自身（先 `bash -n` 再比 sha256，旧版留 .bak） |
-
-特性一览：
-
-- **版本不写死**：`--l4t auto` 向上游探测「存在 BSP 包的最高版本」，不给你下不下来的号
-- **校验不写死**：首次下载后记 TOFU 清单（`~/.config/jetson-jp62/manifest.sha256`），也可 `--manifest-url` 挂统一清单
-- **自动识别板子**：板内读 TNSPEC，主机端看 recovery PID 与 USB 链路速率，据此挑板型配置
-- **刷前 10 项体检**：架构 / 依赖 / 磁盘冗余 / 文件系统类型 / BSP 版本 / 板型 conf / rootfs / recovery / USB 速率 / sudo
-- **recovery 手动刷新**：没检测到就停下来让你按回车反复刷新，不自动轮询、不超时；`s` 跳过、`q` 退出
-- **下载源可换**：`--mirror` 支持 http/https/`file://`/本地目录，自定义源优先、官方兜底
-- **磁盘冗余检测**：按模式算峰值，校验 ext4/xfs/btrfs，不够时列其它分区，`--auto-dir` 自动换盘
-- **跑完提示打开说明页**：有图形环境直接开浏览器，headless 只打印路径
-
-## 支持矩阵（运行时向上游探测，实测 2026-11-13）
-
-| suite | L4T（apt） | BSP 可下载 | QSPI capsule 包 | 只刷 QSPI |
-|---|---|---|---|---|
-| r35.4 | 35.4.1 | 35.4.1 | 无 | 是 |
-| r35.5 | 35.5.0 | 35.5.0 | 有 36.3.0 | 是 |
-| r35.6 | 35.6.5 | 35.6.5 | 有 36.4.3 | 是 |
-| r36.2 | 36.2.0 | 36.2.0 | 无 | 是 |
-| r36.3 | 36.3.0 | 36.3.0 | 有 36.3.0 | 是 |
-| r36.4 | 36.4.7 | 36.4.4 | 有 36.4.7 | 是 |
-| r36.5 | 36.5.2 | 36.5.0 | 有 36.5.2 | 是 |
-
-数据源：`repo.download.nvidia.com/jetson/t234/dists/<suite>/Packages.gz` + 官方下载目录 HEAD 探测。
-
-JetPack → Jetson Linux：`6.0→36.3.0`、`6.1→36.4.0`、`6.2→36.4.3`、`6.2.1→36.4.4`、`6.2.2→36.5.0`、`6.2.3→36.5.2`（只走 apt/OTA）。
-映射到没有 BSP 包的版本时，脚本自动退到不高于它的最近可刷版本，并明确提示。
-
-`--matrix` 末尾会列出**所有真的能下载到 BSP 的版本**（当前：`36.5.0 36.4.4 36.4.3 36.4.0 36.3.0 36.2.0 35.6.5 … 35.4.1`）。
-交互运行且不给 `--l4t` 时，脚本把这串列成菜单让你选，回车才等于最新。
-**apt 版本 ≠ 能刷的版本**：r36.4 的 apt 已 36.4.7，但 BSP 只到 36.4.4；那些 patch 只走 apt/OTA。
-
-## 快速开始
+## 获取与运行
 
 ```bash
-# 1) 板子进 recovery：FC REC 与 GND 短接后上电，USB-C 接主机
-lsusb | grep 0955      # 应出现 0955:7523 NVIDIA Corp. APX
-
-# 2) 体检
-bash jetson-jp62.sh --mode detect
-
-# 3) 只刷 QSPI（保留系统数据）
-bash jetson-jp62.sh --mode qspi
-
-# 4) 板内自检
-nvbootctrl dump-slots-info   # Current version 应为 36.4.x
-nvpmodel -q                  # 期望 MAXN_SUPER
+curl -fL --proto '=https' -o jetson-jp62.sh https://tool.kervein.club/jetson/jetson-jp62.sh
+# 审阅下载的脚本后执行
+bash jetson-jp62.sh --help
+bash jetson-jp62.sh
 ```
 
-## 硬盘预算（冷启动最坏情况，实测口径）
+交互菜单提供检查、诊断、资源准备和刷写入口。脚本需要时会使用 sudo；具体主机要求以对应 Jetson Linux 版本的 NVIDIA 文档为准。请勿将某一版本的主机要求推广至全部版本。
 
-| 模式 | 峰值占用 | 说明 |
-|---|---|---|
-| `--mode detect` | 1.4 GB | 只体检，不下载 |
-| `--mode prep` | 2.8 GB | 只有 BSP |
-| `--mode prep --with-rootfs` | 8.5 GB | BSP + rootfs + apply_binaries |
-| `--mode qspi` | 9.3 GB | 含 rootfs（拼 recovery ramdisk）+ 临时镜像 |
-| `--mode nvme` | 12.4 GB | 额外生成 system.img |
-| `--mode target` | 系统盘 ≥ 9 GB | 板内 apt 升级 |
+## 模式与写入范围
 
-分项：BSP 下载 715 MiB / 解压 ~790 MB；sample rootfs 1.70 GiB / 解压 ~3.1 GB；apply_binaries +~0.9 GB；
-刷机临时镜像 QSPI ~0.8 GB、NVMe ~3.9 GB；日志与余量 1.4 GB。已缓存的包自动抵扣。
+| 模式 | 行为 |
+| --- | --- |
+| `--mode detect` | 检查环境和设备状态，不执行固件刷写；可能访问上游并更新本地缓存 |
+| `--mode prep` | 下载并解压 BSP；`--with-rootfs` 准备 sample rootfs |
+| `--mode qspi` | 调用官方 `flash.sh` 写入 QSPI 启动固件，不以重写系统盘为目标 |
+| `--mode nvme` | 调用官方 initrd flash，重写目标存储并清除数据 |
+| `--mode target` | 在 Jetson 本机通过 apt 更新软件包，不等同于更新 QSPI |
 
-下载与解压分盘（`--cache-dir`）：qspi 需 2.4 GB + 5.8 GB；nvme 需 2.4 GB + 8.9 GB。
+QSPI 和 NVMe 模式均需要准备 rootfs。即使不计划重写系统盘，也应提前备份数据和厂商配置。错误固件、错误板型或供电中断可能导致无法启动。
 
-> ⚠️ **QSPI 也要 rootfs**：36.x 的 `flash.sh` 即使只写 QSPI 分区，也会从 `rootfs/` 拼 recovery ramdisk。
-> 所以 `--mode qspi` 的预算是 9.3 GB，不是老文档里的 2 GB。
+## 操作顺序
 
-## 参数
-
-```
---mode detect|qspi|nvme|prep|target   执行模式（不给则进交互菜单）
---l4t <版本|latest>                   目标 L4T；交互时不指定会弹菜单让你选，非交互才回落 auto
---jetpack / --jp <版本>              按 JetPack 号自动映射 L4T（6.2→36.4.3、6.2.2→36.5.0…）
---jp-list                            打印 JetPack → L4T 映射表
---matrix / --refresh                  打印支持矩阵 / 强制重取上游缓存
---board <名字> / --list-boards        强制板型 / 列出 BSP 内全部板型
---dir / --cache-dir / --auto-dir      工作目录 / 下载包目录 / 自动选盘
---mirror <源,...>                     下载源（自定义优先）
---offline --src <目录>                完全离线
---manifest-url <url>                  外部 sha256 清单
---self-update --update-from <url>     更新脚本自身
---config <文件>                       配置文件（默认 ~/.config/jetson-jp62/config）
---doc / --doc-url / --no-doc          打开说明页 / 指定在线文档 / 不提示
---diag                               诊断（板内日志 / recovery 的 EEPROM+BCT）
---uart / --uart-log / --uart-list    串口抓取分析 / 离线分析 / 列设备
---skip-recovery-check                 不检查 recovery 强行刷
---no-deps / --yes / --accept / --dry-run
-```
-
-配置文件示例 `~/.config/jetson-jp62/config`：
-
-```
-JETSON_DIR=/data/jetson
-JETSON_CACHE=/data/jetson/cache
-JETSON_MIRROR=file:///mnt/nas/l4t
-JETSON_BOARD=jetson-orin-nano-devkit-super
-```
-
-## 诊断能力（`--mode diag`）
-
-| 板子状态 | 能看到 | 看不到 |
-|---|---|---|
-| 已启动 | L4T/内核版本、UEFI(QSPI) 版本、A/B 槽位、功耗模式、cmdline、dmesg 错误、journalctl -b -p err、失败服务、外设探测失败 | UEFI 自检、DDR 训练、BootROM/MB1/MB2、电源时序 |
-| recovery | 芯片信息、EEPROM(BoardID/SKU/FAB/Rev/MAC)、BCT 与 custinfo | 内核/UEFI 运行时日志、系统盘内容 |
-
-底层开机报错只能看串口：40-pin Pin 6=GND、Pin 8=UART1_TX、Pin 10=UART1_RX，115200 8N1，设备 `ttyTCU0`。
-
-## 串口诊断（`--mode uart`）
-
-UEFI / DDR / BPMP / 电源层日志只有串口看得到（`ttyTCU0`，115200 8N1）。
-DevKit 40-pin：Pin 6=GND、Pin 8=UART1_TX(接 USB-TTL 的 RX)、Pin 10=UART1_RX(接 TX)。
+1. 记录模组、载板型号、现有 L4T / UEFI 版本与系统存储位置。第三方载板须先取得厂商适配资料。
+2. 依据对应版本的 NVIDIA 文档确认升级路径，完成数据备份并准备 Recovery 恢复条件。
+3. 检查主机空间、依赖及 USB 连接。Recovery 引脚和操作方式以具体载板手册为准。
+4. 显式指定已核对的 L4T 版本及板型，阅读预检查结果与即将执行的命令后再确认刷写。
+5. 完成后检查启动日志、实际版本、存储及外设工作状态；命令退出成功不替代功能验收。
 
 ```bash
-bash jetson-jp62.sh --mode uart --uart-seconds 60        # 自动找口、抓取并分析
-bash jetson-jp62.sh --mode uart --uart /dev/ttyUSB0      # 手动指定
-bash jetson-jp62.sh --mode uart --uart-log boot.log      # 离线分析已有日志
-bash jetson-jp62.sh --uart-list                          # 列串口（会标注 L4T gadget，别选它）
+# 环境检查（示例版本，不构成适配建议）
+bash jetson-jp62.sh --mode detect --l4t 36.4.3
+
+# 准备资源
+bash jetson-jp62.sh --mode prep --l4t 36.4.3 --with-rootfs
+
+# 已确认适配后，刷写 QSPI
+bash jetson-jp62.sh --mode qspi --l4t 36.4.3
 ```
 
-分级结论：userspace/kernel → 走完；UEFI → 启动项/分区/rootfs；MB2 → UEFI 分区或 BCT；MB1 → DDR/BCT；
-只到 BootROM → 硬件/供电/DDR；什么都没抓到 → 波特率、TX/RX 接反、没共地。
+## 版本与板型
 
-## 已知坑
+`--l4t <版本>` 指定 L4T；`--jetpack <版本>` 按脚本内映射选择 L4T。交互刷写未指定版本时显示版本菜单；非交互运行可能回落到自动探测，因此自动化任务应显式固定版本。
 
-- **Super 不在镜像里**：Orin Nano 的 MAXN_SUPER 来自 36.4 UEFI/QSPI，插系统盘拿不到，必须刷 QSPI
-- **apt 升 6.2 没有 Super**：NVIDIA 文档明确 "will not enable Super Mode"
-- **计算栈断代**：6.0 → 6.2 是 TensorRT 8.x→10.x、cuDNN 8.x→9.x，自编 engine 要重建
-- **厂商底板别用 devkit 配置**：pinmux / 串口 / CSI / 供电不同，先备份 /boot 与自定义 dtb
-- **NTFS/exFAT 上准备 rootfs 会坏**（丢权限与软链），脚本会拦
-- **刷写中途断电＝变砖**，要回 recovery 重刷
+`--matrix` 读取上游软件包和下载目录信息，`--refresh` 刷新缓存。资源存在仅代表可获取，不能作为当前硬件兼容或可安全刷写的证明。apt 软件包版本与可下载 BSP 版本可能不同；映射目标缺少 BSP 时，脚本可能选择不高于目标的其他版本，请核对输出。
 
-## 免责声明
+`--board <配置名>` 指定板型，`--list-boards` 列出本地 BSP 配置。USB Recovery 标识不足以确定载板适配关系，不能替代设备型号及厂商配置核验。
 
-刷机是破坏性操作：整机刷会格式化目标存储，错误固件可能导致设备无法启动。
+## 工作目录与磁盘
 
-本脚本为个人整理的辅助工具，**按现状（AS IS）提供**，不做任何明示或默示担保；因使用本脚本导致的
-数据丢失、设备损坏、业务中断、合规问题，作者不承担责任。
+- `--dir <路径>`：工作目录，存放解压树与日志。
+- `--cache-dir <路径>`：下载包缓存目录；默认与工作目录相同。
+- `--auto-dir`：按脚本规则选择空间较充足的分区；执行前核对输出路径。
+- `--mirror <源>`：指定下载源，支持 HTTP、HTTPS、file URL 或本地目录；建议使用可信 HTTPS 来源。
+- `--offline --src <目录>`：使用本地资源包；主机依赖仍需提前准备。
 
-脚本**不包含、不再分发**任何 NVIDIA 固件或闭源二进制，仅从 NVIDIA 官方地址下载并调用其官方工具
-（`flash.sh` / `l4t_initrd_flash.sh`），下载与使用受 NVIDIA 软件许可协议（EULA）约束。
-`Jetson`、`JetPack`、`NVIDIA` 是 NVIDIA Corporation 的商标，本项目与其无隶属或背书关系。
+空间需求随版本、rootfs、解压树及缓存复用情况变化，以运行时预检查为准。仅下载包大小不足以代表峰值空间需求。删除现有刷机树前应确认其中没有厂商补丁、备份或其他任务需要的文件。
 
-首次运行需输入「同意」确认；`--accept` 仅用于自动化场景（等同你已同意上述条款）。
+## 校验与自动化
 
-## 许可
+默认 TOFU 清单在首次获取资源后记录摘要，后续用于检查一致性；它不能独立证明首次获取文件的真实性。可使用 `--manifest-url <URL>` 指定来自可信渠道的 SHA-256 清单。
 
-脚本与文档：MIT（见 [LICENSE](LICENSE)）。NVIDIA 固件不随本仓库分发。
+首次交互运行需确认使用声明，当前记录位于 `~/.config/jetson-jp62/agreed-v2`（设置 `XDG_CONFIG_HOME` 时使用该目录）。`--accept` 明确接受声明；`--yes` 还会自动确认后续操作，请仅在已审阅命令和参数的自动化流程中使用。
 
-## 参考
+`--dry-run` 用于预检查和查看计划，不替代实际硬件验证。`--no-deps` 禁止自动安装主机依赖。设置 `NO_COLOR=1` 可禁用 ANSI 颜色；重定向输出自动禁用颜色。
 
-- JetPack 安装/升级（含 apt 与 Super 说明）：<https://docs.nvidia.com/jetson/jetpack/install-setup/index.html>
-- SDK Manager（官方图形工具，只能整机刷）：<https://developer.nvidia.com/sdk-manager>
-- Orin Nano DevKit 固件更新路径：<https://docs.nvidia.com/jetson/orin-nano-devkit/user-guide/latest/update_firmware.html>
-- L4T 刷写文档（flash.sh / l4t_initrd_flash.sh）：<https://docs.nvidia.com/jetson/archives/r36.4.3/DeveloperGuide/SD/FlashingSupport.html>
-- QSPI-only 量产参考：<https://github.com/osrbot/mfi-qspi-forge>
-- 先备份载板 EEPROM 再只刷 QSPI：<https://github.com/Hi5808/turing-pi-2.5-jetson-eeprom-fix>
+## 诊断与日志
+
+```bash
+bash jetson-jp62.sh --diag
+bash jetson-jp62.sh --uart-list
+bash jetson-jp62.sh --uart /dev/ttyUSB0 --uart-seconds 30
+bash jetson-jp62.sh --uart-log uart-existing.log
+```
+
+诊断可能读取设备信息、生成文件或与 Recovery 设备通信，不应理解为完全没有本地副作用。串口默认波特率为 115200；电平、接线和引脚定义以设备资料为准。日志阶段匹配只提供排查线索，未出现某阶段不等于该阶段故障。
+
+常见输出包括工作目录中的 `flash-qspi.log`、`diag-<时间>/` 和 `uart-<时间>.log`。分享日志前检查设备标识、网络地址及其他敏感信息。
+
+`--doc` 打开操作手册；`--no-doc` 关闭完成后的文档提示。完整参数以 `--help` 为准。
+
+## 许可与责任
+
+脚本与文档依据 MIT License 提供，Copyright (c) 2026 Shippuurl。品牌展示不改变原版权归属。再分发须保留版权与许可声明，全文见 [LICENSE](LICENSE)。
+
+软件按现状（AS IS）提供。在适用法律允许的最大范围内不提供明示或默示担保；作者及版权持有人的责任限制以 MIT 原文为准。本声明不排除或限制适用法律不得排除或限制的责任。
+
+公开发布的脚本不包含 NVIDIA 固件、引导程序或专有 SDK。运行时取得的第三方组件受其随附许可约束；对本工具声明的确认不替代第三方许可要求。使用者应确认设备操作权限、适配条件和备份恢复方案。
+
+NVIDIA、Jetson 和 JetPack 为 NVIDIA Corporation 的商标。本项目与 NVIDIA 无隶属或背书关系；MIT 不授予第三方商标或 NVIDIA 软件的使用权。
+
+## 官方参考
+
+- [Jetson Linux R36.4.3 · Flashing Support](https://docs.nvidia.com/jetson/archives/r36.4.3/DeveloperGuide/SD/FlashingSupport.html)：刷写工具及存储配置。其他版本应查阅对应版本文档。
+- [Jetson Linux R36.4.3 · Software Packages and the Update Mechanism](https://docs.nvidia.com/jetson/archives/r36.4.3/DeveloperGuide/SD/SoftwarePackagesAndTheUpdateMechanism.html)：软件包与更新机制。
+- [JetPack · Install & Setup](https://docs.nvidia.com/jetson/jetpack/install-setup/index.html)：JetPack 安装与升级说明，内容可能随当前版本更新。
+- [Orin Nano Developer Kit · Firmware Update](https://docs.nvidia.com/jetson/orin-nano-devkit/user-guide/latest/update_firmware.html)：官方开发套件固件更新路径，不应直接套用于第三方载板。
+
+原始手工命令与排查记录保留在仓库的 `docs/刷QSPI.md`（本地文件 `README-刷QSPI.md`），仅供历史参考，须按实际硬件及版本重新核验。
