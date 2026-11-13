@@ -20,6 +20,8 @@ BLOCK = f"""
         autoindex on;
         charset utf-8;
         include /etc/nginx/mime.types;
+        # 扩展名未知的（LICENSE / README / .nojekyll）按纯文本返回，避免浏览器当附件下载
+        default_type text/plain;
         add_header Content-Disposition "inline" always;
         add_header Cache-Control "no-cache" always;
         include /etc/nginx/snippets/a2vec-security.conf;
