@@ -143,7 +143,8 @@
 Bus 003 Device 012: ID 0955:7523 NVIDIA Corp. APX</pre>
 
     <h3>2. 刷 QSPI</h3>
-    <pre class="block">$ bash jetson-jp62.sh --mode qspi</pre>
+    <pre class="block">$ bash jetson-jp62.sh --mode qspi              # 会先让你选版本
+$ bash jetson-jp62.sh --mode qspi --jp 6.2     # 或直接按 JetPack 号（= L4T 36.4.3）</pre>
     <p>脚本会：识别板型 → 10 项体检 → 下载并校验 BSP → 调 NVIDIA 官方
       <code>flash.sh -c flash_t234_qspi.xml</code> 只刷 QSPI 分区 → 解析刷机日志里的 EEPROM 板型再核对一次。</p>
 
@@ -185,6 +186,19 @@ $ head -3 /etc/nv_boot_control.conf   # TNSPEC 应带 -super</pre>
       <li>官方 BSP 下载目录 HEAD 探测 → 这个版本到底有没有可直接刷机的 BSP tarball</li>
     </ul>
     <pre class="block">$ bash jetson-jp62.sh --matrix --refresh</pre>
+    <h3>JetPack → Jetson Linux 映射（<code>--jetpack 6.2</code> 就走这张表）</h3>
+    <table>
+      <tr><th>JetPack</th><th>Jetson Linux</th><th>备注</th></tr>
+      <tr><td>6.0</td><td>36.3.0</td><td>首个正式版</td></tr>
+      <tr><td>6.1</td><td>36.4.0</td><td></td></tr>
+      <tr><td>6.2</td><td>36.4.3</td><td>常说的「6.2 原版」</td></tr>
+      <tr><td>6.2.1</td><td>36.4.4</td><td>有 SD 卡镜像</td></tr>
+      <tr><td>6.2.2</td><td>36.5.0</td><td></td></tr>
+      <tr><td>6.2.3</td><td>36.5.2</td><td class="no">只走 apt/OTA，官方无 BSP → 自动退到 36.5.0</td></tr>
+      <tr><td>5.1.3 / 5.1.1</td><td>35.4.1 / 35.3.1</td><td></td></tr>
+    </table>
+    <p class="hint">映射到一个"没有 BSP 包"的 L4T 时，脚本不会硬刷，会自动退到不高于它的最近可刷版本并明确告诉你。</p>
+
     <p>矩阵末尾会直接列出<b>所有真的能下载到 BSP 的版本</b>，例如当前是：
       <code>36.5.0 36.4.4 36.4.3 36.4.0 36.3.0 36.2.0 35.6.5 … 35.4.1</code>。
       交互运行时不给 <code>--l4t</code>，脚本会把这串列成菜单让你挑（回车才等于最新，不会偷偷选）。</p>
@@ -296,6 +310,8 @@ $ bash jetson-jp62.sh --mode qspi --dir /data/jetson --cache-dir /data/jetson/ca
       <tr><th>参数</th><th>说明</th></tr>
       <tr><td><code>--mode detect|qspi|nvme|prep|target</code></td><td>执行模式；不给则进交互菜单</td></tr>
       <tr><td><code>--l4t &lt;版本|latest&gt;</code></td><td>目标 L4T。<b>不给就会让你选</b>（列出上游确实存在 BSP 的版本）；非交互环境才回落 <code>auto</code></td></tr>
+      <tr><td><code>--jetpack</code> / <code>--jp &lt;版本&gt;</code></td><td>按 JetPack 号自动映射 L4T：<code>--jp 6.2</code> → 36.4.3，<code>6.2.2</code> → 36.5.0</td></tr>
+      <tr><td><code>--jp-list</code></td><td>打印 JetPack → L4T 映射表 + 当前所有可刷版本</td></tr>
       <tr><td><code>--matrix</code> / <code>--refresh</code></td><td>打印支持矩阵 / 强制重取上游缓存</td></tr>
       <tr><td><code>--board &lt;名字&gt;</code> / <code>--list-boards</code></td><td>强制板型配置 / 列出 BSP 里全部板型</td></tr>
       <tr><td><code>--dir</code> / <code>--cache-dir</code> / <code>--auto-dir</code></td><td>工作目录 / 下载包目录（别名 <code>--resource</code>）/ 自动选余量最大的盘</td></tr>
