@@ -68,10 +68,10 @@ SKIP_DEPS=0
 ACCEPTED=0
 RECOVERY_SKIP=0        # 1 = 不检查 recovery 直接刷
 AGREE_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/jetson-jp62"
-AGREE_STAMP="$AGREE_DIR/agreed-v1"
+AGREE_STAMP="$AGREE_DIR/agreed-v2"
 
-C_R=$'\033[31m'; C_G=$'\033[32m'; C_Y=$'\033[33m'; C_B=$'\033[36m'; C_D=$'\033[2m'; C_N=$'\033[0m'
-[ -t 1 ] || { C_R=""; C_G=""; C_Y=""; C_B=""; C_D=""; C_N=""; }
+C_R=$'\033[31m'; C_G=""; C_Y=$'\033[33m'; C_B=""; C_D=$'\033[2m'; C_N=$'\033[0m'
+{ [ -t 1 ] && [ -z "${NO_COLOR+x}" ] && [ "${TERM:-}" != dumb ]; } || { C_R=""; C_G=""; C_Y=""; C_B=""; C_D=""; C_N=""; }
 
 log()  { printf '%s[信息]%s %s\n' "$C_B" "$C_N" "$*"; }
 ok()   { printf '%s[完成]%s %s\n' "$C_G" "$C_N" "$*"; }
@@ -86,50 +86,49 @@ chk_info() { printf '  %s[ - ]%s %s\n' "$C_D" "$C_N" "$*"; }
 
 banner() {
 cat <<EOF
-${C_B}
-  ╭──────────────────────────────────────────────────────────────╮
-  │   Jetson JetPack 6.2 / L4T ${L4T_VERSION}   一键安装（命令行版）      │
-  │   qspi=刷 QSPI  nvme=整机刷  prep=只下载  target=板内升级  detect=体检 │
-  ╰──────────────────────────────────────────────────────────────╯
-${C_N}
+
+  A 2 V E C   /   FIELD TOOLS
+  ------------------------------------------------------------
+  Jetson 固件维护  ·  jetson-jp62.sh
+  L4T: ${L4T_VERSION:-待选择}  |  模式: ${MODE:-交互菜单}
+  独立维护工具 · MIT License · 非 NVIDIA 官方产品
+
 EOF
 }
 
 # ============================================================ 协议与安全声明
 agreement_text() {
 cat <<EOF
+使用声明 / 第 2 版
+--------------------------------------------------------------
 
-${C_Y}┌────────────────────────────────────────────────────────────────────┐
-│                使用协议与安全声明（首次运行需同意）                │
-└────────────────────────────────────────────────────────────────────┘${C_N}
+1. 工具与许可
+   A2VEC 独立维护工具，脚本与文档依据 MIT License 提供。
+   Copyright (c) 2026 Shippuurl。再分发须保留版权与许可声明。
+   许可原文：https://github.com/Shippuurl/jetson-jp62/blob/main/LICENSE
+   本工具与 NVIDIA 无隶属或背书关系。NVIDIA、Jetson、JetPack
+   为 NVIDIA Corporation 的商标。
 
-一、性质
-  本脚本是个人整理的辅助工具，按《AS IS》现状提供，仅用于在本机下载 NVIDIA
-  公开发布的 JetPack 6.2 / Jetson Linux 36.4.3 组件并调用 NVIDIA 官方
-  flash.sh / l4t_initrd_flash.sh 完成刷写。脚本不包含、不分发任何 NVIDIA
-  固件或闭源二进制；所有固件版权归 NVIDIA Corporation 所有，其下载与使用受
-  NVIDIA 软件许可协议（EULA）及 JetPack 条款约束，下载即表示你接受该等条款。
+2. 第三方组件
+   公开发布的脚本不包含 NVIDIA 固件或专有 SDK；运行时下载的
+   组件受各自随附许可约束。请在下载、使用或再分发前核对许可。
+   对本声明的确认不替代第三方许可要求。
 
-二、风险（刷机是不可逆的破坏性操作）
-  1. 整机刷机（nvme 模式）会格式化目标存储，板上数据、系统与配置全部丢失；
-     只刷 QSPI 虽不动系统盘，但错误固件同样可能导致无法开机。
-  2. 刷写过程中断电、拔线、USB 接触不良，可能使设备无法启动，需用 recovery
-     模式重刷才能恢复。
-  3. 在非 NVIDIA 官方底板（第三方载板/机器人整机）上使用官方板型配置，
-     可能导致 pinmux、串口、CSI 相机、供电策略异常。
-  4. JetPack 6.0/6.1 → 6.2 会带来 TensorRT 8.x→10.x、cuDNN 8.x→9.x 的
-     大版本跳变，自编译的 engine、插件与预编译加速库需重新构建。
-  5. 以上风险由使用者自行判断与承担。作者不对数据丢失、设备损坏、业务中断、
-     合规问题承担任何责任。
+3. 操作风险
+   NVMe 模式会重写目标存储并清除数据。QSPI 模式写入启动固件，
+   不以重写系统盘为目标，但错误固件或断电可能导致无法启动。
+   请确认设备操作权限、数据备份、稳定供电与恢复路径；第三方
+   载板须使用厂商适配配置。软件包升级可能要求重建应用和模型。
+   下载可用、版本探测或预检查通过均不构成兼容性或成功保证。
 
-三、使用限制
-  1. 不得将本脚本用于未经授权的设备、他人资产或任何违法用途。
-  2. 二次分发请保留本声明与出处，并自行确保不违反 NVIDIA 许可条款。
-  3. "Jetson"、"JetPack"、"NVIDIA" 是 NVIDIA Corporation 的商标，本脚本与
-     NVIDIA 无隶属或背书关系。
+4. 担保与责任
+   软件按现状（AS IS）提供。在适用法律允许的最大范围内不提供
+   明示或默示担保；作者及版权持有人的责任限制以 MIT 原文为准。
+   本声明不排除或限制适用法律不得排除或限制的责任。
 
-四、你的确认
-  继续即表示你已阅读并同意以上条款，且对目标设备拥有处置权限。
+参考：NVIDIA Jetson Linux R36.4.3 / Flashing Support
+https://docs.nvidia.com/jetson/archives/r36.4.3/DeveloperGuide/SD/FlashingSupport.html
+其他版本请查阅对应版本文档。
 
 EOF
 }
@@ -482,7 +481,20 @@ check_requirements() {
 # ================================================================ 参数/工具
 usage() {
 cat <<EOF
-用法: bash $(basename "$0") [选项]
+A2VEC / Jetson 固件维护工具
+MIT License · 非 NVIDIA 官方产品
+
+用法: bash jetson-jp62.sh [选项]
+
+常用操作:
+  bash jetson-jp62.sh                        交互菜单
+  bash jetson-jp62.sh --mode detect           环境检查
+  bash jetson-jp62.sh --mode qspi --l4t 36.4.3 指定版本刷 QSPI
+
+风险: nvme 将重写目标存储；qspi 将写入启动固件。操作前备份并核对板型。
+版本示例不构成兼容性建议；下载地址存在不代表可用于当前硬件。
+
+参数:
 
   --mode <detect|qspi|nvme|prep|target>  执行模式（不给则进交互菜单）
   --board <名字>                  强制板型配置（默认自动识别，--list-boards 看全部）
@@ -491,10 +503,10 @@ cat <<EOF
   --offline --src <目录>          完全离线：从本地目录取 tbz2
   --with-rootfs                   prep 模式顺带下 sample rootfs
   --rootdev <设备>                flash.sh 的 rootdev（默认按启动盘推断）
-  --skip-recovery-check           不检查 recovery，强行进入刷写（失败自负）
+  --skip-recovery-check           跳过 recovery 检查（可能导致刷写失败）
   --no-deps                       不自动 apt 装主机依赖
   --accept                        跳过协议交互（等同已同意，自动化可用）
-  --yes                           不再逐次确认
+  --yes                           自动确认使用声明及后续操作（请先审阅声明）
   --cache-dir <路径>              下载包存放/复用目录（= --resource，默认跟 --dir 同一个盘）
   --auto-dir                      自动挑余量最大的分区当工作目录（含下载缓存）
   --config <文件>                 读取配置（默认 ~/.config/jetson-jp62/config，KEY=VALUE）
@@ -521,6 +533,7 @@ cat <<EOF
   -h, --help                      显示本帮助
 
 环境变量: JETSON_MIRROR  JETSON_DIR  JETSON_BOARD  L4T_VERSION
+          NO_COLOR（禁用 ANSI 颜色）；非终端输出自动禁用颜色
 示例:
   bash jetson-jp62.sh --mode detect
   bash jetson-jp62.sh --mode qspi --mirror http://192.168.1.10/l4t/r36.4.3/
@@ -1195,11 +1208,11 @@ uart_analyze() {
 
     printf '\n  %s结论：%s' "$C_B" "$C_N"
     case "$last" in
-        userspace|kernel) printf '%s启动链走完（到了 %s），串口层面没看到卡点%s\n' "$C_G" "$last" "$C_N" ;;
-        UEFI)             printf '%s卡在 UEFI 之后、内核之前：多半是启动项/分区/rootfs 找不到（UEFI 里 efibootmgr、extlinux.conf、PARTUUID）%s\n' "$C_Y" "$C_N" ;;
-        MB2)              printf '%s卡在 MB2：引导链在加载 UEFI 前失败（QSPI 里的 UEFI 分区或 BCT 有问题）%s\n' "$C_Y" "$C_N" ;;
-        MB1)              printf '%s卡在 MB1：内存/DDR 训练或 BCT 配置问题（先看是否有 DRAM 相关报错）%s\n' "$C_Y" "$C_N" ;;
-        BootROM)          printf '%s只到 BootROM：内存初始化就挂了，属于硬件/供电/DDR 层问题%s\n' "$C_R" "$C_N" ;;
+        userspace|kernel) printf '%s日志已出现 %s 阶段；仍需核对系统运行状态%s\n' "$C_G" "$last" "$C_N" ;;
+        UEFI)             printf '%s最后识别到 UEFI：建议检查启动项、系统分区与日志是否完整%s\n' "$C_Y" "$C_N" ;;
+        MB2)              printf '%s最后识别到 MB2：建议检查 UEFI 加载、BCT 及日志是否完整%s\n' "$C_Y" "$C_N" ;;
+        MB1)              printf '%s最后识别到 MB1：建议检查 DDR、BCT 及日志是否完整%s\n' "$C_Y" "$C_N" ;;
+        BootROM)          printf '%s仅识别到 BootROM 日志；请结合完整日志检查供电、内存初始化及采集完整性%s\n' "$C_R" "$C_N" ;;
         *)                printf '%s没抓到任何已知阶段，检查波特率(115200)、TX/RX 是否接反、GND 是否共地%s\n' "$C_R" "$C_N" ;;
     esac
 }
@@ -1250,17 +1263,18 @@ do_uart() {
 # ==================================================================== 菜单
 menu() {
     banner
-    echo "  请选择要做什么（输入序号）："
-    echo "    1) 体检：自动识别板子 + 检查能不能刷（不改任何东西）"
-    echo "    2) 只刷 QSPI（UEFI/bootloader 升级，系统盘数据保留；版本随后选）"
-    echo "    3) 整机刷到 NVMe（QSPI + 系统全刷，目标盘会格式化；版本随后选）"
-    echo "    4) 只下载 + 解压（离线缓存，可带 sample rootfs）"
-    echo "    5) 在 Jetson 本机：apt 升计算栈到 6.2（不重刷）"
-    echo "    6) 诊断：看板子身份/EEPROM，或已启动时的内核报错（不改任何东西）"
-    echo "    7) 串口诊断：抓 BootROM/UEFI/DDR 启动链日志并判断卡在哪一段"
-    echo "    8) 打开使用说明页（支持矩阵 / 参数 / 免责声明）"
-    echo "    0) 退出"
-    printf '  输入: '
+    printf '  检查与诊断\n'
+    echo "    1  环境检查     设备识别与运行条件检查"
+    echo "    6  设备诊断     采集身份信息及诊断日志"
+    echo "    7  串口诊断     采集启动日志并提供排查线索"
+    printf '\n  资源与维护\n'
+    echo "    4  准备资源     下载并解压 BSP / 可选 rootfs"
+    echo "    5  板内更新     通过 apt 更新软件包"
+    printf '    2  QSPI 刷写    %s写入启动固件；请核对板型与版本%s\n' "$C_Y" "$C_N"
+    printf '    3  NVMe 刷写    %s重写目标存储，清除数据%s\n' "$C_R" "$C_N"
+    printf '\n    8  操作手册     参数、许可与官方参考\n'
+    echo "    0  退出"
+    printf '\n  选择 [0-8] > '
     local a; read -r a
     case "$a" in
         1) MODE=detect ;;
@@ -1576,9 +1590,9 @@ self_update() {
 
 # =================================================== 说明文档（自动打开）
 doc_target() {
-    # 优先本仓库随附的 index.html（与脚本同目录 / 工作目录），其次配置的在线地址
+    # 优先本地操作手册 guide.html，其次首页与配置的在线地址
     local c
-    for c in "$SCRIPT_DIR/index.html" "$WORK_DIR/index.html" "$SCRIPT_DIR/docs/index.html"; do
+    for c in "$SCRIPT_DIR/guide.html" "$WORK_DIR/guide.html" "$SCRIPT_DIR/index.html" "$WORK_DIR/index.html" "$SCRIPT_DIR/docs/index.html"; do
         [ -f "$c" ] && { printf '%s' "$c"; return 0; }
     done
     [ -n "$DOC_URL" ] && { printf '%s' "$DOC_URL"; return 0; }
@@ -1686,7 +1700,7 @@ main() {
             if [ "$DET_MODE" = "onboard" ]; then
                 log "板内体检通过。板内只能 --mode target（升计算栈）；要刷 QSPI/整机请接 x86_64 主机"
             else
-                log "主机侧体检通过。板子进 recovery 后：--mode qspi（只升 UEFI，留数据）或 --mode nvme（整机重刷）"
+                log "主机侧体检通过。板子进 recovery 后：--mode qspi（写入启动固件）或 --mode nvme（整机重刷）"
             fi
             ;;
         target)
