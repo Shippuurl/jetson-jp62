@@ -501,6 +501,7 @@ cat <<EOF
   --l4t <版本|latest>             目标 L4T 版本（不给则交互选择，非交互回落 auto）
   --jetpack|--jp <版本>           按 JetPack 号自动映射 L4T（6.2→36.4.3、6.2.1→36.4.4、6.2.2→36.5.0…）
   --jp-list                       打印 JetPack → L4T 映射表
+  --diag                          诊断：板内看内核/系统报错，recovery 看 EEPROM/BCT，均不改动
   --doc                           打开使用说明页（index.html）
   --doc-url <url>                 在线文档地址（无本地 index.html 时用）
   --no-doc                        跑完不提示打开文档
@@ -629,7 +630,7 @@ parse_args() {
         esac
     done
     case "$MODE" in
-        ""|detect|qspi|nvme|prep|target|matrix|update|doc|jpmap) ;;
+        ""|detect|qspi|nvme|prep|target|matrix|update|doc|jpmap|diag) ;;
         *) die "--mode 只能是 detect / qspi / nvme / prep / target（另有 --matrix / --self-update / --doc 三个动作）" ;;
     esac
 }
@@ -994,6 +995,103 @@ do_target() {
     ok "完成，物理重启后 nvbootctrl dump-slots-info 应显示 36.4.x"
 }
 
+# ==================================================================== 诊断
+# 刷机模式(recovery)能查什么、查不到什么，这里分两路：
+#   板内已启动 → 内核/系统日志、bootloader 槽位、功耗模式
+#   recovery   → 芯片信息、EEPROM(板号/sku/fab/MAC)、BCT；看不到内核与 UEFI 运行时日志
+# 真正的"底层开机报错"(UEFI/DDR训练/BPAM/电源) 只能从串口 ttyTCU0 @115200 看。
+uart_help() {
+cat <<EOF
+
+  ${C_B}要看开机最底层日志（UEFI / DDR 训练 / BPMP / 电源），接串口：${C_N}
+    Orin Nano DevKit 40-pin 排针：Pin 6 = GND，Pin 8 = UART1_TX，Pin 10 = UART1_RX
+    参数 115200 8N1，控制台设备 ttyTCU0；用 USB-TTL 接上后：
+      screen /dev/ttyUSB0 115200     # 或 picocom -b 115200 /dev/ttyUSB0
+    冷启动时能看到的阶段：BootROM → MB1/MB2 → UEFI → kernel；坏在哪一段一眼就能分辨。
+
+EOF
+}
+
+do_diag() {
+    local d="$WORK_DIR/diag-$(date +%Y%m%d-%H%M%S)"
+    mkdir -p "$d" 2>/dev/null || true
+    printf '\n%s── 诊断报告（输出目录 %s）──%s\n' "$C_B" "$d" "$C_N"
+
+    if [ -r /etc/nv_tegra_release ]; then
+        # ---------- 板内（已启动）：这层才看得到内核与系统日志 ----------
+        chk_info "模式：板内诊断（系统已启动）"
+        {
+            echo "## 版本"; grep -m1 '^# R' /etc/nv_tegra_release; uname -a
+            echo; echo "## TNSPEC"; head -4 /etc/nv_boot_control.conf 2>/dev/null
+            echo; echo "## bootloader 槽位"; sudo -n nvbootctrl dump-slots-info 2>&1 | head -8
+            echo; echo "## 功耗模式"; nvpmodel -q 2>&1 | head -3
+            echo; echo "## cmdline"; cat /proc/cmdline
+            echo; echo "## dmesg err"; (sudo -n dmesg -l err,crit,alert,emerg 2>/dev/null || dmesg 2>/dev/null | grep -iE 'error|fail' | tail -40)
+            echo; echo "## journal -b -p err"; sudo -n journalctl -b -p err --no-pager 2>/dev/null | tail -30
+            echo; echo "## 失败的服务"; systemctl --failed --no-legend 2>/dev/null | head -10
+            echo; echo "## 关键外设探测失败计数"
+            (sudo -n dmesg 2>/dev/null || true) | grep -icE 'board setup failed|probe failed|failed to read device id' | sed 's/^/  failures=/' || true
+        } > "$d/onboard.txt" 2>&1
+        local uefi; uefi="$(sudo -n nvbootctrl dump-slots-info 2>/dev/null | awk -F': ' '/Current version/{print $2}')"
+        local l4t_short; l4t_short="$(sed -nE 's/^# ?R([0-9]+).*REVISION:? *([0-9]+\.[0-9]+).*/R\1.\2/p' /etc/nv_tegra_release 2>/dev/null | head -1)"
+        chk_ok "系统 L4T/内核: ${l4t_short:-?} / $(uname -r)"
+        chk_info "UEFI(QSPI) 版本: ${uefi:-未读到}"
+        if [ -n "$uefi" ] && [ -n "$l4t_short" ]; then
+            local sysv="${l4t_short#R}" uefimaj="${uefi%.*}"
+            if [ "${sysv%.*}" = "$uefimaj" ]; then
+                chk_ok "QSPI/UEFI($uefi) 与系统($sysv) 同代"
+            else
+                chk_warn "QSPI/UEFI($uefi) 与系统($sysv) 不同代：典型"只刷过 QSPI、系统盘没动"。要对齐用 --mode nvme 整机刷，或在板内 --mode target 用 apt 升"
+            fi
+        fi
+        chk_info "功耗模式: $(nvpmodel -q 2>/dev/null | head -1)"
+        local nerr; nerr="$(grep -c . "$d/onboard.txt" 2>/dev/null || echo 0)"
+        grep -q "imx219_board_setup" "$d/onboard.txt" 2>/dev/null && chk_warn "CSI 相机(i2c 9/10) 探测失败 → 相机排线/供电/设备树，与刷机无关"
+        grep -q "fusb301" "$d/onboard.txt" 2>/dev/null && chk_warn "fusb301(USB-C PD) 读不到 ID → 载板没这颗器件或板型号不匹配"
+        chk_ok "完整日志: $d/onboard.txt"
+        log "注意：这一层能看内核/系统报错，但看不到 UEFI 与 DDR 训练的日志"
+        uart_help
+        return 0
+    fi
+
+    if recovery_present; then
+        # ---------- recovery：只能查设备身份/EEPROM/BCT ----------
+        local lt="$WORK_DIR/Linux_for_Tegra"
+        if [ ! -x "$lt/bootloader/tegrarcm_v2" ]; then
+            die "缺 Linux_for_Tegra/bootloader 工具，先跑 --mode prep（只下载解压即可）"
+        fi
+        chk_info "模式：recovery 诊断（板子未启动）"
+        ( cd "$lt" && run_root ./bootloader/tegrarcm_v2 --chip 0x23 0 --oem platformdetails chip "$d/chip_info.bin" ) 2>&1 | tail -2
+        ( cd "$lt" && run_root ./bootloader/tegrarcm_v2 --chip 0x23 0 --oem platformdetails eeprom cvm "$d/cvm.bin" ) 2>&1 | tail -2
+        ( cd "$lt" && run_root ./bootloader/tegrarcm_v2 --chip 0x23 0 --oem dump bct "$d/tmp.bct" ) 2>&1 | tail -2
+        if [ -s "$d/cvm.bin" ] && [ -x "$lt/bootloader/chkbdinfo" ]; then
+            local ci="$lt/bootloader/chkbdinfo"
+            {
+                echo "## EEPROM"
+                printf '  BoardID: %s\n  SKU: %s\n  FAB: %s\n  Revision: %s\n' \
+                    "$("$ci" -i "$d/cvm.bin" 2>&1)" "$("$ci" -k "$d/cvm.bin" 2>&1)" \
+                    "$("$ci" -f "$d/cvm.bin" 2>&1)" "$("$ci" -r "$d/cvm.bin" 2>&1)"
+                printf '  板料号: %s\n  AssetID: %s\n' "$("$ci" -p "$d/cvm.bin" 2>&1)" "$("$ci" -a "$d/cvm.bin" 2>&1)"
+                printf '  GB MAC: %s\n  WiFi MAC: %s\n' "$("$ci" -g "$d/cvm.bin" 2>&1)" "$("$ci" -w "$d/cvm.bin" 2>&1)"
+            } | tee "$d/eeprom.txt"
+            local sku; sku="$("$ci" -k "$d/cvm.bin" 2>&1)"
+            case "$BOARD:$sku" in
+                *-super*:0004|*devkit*:0004|*:0005) chk_ok "EEPROM sku=$sku 与所选板型 $BOARD 匹配" ;;
+                *) chk_warn "EEPROM sku=$sku 与所选板型 $BOARD 可能不匹配 → 用 --board 换对应配置" ;;
+            esac
+        fi
+        chk_info "BCT 已导出: $d/tmp.bct（客户信息损坏 / BCT 不匹配，是「能进 recovery 但起不来系统」的常见原因）"
+        chk_warn "recovery 模式看不到内核/UEFI 运行时日志，也看不到 DDR 训练与电源问题"
+        uart_help
+        return 0
+    fi
+
+    chk_warn "既不在板内（无 /etc/nv_tegra_release），也没有 recovery 设备"
+    usb_state_hint
+    chk_info "把板子接上：正常启动 → 本机可 ssh，脚本走板内诊断；未启动 → 短接进 recovery 走 EEPROM/BCT 诊断"
+    uart_help
+}
+
 # ==================================================================== 菜单
 menu() {
     banner
@@ -1003,7 +1101,8 @@ menu() {
     echo "    3) 整机刷到 NVMe（QSPI + 系统全刷，目标盘会格式化；版本随后选）"
     echo "    4) 只下载 + 解压（离线缓存，可带 sample rootfs）"
     echo "    5) 在 Jetson 本机：apt 升计算栈到 6.2（不重刷）"
-    echo "    6) 打开使用说明页（支持矩阵 / 参数 / 免责声明）"
+    echo "    6) 诊断：看板子身份/EEPROM，或已启动时的内核报错（不改任何东西）"
+    echo "    7) 打开使用说明页（支持矩阵 / 参数 / 免责声明）"
     echo "    0) 退出"
     printf '  输入: '
     local a; read -r a
@@ -1014,7 +1113,8 @@ menu() {
         4) MODE=prep; printf '  一并下载 sample rootfs（1.83G，整机刷才需要）？[y/N] '; local b; read -r b
            case "$b" in y|Y) WITH_ROOTFS=1 ;; esac ;;
         5) MODE=target ;;
-        6) MODE=doc ;;
+        6) MODE=diag ;;
+        7) MODE=doc ;;
         *) log "退出"; exit 0 ;;
     esac
 }
@@ -1394,6 +1494,11 @@ main() {
         update) self_update; exit 0 ;;
         doc)    open_doc; exit 0 ;;
         jpmap)  echo "可刷版本: $(available_versions 2>/dev/null | tr '\n' ' ')"; jp_list; exit 0 ;;
+        diag)
+            detect_onboard || detect_recovery || DET_MODE="none"
+            pick_board
+            do_diag
+            exit 0 ;;
     esac
 
     case "$MODE" in nvme|qspi) WITH_ROOTFS=1 ;; esac   # 这两种都要 rootfs，先定下来再算空间
