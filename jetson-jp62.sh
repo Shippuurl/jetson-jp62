@@ -415,8 +415,9 @@ check_requirements() {
             || chk_bad "BSP 里没有 ${BOARD}.conf" "--list-boards 看可用板型，再用 --board 指定"
     fi
 
-    # 7 rootfs（只有整机刷需要）
-    if [ "$mode" = "nvme" ]; then
+    # 7 rootfs（qspi 也要：36.x 的 flash.sh 会用 rootfs 生成 recovery ramdisk，
+    #   根文件系统本身不会被写到板子上）
+    if [ "$mode" = "nvme" ] || [ "$mode" = "qspi" ]; then
         if [ -f "$lt/rootfs/etc/nv_tegra_release" ]; then chk_ok "rootfs 已 apply_binaries"
         else chk_info "rootfs 未准备，本次会下 1.83G sample rootfs 并 apply_binaries"; fi
     fi
@@ -904,7 +905,13 @@ do_qspi() {
     local cmd=(./flash.sh --no-systemimg -c bootloader/generic/cfg/flash_t234_qspi.xml "$BOARD" "$ROOTDEV")
     log "命令: sudo ${cmd[*]}"
     if [ "$DRY_RUN" = 1 ]; then log "[dry-run] 到此为止，不执行"; return 0; fi
-    ( cd "$lt" && run_root "${cmd[@]}" 2>&1 | tee "$logf" ) || die "flash.sh 失败（见 $logf）"
+    if ! ( cd "$lt" && run_root "${cmd[@]}" 2>&1 | tee "$logf" ); then
+        if grep -qE "rootfs/(lib|bin|usr).*(没有那个文件|No such file)" "$logf" 2>/dev/null; then
+            die "flash.sh 失败：rootfs 是空的（缺 sample rootfs）。36.x 的 flash.sh 即使只刷 QSPI，
+也要用 rootfs 生成 recovery ramdisk → 先跑 prep --with-rootfs。日志: $logf"
+        fi
+        die "flash.sh 失败（见 $logf）"
+    fi
     verify_flash_log "$logf"
     ok "QSPI 刷写完成"
     cat <<EOF
@@ -1266,7 +1273,7 @@ main() {
         prep)
             report_detect; check_requirements prep; do_prep ;;
         qspi)
-            report_detect; check_requirements qspi
+            report_detect; WITH_ROOTFS=1; check_requirements qspi
             do_prep; do_qspi ;;
         nvme)
             report_detect; WITH_ROOTFS=1; check_requirements nvme
