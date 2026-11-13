@@ -1100,17 +1100,18 @@ usb_state_hint() {
     done <<< "$lines"
 }
 
+# 进入 recovery 的三种官方方式（NVIDIA Orin Nano DevKit User Guide → Force Recovery Mode）
 print_recovery_howto() {
-    cat <<EOF
-
-  ${C_Y}板子现在不在 recovery 模式。${C_N}
-    1) 断电，把 FC REC 与 GND 短接（Orin Nano DevKit：12 针排针第 9、10 脚）
-    2) 保持短接上电，等 2 秒后松开
-    3) USB-C（要能传数据的口/线）接回本机
-    4) 本机确认：${C_B}lsusb | grep 0955${C_N}  应出现 0955:7523 NVIDIA Corp. APX
-   提示：进 recovery 后板子不会显示为新磁盘，只在 lsusb 里出现，属正常。
-
-EOF
+    printf '\n  %s%s%s\n' "$C_Y" "$(T "板子现在不在 recovery 模式。官方三种进入方式：" "The board is not in recovery mode. Three official ways in:")" "$C_N"
+    printf '    A  %s\n' "$(T "断电法：断电 → 短接 Button Header 9、10 脚（FC REC / GND）→ 接回电源" "Power-off: unplug → short Button Header pins 9 and 10 (FC REC / GND) → reconnect power")"
+    printf '    B  %s\n' "$(T "已开机：短接 9、10 脚 → 再短接 7、8 脚触发复位" "Already on: short pins 9 and 10 → then briefly short pins 7 and 8 to reset")"
+    printf '    C  %s\n' "$(T "已能登录：sudo reboot --force forced-recovery" "If you can log in: sudo reboot --force forced-recovery")"
+    printf '    %s\n' "$(T "短接位置以载板丝印为准；主机检测到设备后拔掉跳线，别一直插着。" "Follow the carrier silkscreen; remove the jumper once the host detects the device.")"
+    printf '    USB-C %s: %s%s | grep 0955%s → %s\n' \
+        "$(T "要接能传数据的口/线；本机确认" "must be a data port/cable; check on the host with")" "$C_B" "lsusb" "$C_N" \
+        "$(T "0955:7523（Orin Nano 8GB）/ 7623（4GB）" "0955:7523 (Orin Nano 8GB) / 7623 (4GB)")"
+    printf '    %s\n' "$(T "参考：docs.nvidia.com/jetson/orin-nano-devkit/user-guide/latest/howto.html#force-recovery-mode" "Ref: docs.nvidia.com/jetson/orin-nano-devkit/user-guide/latest/howto.html#force-recovery-mode")"
+    printf '    %s\n\n' "$(T "提示：进 recovery 后板子不会显示为新磁盘，只在 lsusb 里出现，属正常。" "Note: in recovery the board does not appear as a disk; it only shows up in lsusb.")"
 }
 
 # 刷写前的 recovery 闸门：没检测到就一直让用户手动按回车刷新（不自动轮询、不超时）
