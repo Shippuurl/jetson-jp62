@@ -161,6 +161,7 @@ SOFTWARE.</pre></details></section>
 
   <h3 id="recovery">Recovery-Modus (Flash-Modus) herstellen</h3>
   <p class="muted" style="font-size:13.5px">Vor dem Flashen muss sich das Board im Force-Recovery-Modus befinden. Alle drei Wege stammen aus der NVIDIA-Dokumentation; wählen Sie den zum Boardzustand passenden.</p>
+  <p class="muted" style="font-size:12.5px">Beim Flashen gibt das Skript diese drei Wege bei Bedarf selbst aus.</p>
   <div class="method"><p class="method-t"><b>A</b> Aus dem ausgeschalteten Zustand (empfohlen)</p><ol class="steps"><li>Netzteil trennen und sicherstellen, dass das Board vollständig aus ist.</li><li>Jumper über Pin 9 und 10 des Button-Headers setzen (FC REC → GND).</li><li>Netzteil wieder anschließen: das Board startet in den Recovery-Modus statt ins System.</li><li>Jumper entfernen, sobald der Host das Gerät erkennt; gesteckt lässt es das nächste Einschalten erneut in Recovery starten.</li></ol></div>
   <div class="method"><p class="method-t"><b>B</b> Bei bereits eingeschaltetem Board</p><ol class="steps"><li>Zuerst Jumper über Pin 9 und 10 des Button-Headers setzen.</li><li>Dann Pin 7 und 8 kurz verbinden, um einen Reset auszulösen.</li><li>Beide Jumper entfernen, sobald der Host das Gerät erkennt.</li></ol></div>
   <div class="method"><p class="method-t"><b>C</b> Auf dem Board per Befehl</p><p class="steps" style="padding-left:0">Wenn Sie sich bereits anmelden können, direkt in den Recovery-Modus wechseln: <code>sudo reboot --force forced-recovery</code></p></div>
@@ -182,19 +183,23 @@ SOFTWARE.</pre></details></section>
 
   <div class="panel" id="panel-uart" hidden>
   <h3>Serielle Diagnose (UART)</h3>
-  <div class="command"><div class="command-head">Windows · PowerShell</div><pre>irm https://raw.githubusercontent.com/Shippuurl/jetson-jp62/main/uart-logs.ps1 | iex</pre></div>
-  <div class="command"><div class="command-head">Linux / macOS · Bash</div><pre>bash &lt;(curl -fsSL https://raw.githubusercontent.com/Shippuurl/jetson-jp62/main/uart-logs.sh)</pre></div>
-  <p><a href="UART-LOGS.md">UART logs · ZIP · GitHub rules ↗</a></p>
-  <p class="muted" style="font-size:13.5px">Eigenständige UART-Protokollierung, ohne Recovery-Modus oder Flash-Vorgang.</p>
-  <div class="method"><p class="method-t"><b>1</b> Benötigt</p><ul class="steps"><li>USB-TTL-Serielladapter (CP2102 / CH340 / FT232, 3,3-V-Pegel)</li><li>Drei Jumperkabel (Buchse-Buchse)</li></ul></div>
-  <div class="method"><p class="method-t"><b>2</b> Verdrahtung (40-Pin-Header)</p><ul class="steps"><li>Pin 8 UART_TX → RXD des Adapters</li><li>Pin 10 UART_RX → TXD des Adapters</li><li>GND verbinden (Pin 6 / 9 / 14 / 25 / 30 / 34 / 39)</li></ul></div>
-  <p class="note" style="margin-top:4px">115200 8N1, keine Flusskontrolle. TX und RX müssen gekreuzt werden; TX auf TX ergibt keinerlei Empfang.</p>
+  <p class="muted" style="font-size:13.5px">Alles in einem Durchlauf im Skript: Port erkennen, aufzeichnen, wichtige Zeilen nach Regeln filtern und als Zip packen. Diese Seite beschreibt nur Verdrahtung, Ablageort und Lesart.</p>
+
+  <div class="command"><div class="command-head">Linux / macOS · Bash</div><pre><code>bash jetson-jp62.sh                     <span class="muted"># Menüpunkt 3</span>
+bash jetson-jp62.sh --mode uart --uart /dev/ttyUSB0 --uart-seconds 60</code></pre></div>
+  <div class="command"><div class="command-head">Windows · PowerShell（独立采集器，无需脚本）</div><pre>irm https://raw.githubusercontent.com/Shippuurl/jetson-jp62/main/uart-logs.ps1 | iex</pre></div>
+
+  <div class="method"><p class="method-t"><b>1</b> Verdrahtung (40-Pin-Header)</p><ul class="steps"><li>Pin 8 UART_TX → RXD des Adapters</li><li>Pin 10 UART_RX → TXD des Adapters</li><li>GND verbinden (Pin 6 / 9 / 14 / 25 / 30 / 34 / 39)</li></ul></div>
+  <p class="note" style="margin-top:2px">115200 8N1, keine Flusskontrolle; TX und RX müssen gekreuzt werden. USB-TTL mit 3,3 V, VCC nicht anschließen, Board separat versorgen.</p>
   <figure><img src="images/uart-wiring.svg" alt="Verdrahtung (40-Pin-Header)" width="900" height="440"><figcaption>Verdrahtung (40-Pin-Header) · 3.3 V TTL</figcaption></figure>
-  <div class="method" style="margin-top:14px"><p class="method-t"><b>3</b> Aufzeichnen</p><ol class="steps"><li>Im Skript enthalten: <code>bash jetson-jp62.sh --mode uart</code> (/dev/ttyUSB* automatisch, standardmäßig 30 s)</li><li>Manuell: <code>screen /dev/ttyUSB0 115200</code> (Beenden mit Ctrl-A, dann K) oder <code>minicom -D /dev/ttyUSB0 -b 115200</code></li><li>Aufzeichnung vor dem Einschalten starten. Nur auf diesem UART ausgegebene Daten werden erfasst; frühe Boot-Logs am 40-Pin-UART sind nicht garantiert.</li></ol></div>
-  <p class="note">Host: COMx / /dev/ttyUSBx. ttyTHS und Debug-Konsole hängen von Trägerplatine und BSP ab. Fehlende Ausgabe beweist keinen Firmwarefehler; Port, Verdrahtung und Konfiguration prüfen.</p>
-  <figure><img src="images/uart-capture.svg" alt="Aufzeichnen" width="900" height="360"><figcaption>Aufzeichnen · 115200 8N1</figcaption></figure>
-  <div class="method" style="margin-top:14px"><p class="method-t"><b>4</b> Wo es hängt</p><ul class="steps"><li>Host: COMx / /dev/ttyUSBx. ttyTHS und Debug-Konsole hängen von Trägerplatine und BSP ab. Fehlende Ausgabe beweist keinen Firmwarefehler; Port, Verdrahtung und Konfiguration prüfen.</li><li>Bleibt in UEFI stehen → Bootloader- oder Device-Tree-Konfiguration</li><li>Hängt im Kernel → Treiber, Root-Dateisystem, Speicher</li><li>Erreicht getty und startet neu → Anwendung oder systemd-Unit</li></ul></div>
-  <p class="sources"><span class="meta">Quellen</span><a href="https://developerwiki.proventusnova.com/How_to_NVIDIA_Jetson_Orin_Nano_UART_Console" rel="noopener">ProventusNova · How to NVIDIA Jetson Orin Nano UART Console</a><a href="https://forums.developer.nvidia.com/t/how-to-access-uart1-on-expansion-pins-8-10/328934" rel="noopener">NVIDIA Developer Forums · UART1 on expansion pins 8/10</a><a href="https://jetsonhacks.com/2019/04/19/jetson-nano-serial-console/" rel="noopener">JetsonHacks · Serial Debug Console (115200 8N1)</a></p>
+
+  <div class="method" style="margin-top:16px"><p class="method-t"><b>2</b> Ergebnisse des Skripts</p><ul class="steps"><li><code>full.log</code> — dekodiertes Gesamtlog (Rohbytes in <code>full.bin</code>)</li><li><code>important.log</code> — Regel-Treffer mit Kontext und Original-Zeilennummern</li><li><code>all-logs.zip</code> / <code>important-logs.zip</code> — zwei Archive für Kollegen oder Hersteller</li><li><code>index.html</code> — lokaler Einstieg zum Herunterladen beider Archive</li></ul></div>
+  <p class="muted" style="font-size:12.5px">Ablage: <code>~/Downloads/Jetson-Logs/&lt;Zeitstempel&gt;/</code>; nach der Aufzeichnung fragt das Skript, ob der Ordner geöffnet werden soll.</p>
+  <figure><img src="images/uart-capture.svg" alt="Ergebnisse des Skripts" width="900" height="360"><figcaption>115200 8N1</figcaption></figure>
+
+  <div class="method" style="margin-top:16px"><p class="method-t"><b>3</b> Wo es hängt</p><ul class="steps"><li>Nichts von BootROM / MB1 / MB2 → Strom, Modulsitz, QSPI-Firmware</li><li>Bleibt in UEFI stehen → Bootloader- oder Device-Tree-Konfiguration</li><li>Hängt im Kernel → Treiber, Root-Dateisystem, Speicher</li><li>Erreicht getty und startet neu → Anwendung oder systemd-Unit</li></ul></div>
+  <p class="note">Nur lesend, es werden keine Flash-Befehle gesendet. Regeln kommen standardmäßig von GitHub und lassen sich mit <code>--rules</code> festnageln; sie prüfen nur Text — ein Treffer ist kein bestätigter Fehler, und keine Ausgabe belegt keinen Firmware-Schaden. Auf dem Board heißt das Gerät /dev/ttyTHS1 (Nummer je Release unterschiedlich).</p>
+  <p class="sources"><span class="meta">Quellen</span><a href="https://developerwiki.proventusnova.com/How_to_NVIDIA_Jetson_Orin_Nano_UART_Console" rel="noopener">ProventusNova · Orin Nano UART Console</a><a href="https://forums.developer.nvidia.com/t/how-to-access-uart1-on-expansion-pins-8-10/328934" rel="noopener">NVIDIA Developer Forums · UART1 on pins 8/10</a><a href="https://jetsonhacks.com/2019/04/19/jetson-nano-serial-console/" rel="noopener">JetsonHacks · Serial Debug Console</a></p>
   </div>
 
 
