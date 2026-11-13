@@ -161,6 +161,7 @@ SOFTWARE.</pre></details></section>
 
   <h3 id="recovery">Entrer en mode recovery (mode flash)</h3>
   <p class="muted" style="font-size:13.5px">La carte doit être en Force Recovery Mode avant le flash. Les trois méthodes ci-dessous proviennent de la documentation NVIDIA ; choisissez celle qui correspond à l'état de la carte.</p>
+  <p class="muted" style="font-size:12.5px">Au moment du flash, le script affiche lui-même ces trois méthodes si nécessaire.</p>
   <div class="method"><p class="method-t"><b>A</b> Depuis l'arrêt (recommandé)</p><ol class="steps"><li>Débranchez l'alimentation et vérifiez que la carte est complètement hors tension.</li><li>Placez un cavalier entre les broches 9 et 10 du Button Header (FC REC → GND).</li><li>Rebranchez l'alimentation : la carte démarre en recovery au lieu du système.</li><li>Retirez le cavalier dès que l'hôte détecte l'appareil ; laissé en place, il renvoie la prochaine mise sous tension en recovery.</li></ol></div>
   <div class="method"><p class="method-t"><b>B</b> Carte déjà allumée</p><ol class="steps"><li>Placez d'abord un cavalier entre les broches 9 et 10 du Button Header.</li><li>Reliez ensuite brièvement les broches 7 et 8 pour provoquer un reset.</li><li>Retirez les deux cavaliers dès que l'hôte détecte l'appareil.</li></ol></div>
   <div class="method"><p class="method-t"><b>C</b> Depuis la carte, en ligne de commande</p><p class="steps" style="padding-left:0">Si vous pouvez déjà vous connecter, passez directement en recovery : <code>sudo reboot --force forced-recovery</code></p></div>
@@ -182,19 +183,23 @@ SOFTWARE.</pre></details></section>
 
   <div class="panel" id="panel-uart" hidden>
   <h3>Diagnostic série (UART)</h3>
-  <div class="command"><div class="command-head">Windows · PowerShell</div><pre>irm https://raw.githubusercontent.com/Shippuurl/jetson-jp62/main/uart-logs.ps1 | iex</pre></div>
-  <div class="command"><div class="command-head">Linux / macOS · Bash</div><pre>bash &lt;(curl -fsSL https://raw.githubusercontent.com/Shippuurl/jetson-jp62/main/uart-logs.sh)</pre></div>
-  <p><a href="UART-LOGS.md">UART logs · ZIP · GitHub rules ↗</a></p>
-  <p class="muted" style="font-size:13.5px">Capture UART indépendante, sans mode recovery ni opération de flash.</p>
-  <div class="method"><p class="method-t"><b>1</b> Matériel</p><ul class="steps"><li>Adaptateur USB-TTL (CP2102 / CH340 / FT232, niveau 3,3 V)</li><li>Trois fils Dupont (femelle-femelle)</li></ul></div>
-  <div class="method"><p class="method-t"><b>2</b> Câblage (connecteur 40 broches)</p><ul class="steps"><li>Pin 8 UART_TX → RXD de l'adaptateur</li><li>Pin 10 UART_RX → TXD de l'adaptateur</li><li>GND commun (broche 6 / 9 / 14 / 25 / 30 / 34 / 39)</li></ul></div>
-  <p class="note" style="margin-top:4px">115200 8N1, sans contrôle de flux. TX et RX doivent être croisés ; en TX-TX vous ne recevez rien.</p>
+  <p class="muted" style="font-size:13.5px">Tout en une passe dans le script : détection du port, capture, filtrage des lignes importantes par règles, archivage en zip. Cette page ne couvre que le câblage, l'emplacement des résultats et leur lecture.</p>
+
+  <div class="command"><div class="command-head">Linux / macOS · Bash</div><pre><code>bash jetson-jp62.sh                     <span class="muted"># menu, choix 3</span>
+bash jetson-jp62.sh --mode uart --uart /dev/ttyUSB0 --uart-seconds 60</code></pre></div>
+  <div class="command"><div class="command-head">Windows · PowerShell（独立采集器，无需脚本）</div><pre>irm https://raw.githubusercontent.com/Shippuurl/jetson-jp62/main/uart-logs.ps1 | iex</pre></div>
+
+  <div class="method"><p class="method-t"><b>1</b> Câblage (connecteur 40 broches)</p><ul class="steps"><li>Pin 8 UART_TX → RXD de l'adaptateur</li><li>Pin 10 UART_RX → TXD de l'adaptateur</li><li>GND commun (broche 6 / 9 / 14 / 25 / 30 / 34 / 39)</li></ul></div>
+  <p class="note" style="margin-top:2px">115200 8N1, sans contrôle de flux ; TX et RX doivent être croisés. Adaptateur USB-TTL 3,3 V, ne pas brancher VCC, alimenter la carte séparément.</p>
   <figure><img src="images/uart-wiring.svg" alt="Câblage (connecteur 40 broches)" width="900" height="440"><figcaption>Câblage (connecteur 40 broches) · 3.3 V TTL</figcaption></figure>
-  <div class="method" style="margin-top:14px"><p class="method-t"><b>3</b> Capture</p><ol class="steps"><li>Intégré au script : <code>bash jetson-jp62.sh --mode uart</code> (/dev/ttyUSB* détecté automatiquement, 30 s par défaut)</li><li>Manuel : <code>screen /dev/ttyUSB0 115200</code> (quitter avec Ctrl-A puis K) ou <code>minicom -D /dev/ttyUSB0 -b 115200</code></li><li>Démarrer la capture avant la mise sous tension. Seules les données émises sur cet UART sont capturées ; les journaux de démarrage précoce sur le connecteur 40 broches ne sont pas garantis.</li></ol></div>
-  <p class="note">Hôte : COMx / /dev/ttyUSBx. ttyTHS et la console dépendent de la carte porteuse et du BSP. Une absence de sortie ne prouve pas une panne du firmware ; vérifier le port, le câblage et la configuration.</p>
-  <figure><img src="images/uart-capture.svg" alt="Capture" width="900" height="360"><figcaption>Capture · 115200 8N1</figcaption></figure>
-  <div class="method" style="margin-top:14px"><p class="method-t"><b>4</b> Où cela bloque</p><ul class="steps"><li>Hôte : COMx / /dev/ttyUSBx. ttyTHS et la console dépendent de la carte porteuse et du BSP. Une absence de sortie ne prouve pas une panne du firmware ; vérifier le port, le câblage et la configuration.</li><li>Blocage en UEFI → bootloader ou configuration de l'arbre de périphériques</li><li>Blocage dans le noyau → pilotes, système de fichiers racine, stockage</li><li>Arrive à getty puis redémarre → application ou unité systemd</li></ul></div>
-  <p class="sources"><span class="meta">Sources</span><a href="https://developerwiki.proventusnova.com/How_to_NVIDIA_Jetson_Orin_Nano_UART_Console" rel="noopener">ProventusNova · How to NVIDIA Jetson Orin Nano UART Console</a><a href="https://forums.developer.nvidia.com/t/how-to-access-uart1-on-expansion-pins-8-10/328934" rel="noopener">NVIDIA Developer Forums · UART1 on expansion pins 8/10</a><a href="https://jetsonhacks.com/2019/04/19/jetson-nano-serial-console/" rel="noopener">JetsonHacks · Serial Debug Console (115200 8N1)</a></p>
+
+  <div class="method" style="margin-top:16px"><p class="method-t"><b>2</b> Ce que produit le script</p><ul class="steps"><li><code>full.log</code> — journal complet décodé (octets bruts dans <code>full.bin</code>)</li><li><code>important.log</code> — lignes retenues avec contexte et numéros d'origine</li><li><code>all-logs.zip</code> / <code>important-logs.zip</code> — deux archives à partager</li><li><code>index.html</code> — raccourci local pour télécharger les deux archives</li></ul></div>
+  <p class="muted" style="font-size:12.5px">Emplacement : <code>~/Downloads/Jetson-Logs/&lt;horodatage&gt;/</code> ; le script propose d'ouvrir le dossier à la fin de la capture.</p>
+  <figure><img src="images/uart-capture.svg" alt="Ce que produit le script" width="900" height="360"><figcaption>115200 8N1</figcaption></figure>
+
+  <div class="method" style="margin-top:16px"><p class="method-t"><b>3</b> Où cela bloque</p><ul class="steps"><li>Rien depuis BootROM / MB1 / MB2 → alimentation, contact du module, firmware QSPI</li><li>Blocage en UEFI → bootloader ou arbre de périphériques</li><li>Blocage dans le noyau → pilotes, système de fichiers racine, stockage</li><li>Arrive à getty puis redémarre → application ou unité systemd</li></ul></div>
+  <p class="note">Lecture seule : aucune commande de flash n'est envoyée. Les règles viennent de GitHub par défaut et peuvent être figées avec <code>--rules</code> ; elles ne font que comparer du texte — une correspondance n'est pas un défaut confirmé, et aucune sortie ne prouve un firmware endommagé. Côté carte, le périphérique est /dev/ttyTHS1 (numéro variable selon la version).</p>
+  <p class="sources"><span class="meta">Sources</span><a href="https://developerwiki.proventusnova.com/How_to_NVIDIA_Jetson_Orin_Nano_UART_Console" rel="noopener">ProventusNova · Orin Nano UART Console</a><a href="https://forums.developer.nvidia.com/t/how-to-access-uart1-on-expansion-pins-8-10/328934" rel="noopener">NVIDIA Developer Forums · UART1 on pins 8/10</a><a href="https://jetsonhacks.com/2019/04/19/jetson-nano-serial-console/" rel="noopener">JetsonHacks · Serial Debug Console</a></p>
   </div>
 
 
