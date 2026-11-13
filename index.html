@@ -1,23 +1,91 @@
 <!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>A2VEC · Jetson 维护工具</title><meta name="description" content="A2VEC Jetson 命令行维护工具：环境检查、QSPI 固件刷写、NVMe 整机刷写。提供源码、操作手册与 MIT 许可。"><link rel="icon" href="a2vec-logo.svg" type="image/svg+xml"><style>*{box-sizing:border-box}html{color-scheme:light}body{margin:0;background:#fff;color:#202428;font:15px/1.8 system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif}.wrap{max-width:920px;margin:auto;padding:0 28px}header{border-bottom:1px solid #e3e5e7}header .wrap{height:88px;display:flex;align-items:center;justify-content:space-between;gap:20px}.brand{display:flex;align-items:center;gap:12px;font-size:21px;font-weight:750;letter-spacing:.08em;text-decoration:none}.brand img{width:44px;height:44px}.meta,.muted{color:#626a72}.meta{font:12px ui-monospace,monospace;letter-spacing:.06em}main{padding-top:56px!important}h1{font-size:clamp(28px,5vw,40px);font-weight:600;line-height:1.3;letter-spacing:-.03em;margin:12px 0 18px}h2{font-size:17px;font-weight:650;margin:0 0 16px}p{margin:10px 0}a{color:inherit;text-underline-offset:4px}a:hover{color:#925700}a:focus-visible,button:focus-visible,summary:focus-visible{outline:2px solid #995b00;outline-offset:5px}.intro{max-width:710px;color:#555e66}.links{display:flex;flex-wrap:wrap;gap:12px 24px;margin:22px 0 0}.primary{font-weight:650}section{padding:32px 0;border-bottom:1px solid #e3e5e7}.command{border:1px solid #d7dbdf;margin-top:18px}.command-head{display:flex;align-items:center;justify-content:space-between;padding:8px 16px;border-bottom:1px solid #e3e5e7;font-size:12px;color:#626a72}button{background:white;color:#202428;border:1px solid #c7ccd1;padding:5px 12px;cursor:pointer;font:inherit}pre{padding:18px;margin:0;overflow:auto;font:13px/1.9 ui-monospace,SFMono-Regular,Consolas,monospace}code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.92em}.caution{border-left:3px solid #ad6800;padding-left:16px;margin:24px 0 0;font-size:14px}.caution strong{color:#925700}.modes{margin:0}.modes div{display:grid;grid-template-columns:112px 1fr;gap:16px;padding:10px 0;border-bottom:1px solid #eff0f1}.modes div:last-child{border:0}dt{font-family:ui-monospace,monospace}dd{margin:0;color:#555e66}.danger{color:#a83224}details{font-size:13px;color:#555e66}summary{cursor:pointer;color:#202428;font-weight:600}details h2{margin-top:22px}details pre{white-space:pre-wrap;padding:0;font-size:11px}footer{padding:24px 0 40px;font-size:12px;color:#626a72}footer .wrap{display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px}.status{min-height:22px;font-size:12px;color:#626a72}@media(max-width:520px){.wrap{padding:0 20px}header .wrap{height:74px}.meta{font-size:10px}main{padding-top:32px!important}.modes div{grid-template-columns:76px 1fr;gap:10px}pre{font-size:12px;padding:14px}.brand{font-size:18px}.brand img{width:36px;height:36px}}</style></head>
-<body><header><div class="wrap"><a class="brand" href="./" aria-label="A2VEC 维护工具首页"><img src="a2vec-logo.svg" alt="" width="44" height="44">A2VEC</a><span class="meta">FIELD TOOLS / JETSON</span></div></header>
-<main class="wrap"><div class="meta">维护工具 · 01</div><h1>Jetson 固件维护脚本</h1>
-<p class="intro">通过 Bash 调用 NVIDIA 刷写工具，执行环境检查、资源准备、QSPI 或 NVMe 刷写。面向 Jetson Orin 系列；具体支持范围以所选 BSP、板型配置及厂商文档为准。</p>
-<div class="links"><a class="primary" href="jetson-jp62.sh" download>下载脚本 ↓</a><a href="guide.html">详细使用说明 ↗</a><a href="https://github.com/Shippuurl/jetson-jp62">GitHub 源码 ↗</a></div>
-<section aria-labelledby="run"><h2 id="run">获取与运行</h2><p class="muted">下载后审阅脚本，再查看参数或进入交互菜单。刷写前请显式选择经核对的 L4T 版本。</p>
-<div class="command"><div class="command-head"><span>BASH / jetson-jp62.sh</span><button type="button" id="copy" hidden>复制命令</button></div><pre><code id="command">curl -fL --proto '=https' -o jetson-jp62.sh https://tool.kervein.club/jetson/jetson-jp62.sh
+<title>A2VEC · Jetson 维护工具</title><meta name="description" content="A2VEC Jetson 命令行维护工具：环境检查、QSPI 固件刷写、NVMe 整机刷写。提供源码、准备清单、操作手册与 MIT 许可。"><link rel="icon" href="a2vec-logo.svg" type="image/svg+xml">
+<style>
+*{box-sizing:border-box}html{color-scheme:light}
+body{margin:0;background:#fff;color:#202428;font:15px/1.8 system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif}
+.wrap{max-width:1240px;margin:auto;padding:0 28px}
+header{border-bottom:1px solid #e3e5e7}header .wrap{height:88px;display:flex;align-items:center;justify-content:space-between;gap:20px}
+.brand{display:flex;align-items:center;gap:12px;font-size:21px;font-weight:750;letter-spacing:.08em;text-decoration:none}
+.brand img{width:44px;height:44px}
+.meta,.muted{color:#626a72}.meta{font:12px ui-monospace,monospace;letter-spacing:.06em}
+main{padding-top:52px}h1{font-size:clamp(26px,3.6vw,34px);font-weight:600;line-height:1.3;letter-spacing:-.03em;margin:12px 0 16px}
+h2{font-size:16.5px;font-weight:650;margin:0 0 14px}
+p{margin:10px 0}a{color:inherit;text-underline-offset:4px}a:hover{color:#925700}
+a:focus-visible,button:focus-visible,summary:focus-visible{outline:2px solid #995b00;outline-offset:5px}
+.intro{max-width:640px;color:#555e66}
+.links{display:flex;flex-wrap:wrap;gap:12px 24px;margin:20px 0 0}.primary{font-weight:650}
+section{padding:28px 0;border-bottom:1px solid #e3e5e7}
+.command{border:1px solid #d7dbdf;margin-top:16px}
+.command-head{display:flex;align-items:center;justify-content:space-between;padding:8px 16px;border-bottom:1px solid #e3e5e7;font-size:12px;color:#626a72}
+button{background:white;color:#202428;border:1px solid #c7ccd1;padding:5px 12px;cursor:pointer;font:inherit}
+pre{padding:16px;margin:0;overflow:auto;font:12.5px/1.85 ui-monospace,SFMono-Regular,Consolas,monospace}
+code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.92em}
+.caution{border-left:3px solid #ad6800;padding-left:16px;margin:22px 0 0;font-size:14px}.caution strong{color:#925700}
+.modes{margin:0}.modes div{display:grid;grid-template-columns:104px 1fr;gap:14px;padding:9px 0;border-bottom:1px solid #eff0f1}
+.modes div:last-child{border:0}dt{font-family:ui-monospace,monospace}dd{margin:0;color:#555e66}
+.danger{color:#a83224}
+details{font-size:13px;color:#555e66}summary{cursor:pointer;color:#202428;font-weight:600}
+details h2{margin-top:20px}details pre{white-space:pre-wrap;padding:0;font-size:11px}
+footer{padding:22px 0 40px;font-size:12px;color:#626a72}
+footer .wrap{display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px}
+.status{min-height:22px;font-size:12px;color:#626a72}
+
+/* 左右分栏 */
+.split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:64px;align-items:start}
+.col-main{min-width:0}
+.col-wiki{min-width:0;border-left:1px solid #e3e5e7;padding-left:56px;font-size:14px;line-height:1.75}
+.col-wiki h2{font-size:16px;margin-top:6px}
+.checklist{margin:16px 0 0;padding:0;list-style:none;counter-reset:c}
+.checklist li{counter-increment:c;position:relative;padding:12px 0 12px 34px;border-bottom:1px solid #eff0f1}
+.checklist li:last-child{border-bottom:0}
+.checklist li::before{content:counter(c,decimal-leading-zero);position:absolute;left:0;top:12px;font:11px/1.9 ui-monospace,monospace;color:#9aa3ab;letter-spacing:.08em}
+.checklist b{display:block;font-weight:650;font-size:14.5px;margin-bottom:2px}
+.checklist span{color:#555e66;font-size:13.5px}
+.inline-risk{color:#a83224;font-weight:600}
+.note{border-left:3px solid #ad6800;padding-left:14px;margin:18px 0 0;font-size:13.5px;color:#555e66}
+.note b{color:#925700}
+figure{margin:22px 0 0}
+figure img{display:block;width:100%;height:auto;border:1px solid #e3e5e7}
+figcaption{margin-top:8px;font-size:12px;color:#626a72;line-height:1.6}
+.gallery figure+figure{margin-top:18px}
+@media(max-width:920px){
+  .split{grid-template-columns:1fr;gap:0}
+  .col-wiki{border-left:0;padding-left:0;border-top:1px solid #e3e5e7;margin-top:4px;padding-top:30px;font-size:14px}
+}
+@media(max-width:520px){
+  .wrap{padding:0 20px}header .wrap{height:74px}.meta{font-size:10px}main{padding-top:32px!important}
+  .modes div{grid-template-columns:76px 1fr;gap:10px}pre{font-size:12px;padding:14px}
+  .brand{font-size:18px}.brand img{width:36px;height:36px}
+}
+</style></head>
+<body>
+<header><div class="wrap"><a class="brand" href="./" aria-label="A2VEC 维护工具首页"><img src="a2vec-logo.svg" alt="" width="44" height="44">A2VEC</a><span class="meta">FIELD TOOLS / JETSON</span></div></header>
+<div class="wrap"><div class="split">
+
+  <main class="col-main">
+    <div class="meta">维护工具 · 01</div><h1>Jetson 固件维护脚本</h1>
+    <p class="intro">通过 Bash 调用 NVIDIA 刷写工具，执行环境检查、资源准备、QSPI 或 NVMe 刷写。面向 Jetson Orin 系列；具体支持范围以所选 BSP、板型配置及厂商文档为准。</p>
+    <div class="links"><a class="primary" href="jetson-jp62.sh" download>下载脚本 ↓</a><a href="guide.html">详细使用说明 ↗</a><a href="https://github.com/Shippuurl/jetson-jp62">GitHub 源码 ↗</a></div>
+
+    <section aria-labelledby="run"><h2 id="run">获取与运行</h2><p class="muted">下载后审阅脚本，再查看参数或进入交互菜单。刷写前请显式选择经核对的 L4T 版本。</p>
+      <div class="command"><div class="command-head"><span>BASH / jetson-jp62.sh</span><button type="button" id="copy" hidden>复制命令</button></div><pre><code id="command">curl -fL --proto '=https' -o jetson-jp62.sh \
+  https://tool.kervein.club/jetson/jetson-jp62.sh
 # 审阅脚本后执行
 bash jetson-jp62.sh --help
 bash jetson-jp62.sh</code></pre></div><div id="copy-status" class="status" role="status" aria-live="polite"></div>
-<p class="caution"><strong>刷写前确认</strong><br>QSPI 模式写入启动固件，错误配置可能导致无法启动；NVMe 模式会重写目标存储并清除数据。请备份数据，确认载板适配、稳定供电和恢复路径。所需磁盘空间以运行时预检查为准。</p></section>
-<section aria-labelledby="modes"><h2 id="modes">脚本模式</h2><dl class="modes"><div><dt>detect</dt><dd>检测运行环境及设备状态，不执行固件刷写。</dd></div><div><dt>prep</dt><dd>下载并准备 BSP；可选准备 sample rootfs。</dd></div><div><dt>qspi</dt><dd>刷写 QSPI 启动固件，不以重写系统盘为目标。</dd></div><div><dt>nvme</dt><dd><span class="danger">重写目标存储，清除数据。</span>调用官方 initrd flash。</dd></div><div><dt>target</dt><dd>在 Jetson 上通过 apt 更新软件包；不等同于 QSPI 升级。</dd></div></dl><p class="muted">用法：<code>bash jetson-jp62.sh --mode &lt;模式&gt;</code><br>版本、诊断、串口与离线参数见 <code>--help</code> 或<a href="guide.html">操作手册</a>。</p></section>
-<section id="legal"><details><summary>法律声明 · MIT License · 第三方许可</summary><h2>法律声明与许可</h2>
-<p>本工具为 A2VEC 品牌下的独立维护辅助项目，不是 NVIDIA 官方产品，与 NVIDIA 无隶属、授权代理或背书关系。NVIDIA、Jetson 和 JetPack 为 NVIDIA Corporation 的商标。</p>
-<p>脚本与文档依据 <a href="LICENSE">MIT License</a> 提供；再分发时须保留版权与许可声明。原版权声明为 Copyright (c) 2026 Shippuurl，品牌展示不改变原版权归属。MIT 不授予第三方商标或 NVIDIA 软件的使用权。</p>
-<p>软件按“现状”（AS IS）提供。在适用法律允许的最大范围内，不提供明示或默示担保，包括适销性、特定用途适用性及不侵权担保；作者及版权持有人的责任限制以 MIT 原文为准。本声明不排除或限制适用法律不得排除或限制的责任。</p>
-<p>公开发布的脚本不包含 NVIDIA 固件、引导程序或专有 SDK。运行时取得的第三方组件受其随附许可及 <a href="https://docs.nvidia.com/jetson/archives/r36.4.3/DeveloperGuide/SD/SoftwarePackagesAndTheUpdateMechanism.html">NVIDIA 软件包说明</a>约束；使用者应在下载、使用或再分发前核对对应版本许可。对本工具的确认不替代第三方许可要求。</p>
-<p>使用者应确认设备操作权限、备份及恢复方案，并依据官方文档核对模组、载板、BSP 和系统版本。预检查通过或下载地址可用不构成兼容性、安全性或刷写成功保证。第三方载板须以其厂商适配资料为准。</p><h2>MIT License · 原文</h2><pre>MIT License
+      <p class="caution"><strong>刷写前确认</strong><br>QSPI 模式写入启动固件，错误配置可能导致无法启动；NVMe 模式会重写目标存储并清除数据。请备份数据，确认载板适配、稳定供电和恢复路径。所需磁盘空间以运行时预检查为准。</p>
+    </section>
+
+    <section aria-labelledby="modes"><h2 id="modes">脚本模式</h2><dl class="modes"><div><dt>detect</dt><dd>检测运行环境及设备状态，不执行固件刷写。</dd></div><div><dt>prep</dt><dd>下载并准备 BSP；可选准备 sample rootfs。</dd></div><div><dt>qspi</dt><dd>刷写 QSPI 启动固件，不以重写系统盘为目标。</dd></div><div><dt>nvme</dt><dd><span class="danger">重写目标存储，清除数据。</span>调用官方 initrd flash。</dd></div><div><dt>target</dt><dd>在 Jetson 上通过 apt 更新软件包；不等同于 QSPI 升级。</dd></div></dl><p class="muted">用法：<code>bash jetson-jp62.sh --mode &lt;模式&gt;</code><br>版本、诊断、串口与离线参数见 <code>--help</code> 或<a href="guide.html">操作手册</a>。</p></section>
+
+    <section id="legal"><details><summary>法律声明 · MIT License · 第三方许可</summary><h2>法律声明与许可</h2>
+      <p>本工具为 A2VEC 品牌下的独立维护辅助项目，不是 NVIDIA 官方产品，与 NVIDIA 无隶属、授权代理或背书关系。NVIDIA、Jetson 和 JetPack 为 NVIDIA Corporation 的商标。</p>
+      <p>脚本与文档依据 <a href="LICENSE">MIT License</a> 提供；再分发时须保留版权与许可声明。原版权声明为 Copyright (c) 2026 Shippuurl，品牌展示不改变原版权归属。MIT 不授予第三方商标或 NVIDIA 软件的使用权。</p>
+      <p>软件按“现状”（AS IS）提供。在适用法律允许的最大范围内，不提供明示或默示担保，包括适销性、特定用途适用性及不侵权担保；作者及版权持有人的责任限制以 MIT 原文为准。本声明不排除或限制适用法律不得排除或限制的责任。</p>
+      <p>公开发布的脚本不包含 NVIDIA 固件、引导程序或专有 SDK。运行时取得的第三方组件受其随附许可及 <a href="https://docs.nvidia.com/jetson/archives/r36.4.3/DeveloperGuide/SD/SoftwarePackagesAndTheUpdateMechanism.html">NVIDIA 软件包说明</a>约束；使用者应在下载、使用或再分发前核对对应版本许可。对本工具的确认不替代第三方许可要求。</p>
+      <p>使用者应确认设备操作权限、备份及恢复方案，并依据官方文档核对模组、载板、BSP 和系统版本。预检查通过或下载地址可用不构成兼容性、安全性或刷写成功保证。第三方载板须以其厂商适配资料为准。</p>
+      <h2>MIT License · 原文</h2><pre>MIT License
 
 Copyright (c) 2026 Shippuurl
 
@@ -38,6 +106,28 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-</pre></details></section></main>
+</pre></details></section>
+  </main>
+
+  <aside class="col-wiki" aria-labelledby="prep">
+    <div class="meta">准备工作</div>
+    <h2 id="prep">刷写前需要准备</h2>
+    <ol class="checklist">
+      <li><b>Jetson 主板</b><span>Orin Nano / Orin NX（t234）。实际模组与载板以 EEPROM 读数（Board ID / SKU）为准。</span></li>
+      <li><b>电源适配器</b><span>19V 桶形供电。刷写与 recovery 期间不要仅依赖 USB-C 供电。</span></li>
+      <li><b>USB-C 数据线</b><span>把板子以 recovery（APX）方式连到主机。需支持数据传输，纯充电线无法被识别。</span></li>
+      <li><b>跳线帽</b><span>短接 FC REC 与 GND 进入 recovery。短接位置以载板丝印为准，DevKit 为 12 针排针的 FC REC / GND（第 9、10 脚）。</span></li>
+    </ol>
+    <p class="note"><b>上电约 2 秒后拔掉跳线帽。</b><span class="inline-risk">不拔会导致下次上电继续进入 recovery。</span><br>顺序：断电 → 戴跳线帽 → 上电 → 约 2 秒后拔下 → 主机 <code>lsusb</code> 出现 <code>0955:7523</code> 或 <code>0955:7623</code>（APX）。</p>
+
+    <figure><img src="images/jetson-board.jpg" alt="Jetson 主板与载板接线位置" loading="lazy" width="1100" height="741"><figcaption>Jetson 主板：40-pin 排针、USB-C 与 19V 供电口位置。</figcaption></figure>
+    <div class="gallery">
+      <figure><img src="images/jumper-cap.jpg" alt="跳线帽" loading="lazy" width="1100" height="611"><figcaption>跳线帽：用于短接 FC REC 与 GND。</figcaption></figure>
+      <figure><img src="images/jumper-cap-installed.jpg" alt="跳线帽接入位置" loading="lazy" width="901" height="575"><figcaption>跳线帽接入位置：保持短接状态下上电，约 2 秒后拔下。</figcaption></figure>
+    </div>
+    <p class="muted" style="font-size:12.5px;margin-top:18px">准备完成后回到左侧「获取与运行」，先执行 <code>--mode detect</code> 再决定是否刷写。</p>
+  </aside>
+
+</div></div>
 <footer><div class="wrap"><span>A2VEC · 独立维护工具 / 非 NVIDIA 官方产品</span><a href="LICENSE">MIT License · © 2026 Shippuurl</a></div></footer>
 <script>const button=document.getElementById('copy');button.hidden=false;button.addEventListener('click',async()=>{const status=document.getElementById('copy-status');try{await navigator.clipboard.writeText(document.getElementById('command').textContent);status.textContent='命令已复制。请先审阅下载的脚本。'}catch{status.textContent='无法访问剪贴板，请手动选择并复制命令。'}});</script></body></html>
