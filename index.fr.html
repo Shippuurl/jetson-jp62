@@ -78,7 +78,10 @@ figcaption{margin-top:8px;font-size:12px;color:#626a72;line-height:1.6}
 footer{padding:0;margin:12px 0 0;font-size:11px;color:#626a72;display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px}
 /* ---- 移动端：单栏堆叠 ---- */
 @media(min-width:921px){
-  .page{min-height:100vh}          /* 整页滚动，不做栏内滚动：中线处不会多出滚动条 */
+  .page{min-height:100vh}
+  .pane.left{align-self:start;padding-top:14px;padding-bottom:10px}
+  .pane.left{position:sticky;top:var(--sticky-top,0px)}
+  .pane.left section{padding-top:12px;padding-bottom:12px}
 }
 @media(max-width:920px){
   .page{grid-template-columns:1fr}
@@ -151,11 +154,11 @@ SOFTWARE.</pre></details></section>
       </select>
     </div>
   </div>
+  <div class="panel" id="panel-recovery">
   <h2 id="prep">Ce qu'il faut avant de flasher</h2>
   <ol class="checklist"><li><b>Carte Jetson</b><span>Orin Nano / Orin NX (t234). Module et carte porteuse sont confirmés par la lecture EEPROM (Board ID / SKU).</span></li><li><b>Alimentation</b><span>Entrée jack 19 V. Pendant le flash ou le mode recovery, ne pas dépendre uniquement de l'alimentation USB-C.</span></li><li><b>Câble USB-C de données</b><span>Relie la carte à l'hôte en mode recovery (APX). Doit transmettre des données ; un câble de charge seul n'est pas détecté.</span></li><li><b>Cavalier</b><span>Court-circuite FC REC et GND pour entrer en recovery. Position selon la sérigraphie ; sur le DevKit, connecteur 12 broches, FC REC / GND (broches 9 et 10).</span></li></ol>
   <figure><img src="images/jetson-board.jpg" alt="Carte Jetson : connecteur 40 broches, USB-C et entrée 19 V." width="1100" height="741"><figcaption>Carte Jetson : connecteur 40 broches, USB-C et entrée 19 V.</figcaption></figure>
 
-  <div class="panel" id="panel-recovery">
   <h3 id="recovery">Entrer en mode recovery (mode flash)</h3>
   <p class="muted" style="font-size:13.5px">La carte doit être en Force Recovery Mode avant le flash. Les trois méthodes ci-dessous proviennent de la documentation NVIDIA ; choisissez celle qui correspond à l'état de la carte.</p>
   <div class="method"><p class="method-t"><b>A</b> Depuis l'arrêt (recommandé)</p><ol class="steps"><li>Débranchez l'alimentation et vérifiez que la carte est complètement hors tension.</li><li>Placez un cavalier entre les broches 9 et 10 du Button Header (FC REC → GND).</li><li>Rebranchez l'alimentation : la carte démarre en recovery au lieu du système.</li><li>Retirez le cavalier dès que l'hôte détecte l'appareil ; laissé en place, il renvoie la prochaine mise sous tension en recovery.</li></ol></div>
@@ -169,29 +172,35 @@ SOFTWARE.</pre></details></section>
   </div>
   <p class="caution" style="margin-top:20px">Vérification : <code>lsusb</code> sur l'hôte affiche <code>0955:&lt;nnnn&gt; NVIDIA Corp.</code> — 7523 = Orin Nano 8GB, 7623 = Orin Nano 4GB (table officielle). Si rien n'apparaît, coupez l'alimentation et réessayez.</p>
   <p class="sources"><span class="meta">Sources</span><a href="https://docs.nvidia.com/jetson/orin-nano-devkit/user-guide/latest/howto.html#force-recovery-mode" rel="noopener">NVIDIA · Force Recovery Mode（Orin Nano DevKit User Guide）</a><a href="https://docs.nvidia.com/jetson/archives/r36.4.3/DeveloperGuide/IN/QuickStart.html" rel="noopener">NVIDIA · Jetson Linux R36.4.3 Quick Start</a><a href="https://forums.developer.nvidia.com/t/how-to-get-into-recovery-mode/250525" rel="noopener">NVIDIA Developer Forums · How to Get Into Recovery Mode</a></p>
-  </div>
-
-  <div class="panel" id="panel-uart" hidden>
-  <h3>Diagnostic série (UART)</h3>
-  <p class="muted" style="font-size:13.5px">Si la carte ne démarre pas, si le flash échoue ou si elle reste bloquée sur l'écran de démarrage, le journal série indique à quelle étape de la chaîne de boot cela se produit. Il donne une sortie au niveau matériel, plus proche du système que SSH ou le recovery.</p>
-  <div class="method"><p class="method-t"><b>1</b> Matériel</p><ul class="steps"><li>Adaptateur USB-TTL (CP2102 / CH340 / FT232, niveau 3,3 V)</li><li>Trois fils Dupont (femelle-femelle)</li></ul></div>
-  <div class="method"><p class="method-t"><b>2</b> Câblage (connecteur 40 broches)</p><ul class="steps"><li>Pin 8 UART_TX → RXD de l'adaptateur</li><li>Pin 10 UART_RX → TXD de l'adaptateur</li><li>GND commun (broche 6 / 9 / 14 / 25 / 30 / 34 / 39)</li></ul></div>
-  <p class="note" style="margin-top:4px">115200 8N1, sans contrôle de flux. TX et RX doivent être croisés ; en TX-TX vous ne recevez rien.</p>
-  <div class="method" style="margin-top:14px"><p class="method-t"><b>3</b> Capture</p><ol class="steps"><li>Intégré au script : <code>bash jetson-jp62.sh --mode uart</code> (/dev/ttyUSB* détecté automatiquement, 30 s par défaut)</li><li>Manuel : <code>screen /dev/ttyUSB0 115200</code> (quitter avec Ctrl-A puis K) ou <code>minicom -D /dev/ttyUSB0 -b 115200</code></li><li>Lancez la capture d'abord, puis coupez et remettez la carte sous tension, pour obtenir toute la chaîne du BootROM au noyau</li></ol></div>
-  <p class="note">Côté carte, le périphérique est /dev/ttyTHS1 (le numéro est attribué dynamiquement selon la version, pas toujours ttyTHS0) ; en cas de permission refusée, ajoutez-vous au groupe dialout.</p>
-  <div class="method" style="margin-top:14px"><p class="method-t"><b>4</b> Où cela bloque</p><ul class="steps"><li>Rien depuis BootROM / MB1 / MB2 → alimentation, contact du module, firmware QSPI</li><li>Blocage en UEFI → bootloader ou configuration de l'arbre de périphériques</li><li>Blocage dans le noyau → pilotes, système de fichiers racine, stockage</li><li>Arrive à getty puis redémarre → application ou unité systemd</li></ul></div>
-  <p class="sources"><span class="meta">Sources</span><a href="https://developerwiki.proventusnova.com/How_to_NVIDIA_Jetson_Orin_Nano_UART_Console" rel="noopener">ProventusNova · How to NVIDIA Jetson Orin Nano UART Console</a><a href="https://forums.developer.nvidia.com/t/how-to-access-uart1-on-expansion-pins-8-10/328934" rel="noopener">NVIDIA Developer Forums · UART1 on expansion pins 8/10</a><a href="https://jetsonhacks.com/2019/04/19/jetson-nano-serial-console/" rel="noopener">JetsonHacks · Serial Debug Console (115200 8N1)</a></p>
-  </div>
-
   <h3>Flash et vérification</h3>
   <div class="gallery">
     <figure><img src="images/jetpack-version.png" alt="Choix de version dans le script : sans --l4t, sélection interactive, jamais la plus récente par défaut." width="792" height="426"><figcaption>Choix de version dans le script : sans --l4t, sélection interactive, jamais la plus récente par défaut.</figcaption></figure>
     <figure><img src="images/flash-done.jpg" alt="Flash réussi : flash.sh affiche « The target generic has been flashed successfully »." width="1100" height="957"><figcaption>Flash réussi : flash.sh affiche « The target generic has been flashed successfully ».</figcaption></figure>
   </div>
   <p class="muted" style="font-size:12.5px;margin-top:18px">Une fois prêt, revenez à « Obtenir et exécuter » et lancez <code>--mode detect</code> avant de décider du flash.</p>
+  </div>
+
+  <div class="panel" id="panel-uart" hidden>
+  <h3>Diagnostic série (UART)</h3>
+  <div class="command"><div class="command-head">Windows · PowerShell</div><pre>irm https://raw.githubusercontent.com/Shippuurl/jetson-jp62/main/uart-logs.ps1 | iex</pre></div>
+  <div class="command"><div class="command-head">Linux / macOS · Bash</div><pre>bash &lt;(curl -fsSL https://raw.githubusercontent.com/Shippuurl/jetson-jp62/main/uart-logs.sh)</pre></div>
+  <p><a href="UART-LOGS.md">UART logs · ZIP · GitHub rules ↗</a></p>
+  <p class="muted" style="font-size:13.5px">Si la carte ne démarre pas, si le flash échoue ou si elle reste bloquée sur l'écran de démarrage, le journal série indique à quelle étape de la chaîne de boot cela se produit. Il donne une sortie au niveau matériel, plus proche du système que SSH ou le recovery.</p>
+  <div class="method"><p class="method-t"><b>1</b> Matériel</p><ul class="steps"><li>Adaptateur USB-TTL (CP2102 / CH340 / FT232, niveau 3,3 V)</li><li>Trois fils Dupont (femelle-femelle)</li></ul></div>
+  <div class="method"><p class="method-t"><b>2</b> Câblage (connecteur 40 broches)</p><ul class="steps"><li>Pin 8 UART_TX → RXD de l'adaptateur</li><li>Pin 10 UART_RX → TXD de l'adaptateur</li><li>GND commun (broche 6 / 9 / 14 / 25 / 30 / 34 / 39)</li></ul></div>
+  <p class="note" style="margin-top:4px">115200 8N1, sans contrôle de flux. TX et RX doivent être croisés ; en TX-TX vous ne recevez rien.</p>
+  <figure><img src="images/uart-wiring.svg" alt="Câblage (connecteur 40 broches)" width="900" height="440"><figcaption>Câblage (connecteur 40 broches) · 3.3 V TTL</figcaption></figure>
+  <div class="method" style="margin-top:14px"><p class="method-t"><b>3</b> Capture</p><ol class="steps"><li>Intégré au script : <code>bash jetson-jp62.sh --mode uart</code> (/dev/ttyUSB* détecté automatiquement, 30 s par défaut)</li><li>Manuel : <code>screen /dev/ttyUSB0 115200</code> (quitter avec Ctrl-A puis K) ou <code>minicom -D /dev/ttyUSB0 -b 115200</code></li><li>Lancez la capture d'abord, puis coupez et remettez la carte sous tension, pour obtenir toute la chaîne du BootROM au noyau</li></ol></div>
+  <p class="note">Côté carte, le périphérique est /dev/ttyTHS1 (le numéro est attribué dynamiquement selon la version, pas toujours ttyTHS0) ; en cas de permission refusée, ajoutez-vous au groupe dialout.</p>
+  <figure><img src="images/uart-capture.svg" alt="Capture" width="900" height="360"><figcaption>Capture · 115200 8N1</figcaption></figure>
+  <div class="method" style="margin-top:14px"><p class="method-t"><b>4</b> Où cela bloque</p><ul class="steps"><li>Rien depuis BootROM / MB1 / MB2 → alimentation, contact du module, firmware QSPI</li><li>Blocage en UEFI → bootloader ou configuration de l'arbre de périphériques</li><li>Blocage dans le noyau → pilotes, système de fichiers racine, stockage</li><li>Arrive à getty puis redémarre → application ou unité systemd</li></ul></div>
+  <p class="sources"><span class="meta">Sources</span><a href="https://developerwiki.proventusnova.com/How_to_NVIDIA_Jetson_Orin_Nano_UART_Console" rel="noopener">ProventusNova · How to NVIDIA Jetson Orin Nano UART Console</a><a href="https://forums.developer.nvidia.com/t/how-to-access-uart1-on-expansion-pins-8-10/328934" rel="noopener">NVIDIA Developer Forums · UART1 on expansion pins 8/10</a><a href="https://jetsonhacks.com/2019/04/19/jetson-nano-serial-console/" rel="noopener">JetsonHacks · Serial Debug Console (115200 8N1)</a></p>
+  </div>
+
+
 </section>
 
 </div>
-<script>const ts=document.getElementById('tut');if(ts){const show=v=>{document.getElementById('panel-recovery').hidden=v!=='recovery';document.getElementById('panel-uart').hidden=v!=='uart';};ts.addEventListener('change',()=>show(ts.value));show(ts.value);}
+<script>const left=document.querySelector('.pane.left');const fit=()=>left.style.setProperty('--sticky-top',Math.min(0,window.innerHeight-left.getBoundingClientRect().height)+'px');new ResizeObserver(fit).observe(left);window.addEventListener('resize',fit);fit();const ts=document.getElementById('tut');if(ts){const show=v=>{document.getElementById('panel-recovery').hidden=v!=='recovery';document.getElementById('panel-uart').hidden=v!=='uart';};ts.addEventListener('change',()=>show(ts.value));show(ts.value);}
 const b=document.getElementById('copy');b.hidden=false;b.addEventListener('click',async()=>{const s=document.getElementById('copy-status');try{await navigator.clipboard.writeText(document.getElementById('command').textContent);s.textContent='Copié. Relisez d’abord le script.';}catch{s.textContent='Presse-papiers indisponible ; copiez manuellement.';}});</script>
 </body></html>
