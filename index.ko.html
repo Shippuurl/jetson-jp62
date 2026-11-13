@@ -185,15 +185,15 @@ SOFTWARE.</pre></details></section>
   <div class="command"><div class="command-head">Windows · PowerShell</div><pre>irm https://raw.githubusercontent.com/Shippuurl/jetson-jp62/main/uart-logs.ps1 | iex</pre></div>
   <div class="command"><div class="command-head">Linux / macOS · Bash</div><pre>bash &lt;(curl -fsSL https://raw.githubusercontent.com/Shippuurl/jetson-jp62/main/uart-logs.sh)</pre></div>
   <p><a href="UART-LOGS.md">UART logs · ZIP · GitHub rules ↗</a></p>
-  <p class="muted" style="font-size:13.5px">보드가 부팅되지 않거나, 플래시가 실패하거나, 부팅 화면에서 멈출 때 시리얼 로그로 부팅 체인의 어느 단계인지 가릴 수 있습니다. SSH나 recovery보다 하드웨어에 가까운 출력을 얻습니다.</p>
+  <p class="muted" style="font-size:13.5px">recovery 모드나 플래시 작업 없이 독립적으로 UART 로그를 수집합니다.</p>
   <div class="method"><p class="method-t"><b>1</b> 준비물</p><ul class="steps"><li>USB-TTL 시리얼 모듈(CP2102 / CH340 / FT232 계열, 3.3V 레벨)</li><li>점퍼 와이어 3개(암-암)</li></ul></div>
   <div class="method"><p class="method-t"><b>2</b> 배선(40핀 헤더)</p><ul class="steps"><li>Pin 8 UART_TX → 어댑터 RXD</li><li>Pin 10 UART_RX → 어댑터 TXD</li><li>GND 공통(핀 6 / 9 / 14 / 25 / 30 / 34 / 39 중 하나)</li></ul></div>
   <p class="note" style="margin-top:4px">115200 8N1, 흐름 제어 없음. TX와 RX는 반드시 교차해야 하며, TX-TX로 연결하면 한 글자도 받지 못합니다.</p>
   <figure><img src="images/uart-wiring.svg" alt="배선(40핀 헤더)" width="900" height="440"><figcaption>배선(40핀 헤더) · 3.3 V TTL</figcaption></figure>
-  <div class="method" style="margin-top:14px"><p class="method-t"><b>3</b> 캡처</p><ol class="steps"><li>스크립트 내장: <code>bash jetson-jp62.sh --mode uart</code>(/dev/ttyUSB* 자동 탐색, 기본 30초)</li><li>수동: <code>screen /dev/ttyUSB0 115200</code>(종료는 Ctrl-A 후 K), 또는 <code>minicom -D /dev/ttyUSB0 -b 115200</code></li><li>먼저 캡처를 시작한 뒤 보드 전원을 껐다 켜야 BootROM부터 커널까지 전체 체인을 얻습니다</li></ol></div>
-  <p class="note">보드 쪽 장치 이름은 /dev/ttyTHS1입니다(번호는 릴리스마다 동적으로 할당되며 ttyTHS0 고정이 아닙니다). 권한이 거부되면 dialout 그룹에 추가하십시오.</p>
+  <div class="method" style="margin-top:14px"><p class="method-t"><b>3</b> 캡처</p><ol class="steps"><li>스크립트 내장: <code>bash jetson-jp62.sh --mode uart</code>(/dev/ttyUSB* 자동 탐색, 기본 30초)</li><li>수동: <code>screen /dev/ttyUSB0 115200</code>(종료는 Ctrl-A 후 K), 또는 <code>minicom -D /dev/ttyUSB0 -b 115200</code></li><li>캡처를 시작한 뒤 전원을 켜십시오. 해당 UART로 출력되는 로그만 수집하며 40핀 UART의 초기 부팅 로그는 보장되지 않습니다.</li></ol></div>
+  <p class="note">호스트: COMx / /dev/ttyUSBx. 보드의 ttyTHS 및 디버그 콘솔은 캐리어와 BSP에 따라 다릅니다. 출력이 없다고 펌웨어 고장으로 판단하지 말고 포트, 배선, 설정을 확인하십시오.</p>
   <figure><img src="images/uart-capture.svg" alt="캡처" width="900" height="360"><figcaption>캡처 · 115200 8N1</figcaption></figure>
-  <div class="method" style="margin-top:14px"><p class="method-t"><b>4</b> 어디서 멈추는가</p><ul class="steps"><li>BootROM / MB1 / MB2 출력 없음 → 전원, 모듈 접촉, QSPI 펌웨어</li><li>UEFI에서 정지 → 부트로더 또는 디바이스 트리 설정</li><li>커널에서 멈춤 → 드라이버, 루트 파일 시스템, 저장 장치</li><li>getty까지 도달 후 재부팅 → 애플리케이션 또는 systemd 유닛</li></ul></div>
+  <div class="method" style="margin-top:14px"><p class="method-t"><b>4</b> 어디서 멈추는가</p><ul class="steps"><li>호스트: COMx / /dev/ttyUSBx. 보드의 ttyTHS 및 디버그 콘솔은 캐리어와 BSP에 따라 다릅니다. 출력이 없다고 펌웨어 고장으로 판단하지 말고 포트, 배선, 설정을 확인하십시오.</li><li>UEFI에서 정지 → 부트로더 또는 디바이스 트리 설정</li><li>커널에서 멈춤 → 드라이버, 루트 파일 시스템, 저장 장치</li><li>getty까지 도달 후 재부팅 → 애플리케이션 또는 systemd 유닛</li></ul></div>
   <p class="sources"><span class="meta">출처</span><a href="https://developerwiki.proventusnova.com/How_to_NVIDIA_Jetson_Orin_Nano_UART_Console" rel="noopener">ProventusNova · How to NVIDIA Jetson Orin Nano UART Console</a><a href="https://forums.developer.nvidia.com/t/how-to-access-uart1-on-expansion-pins-8-10/328934" rel="noopener">NVIDIA Developer Forums · UART1 on expansion pins 8/10</a><a href="https://jetsonhacks.com/2019/04/19/jetson-nano-serial-console/" rel="noopener">JetsonHacks · Serial Debug Console (115200 8N1)</a></p>
   </div>
 
