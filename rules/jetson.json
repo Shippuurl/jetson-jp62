@@ -1,0 +1,132 @@
+{
+  "version": 3,
+  "board": "jetson",
+  "context": 3,
+  "rules": [
+    {
+      "id": "tegra-boot",
+      "severity": "info",
+      "context": 2,
+      "terms": [
+        "tegra234",
+        "Tegra Boot",
+        "Jetson",
+        "L4T",
+        "NVIDIA Jetson"
+      ],
+      "advice": "识别为 Jetson 平台（t234）。"
+    },
+    {
+      "id": "cbb-failure",
+      "severity": "error",
+      "context": 3,
+      "terms": [
+        "CBB-FAILURE",
+        "MB1: CBB",
+        "Bootloader failed"
+      ],
+      "advice": "bootloader 层失败：多为 QSPI 固件或板型配置不匹配，需重新刷 QSPI。"
+    },
+    {
+      "id": "bpmp",
+      "severity": "error",
+      "context": 2,
+      "terms": [
+        "bpmp",
+        "BPMP-FW",
+        "bpmp: init"
+      ],
+      "advice": "BPMP 固件问题：确认 QSPI 固件与模组匹配。"
+    },
+    {
+      "id": "xusb",
+      "severity": "warn",
+      "context": 2,
+      "terms": [
+        "xusb",
+        "tegra-xusb",
+        "usb-vbus"
+      ],
+      "advice": "Tegra XUSB 报错通常与外设供电或端口复用有关。"
+    },
+    {
+      "id": "nvpmodel",
+      "severity": "info",
+      "context": 2,
+      "terms": [
+        "nvpmodel",
+        "MAXN",
+        "power mode"
+      ],
+      "advice": "功耗模式信息：MAXN_SUPER 需要 36.4+ 的 QSPI。"
+    },
+    {
+      "id": "camera",
+      "severity": "warn",
+      "context": 2,
+      "terms": [
+        "imx219",
+        "imx477",
+        "tegra-capture-vi",
+        "nvcsi",
+        "csi"
+      ],
+      "advice": "CSI 相机相关：排线/供电/设备树，与刷机无关。"
+    },
+    {
+      "id": "fusb301",
+      "severity": "warn",
+      "context": 2,
+      "terms": [
+        "fusb301",
+        "USB-C PD",
+        "typec"
+      ],
+      "advice": "USB-C PD 芯片读不到：载板没这颗器件或板型号不匹配。"
+    },
+    {
+      "id": "dtb",
+      "severity": "error",
+      "context": 3,
+      "terms": [
+        "dtb",
+        "FDT",
+        "device tree"
+      ],
+      "advice": "设备树问题：确认 extlinux 指向的 dtb 与板型一致。"
+    },
+    {
+      "id": "emmc-nvme",
+      "severity": "error",
+      "context": 3,
+      "terms": [
+        "nvme0n1",
+        "mmcblk0",
+        "sdhci",
+        "tegra-sdhci"
+      ],
+      "advice": "存储设备枚举失败：检查介质与 QSPI 中的存储配置。"
+    },
+    {
+      "id": "gpu",
+      "severity": "warn",
+      "context": 2,
+      "terms": [
+        "nvgpu",
+        "gpu-fault",
+        "gv11b"
+      ],
+      "advice": "GPU 报错：结合应用日志判断是驱动还是负载问题。"
+    },
+    {
+      "id": "thermal-zone",
+      "severity": "warn",
+      "context": 2,
+      "terms": [
+        "tegra_thermal",
+        "soctherm"
+      ],
+      "advice": "SoC 温度管理介入：检查散热。"
+    }
+  ]
+}
