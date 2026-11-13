@@ -43,7 +43,7 @@ UART = {
         "停在 UEFI → bootloader 或设备树配置",
         "卡在 kernel → 驱动、根文件系统、存储设备",
         "已到 getty 仍重启 → 应用或 systemd 单元"],
-    note="只读串口，不发送刷写命令。规则默认从 GitHub 取，可 <code>--rules</code> 固定版本；规则只做文字匹配，命中不等于确定故障，没有输出也不能判定固件损坏。板内系统侧的设备名是 /dev/ttyTHS1（编号随版本变化）。",
+    note="只读串口，不发送刷写命令。规则随脚本内置；<code>--update-rules</code> 可更新（校验 sha256、拒绝版本回退），<code>--rules</code> 可固定本地版本；规则只做文字匹配，命中不等于确定故障，没有输出也不能判定固件损坏。板内系统侧的设备名是 /dev/ttyTHS1（编号随版本变化）。",
     src="引用",
 ),
 "en": dict(
@@ -66,7 +66,7 @@ UART = {
         "Stops in UEFI → bootloader or device-tree configuration",
         "Hangs in kernel → drivers, root filesystem, storage",
         "Reaches getty then reboots → application or systemd unit"],
-    note="Read-only: no flashing commands are sent. Rules are fetched from GitHub by default and can be pinned with <code>--rules</code>; they only do text matching, a hit is not a confirmed fault and no output does not prove firmware damage. On the board the device is /dev/ttyTHS1 (the number varies by release).",
+    note="Read-only: no flashing commands are sent. Rules ship with the script; <code>--update-rules</code> refreshes them (sha256 checked, no downgrade), <code>--rules</code> pins a local copy; they only do text matching, a hit is not a confirmed fault and no output does not prove firmware damage. On the board the device is /dev/ttyTHS1 (the number varies by release).",
     src="Sources",
 ),
 "ja": dict(
@@ -89,7 +89,7 @@ UART = {
         "UEFI で停止 → bootloader またはデバイスツリー設定",
         "カーネルで停止 → ドライバ、ルート FS、ストレージ",
         "getty まで到達して再起動 → アプリまたは systemd ユニット"],
-    note="読み取り専用で、書き込みコマンドは送りません。ルールは既定で GitHub から取得し、<code>--rules</code> で固定できます。ルールは文字一致のみで、一致＝故障確定ではありませんし、出力なし＝ファームウェア破損でもありません。ボード側のデバイス名は /dev/ttyTHS1 です（番号はリリースで変わります）。",
+    note="読み取り専用で、書き込みコマンドは送りません。ルールはスクリプトに同梱されており、<code>--update-rules</code> で更新（sha256 検証・版退回拒否）、<code>--rules</code> で固定できます。ルールは文字一致のみで、一致＝故障確定ではありませんし、出力なし＝ファームウェア破損でもありません。ボード側のデバイス名は /dev/ttyTHS1 です（番号はリリースで変わります）。",
     src="参考",
 ),
 "de": dict(
@@ -112,7 +112,7 @@ UART = {
         "Bleibt in UEFI stehen → Bootloader- oder Device-Tree-Konfiguration",
         "Hängt im Kernel → Treiber, Root-Dateisystem, Speicher",
         "Erreicht getty und startet neu → Anwendung oder systemd-Unit"],
-    note="Nur lesend, es werden keine Flash-Befehle gesendet. Regeln kommen standardmäßig von GitHub und lassen sich mit <code>--rules</code> festnageln; sie prüfen nur Text — ein Treffer ist kein bestätigter Fehler, und keine Ausgabe belegt keinen Firmware-Schaden. Auf dem Board heißt das Gerät /dev/ttyTHS1 (Nummer je Release unterschiedlich).",
+    note="Nur lesend, es werden keine Flash-Befehle gesendet. Regeln liegen dem Skript bei; <code>--update-rules</code> aktualisiert sie (sha256 geprüft, kein Downgrade), <code>--rules</code> pinnt eine lokale Kopie; sie prüfen nur Text — ein Treffer ist kein bestätigter Fehler, und keine Ausgabe belegt keinen Firmware-Schaden. Auf dem Board heißt das Gerät /dev/ttyTHS1 (Nummer je Release unterschiedlich).",
     src="Quellen",
 ),
 "fr": dict(
@@ -135,7 +135,7 @@ UART = {
         "Blocage en UEFI → bootloader ou arbre de périphériques",
         "Blocage dans le noyau → pilotes, système de fichiers racine, stockage",
         "Arrive à getty puis redémarre → application ou unité systemd"],
-    note="Lecture seule : aucune commande de flash n'est envoyée. Les règles viennent de GitHub par défaut et peuvent être figées avec <code>--rules</code> ; elles ne font que comparer du texte — une correspondance n'est pas un défaut confirmé, et aucune sortie ne prouve un firmware endommagé. Côté carte, le périphérique est /dev/ttyTHS1 (numéro variable selon la version).",
+    note="Lecture seule : aucune commande de flash n'est envoyée. Les règles sont fournies avec le script ; <code>--update-rules</code> les met à jour (sha256 vérifié, pas de retour arrière), <code>--rules</code> fige une copie locale ; elles ne font que comparer du texte — une correspondance n'est pas un défaut confirmé, et aucune sortie ne prouve un firmware endommagé. Côté carte, le périphérique est /dev/ttyTHS1 (numéro variable selon la version).",
     src="Sources",
 ),
 "ko": dict(
@@ -158,7 +158,7 @@ UART = {
         "UEFI에서 정지 → 부트로더 또는 디바이스 트리 설정",
         "커널에서 멈춤 → 드라이버, 루트 파일 시스템, 저장 장치",
         "getty까지 도달 후 재부팅 → 애플리케이션 또는 systemd 유닛"],
-    note="읽기 전용이며 플래시 명령을 보내지 않습니다. 규칙은 기본적으로 GitHub에서 받고 <code>--rules</code>로 버전을 고정할 수 있습니다. 규칙은 문자열 일치일 뿐이며, 일치가 곧 고장 확정은 아니고 출력이 없다고 펌웨어 손상도 아닙니다. 보드 쪽 장치 이름은 /dev/ttyTHS1입니다(번호는 릴리스마다 다름).",
+    note="읽기 전용이며 플래시 명령을 보내지 않습니다. 규칙은 스크립트에 포함되어 있으며 <code>--update-rules</code>로 갱신(sha256 검증, 버전 되돌리기 거부)하고 <code>--rules</code>로 로컬 버전을 고정할 수 있습니다. 규칙은 문자열 일치일 뿐이며, 일치가 곧 고장 확정은 아니고 출력이 없다고 펌웨어 손상도 아닙니다. 보드 쪽 장치 이름은 /dev/ttyTHS1입니다(번호는 릴리스마다 다름).",
     src="출처",
 ),
 }
