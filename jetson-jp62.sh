@@ -3,7 +3,7 @@
 # jetson-jp62.sh — JetPack 6.2 (L4T 36.4.3) 一键安装/刷机，全程无图形界面
 #
 #   交互菜单          bash jetson-jp62.sh
-#   只刷 QSPI         bash jetson-jp62.sh --mode qspi      (UEFI/bootloader，保留系统数据)
+#   QSPI only         bash jetson-jp62.sh --mode qspi      (UEFI/bootloader，保留系统数据)
 #   整机刷 NVMe       bash jetson-jp62.sh --mode nvme      (官方 initrd flash)
 #   只下载+解压       bash jetson-jp62.sh --mode prep
 #   板内升计算栈      bash jetson-jp62.sh --mode target    (在 Jetson 本机跑)
@@ -13,7 +13,7 @@
 #   - 自动识别板子（板内读 TNSPEC / 主机端看 recovery）并自动挑板型配置
 #   - 刷前逐条门槛检查（架构/依赖/磁盘/recovery/USB 链路/BSP 版本/rootfs/权限）
 #   - 下载源可换（--mirror / JETSON_MIRROR，http/https/file/本地目录），断点续传+双校验
-#   - 首次运行须同意《使用协议与安全声明》，同意后记在 ~/.config/jetson-jp62/
+#   - 首次运行须agree《使用协议与安全声明》，agree后记在 ~/.config/jetson-jp62/
 #   - 所有动盘动作先打印再执行；--dry-run 只体检不改动
 # =============================================================================
 
@@ -24,13 +24,13 @@ L4T_VERSION="${L4T_VERSION:-}"   # 空 = 交互时让你选版本；非交互才
 L4T_TAG="${L4T_TAG:-}"
 BSP_FILENAME=""
 ROOTFS_FILENAME=""
-BSP_SIZE=""            # 空 = 不预判大小，下完用 bzip2 -t + TOFU 校验
+BSP_SIZE=""            # 空 = 不预判大小,下完用 bzip2 -t + TOFU 校验
 ROOTFS_SIZE=""
-BSP_SHA256=""          # 空 = 用本机 TOFU 清单（首次下载后记录），可用 --manifest-url 指外部清单
+BSP_SHA256=""          # 空 = 用本机 TOFU 清单(首次下载后记录),可用 --manifest-url 指外部清单
 
 NV_REPO="https://repo.download.nvidia.com/jetson"
 NV_DL_BASE="https://developer.nvidia.com/downloads/embedded"
-SUITES="${JETSON_SUITES:-r35.4 r35.5 r35.6 r36.2 r36.3 r36.4 r36.5 r36.6}"   # 可配置，缺的自动跳过
+SUITES="${JETSON_SUITES:-r35.4 r35.5 r35.6 r36.2 r36.3 r36.4 r36.5 r36.6}"   # 可配置,缺的自动跳过
 MATRIX_TTL=604800      # 7 天缓存在 ~/.config/jetson-jp62/matrix.cache
 MATRIX_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/jetson-jp62/matrix.cache"
 MANIFEST_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/jetson-jp62/manifest.sha256"
@@ -53,9 +53,9 @@ BOARD="${JETSON_BOARD:-}"          # 留空 = 自动识别
 CONFIG_FILE="${JETSON_CONFIG:-}"
 AUTO_DIR=0
 REFRESH=0
-SPEC_FROM=""        # l4t | jp | auto（决定版本不满足时的处理方式）
+SPEC_FROM=""        # l4t | jp | auto(决定版本不满足时的处理方式)
 UPDATE_FROM=""
-OPEN_DOC=1          # 跑完是否提示/自动打开 HTML 说明页（0=关）
+OPEN_DOC=1          # 跑完是否提示/自动打开 HTML 说明页(0=关)
 DOC_URL="${JETSON_DOC_URL:-}"
 WARN_LOW=15                        # 余量低于此百分比时提示"冗余不足"
 ROOTDEV=""
@@ -73,110 +73,105 @@ AGREE_STAMP="$AGREE_DIR/agreed-v2"
 C_R=$'\033[31m'; C_G=""; C_Y=$'\033[33m'; C_B=""; C_D=$'\033[2m'; C_N=$'\033[0m'
 { [ -t 1 ] && [ -z "${NO_COLOR+x}" ] && [ "${TERM:-}" != dumb ]; } || { C_R=""; C_G=""; C_Y=""; C_B=""; C_D=""; C_N=""; }
 
-# ---------------- 界面语言（zh / en）：--lang、JETSON_JP62_LANG、或按 LANG 自动判定 --------
-UI_LANG="${JETSON_JP62_LANG:-}"
-if [ -z "$UI_LANG" ]; then
-    case "$(printf '%s' "${LC_ALL:-${LANG:-}}")" in
-        zh*|*[Zz][Hh]*) UI_LANG=zh ;;
-        en*)            UI_LANG=en ;;
-        *)              UI_LANG=zh ;;
-    esac
-fi
-case "$UI_LANG" in zh|en) ;; *) UI_LANG=zh ;; esac
+# ---------------- UI language: English by default; --lang / JETSON_JP62_LANG opt into zh ---
+# Never infer from LC_ALL/LANG: a zh_CN locale on a non-UTF8 terminal is exactly
+# what turns every message into mojibake.
+UI_LANG="${JETSON_JP62_LANG:-en}"
+case "$UI_LANG" in zh|en) ;; *) UI_LANG=en ;; esac
 # T "中文" "English"  → 按当前界面语言取一条；两参数都必给，避免漏译时静默出错
 T() { if [ "$UI_LANG" = en ]; then printf '%s' "$2"; else printf '%s' "$1"; fi; }
 
 # ---------------- 英文消息表：只覆盖固定文案（含变量的诊断明细仍为中文，便于与文档对照）----
 declare -A EN_MSG=(
-  ["recovery 设备 0955:7523（Orin 系列 t234）"]="recovery device 0955:7523 (Orin family, t234)"
+  ["recovery device 0955:7523 (Orin family, t234)"]="recovery device 0955:7523 (Orin family, t234)"
   ["主机架构 x86_64"]="host architecture x86_64"
   ["基础命令 curl/tar/bzip2/python3 齐全"]="base commands curl/tar/bzip2/python3 present"
-  ["BSP 未解压（detect 模式不拦）"]="BSP not extracted (detect does not block)"
-  ["BSP 未解压，本次会下载解压"]="BSP not extracted; it will be downloaded and extracted"
+  ["BSP 未解压(detect 模式不拦)"]="BSP not extracted (detect does not block)"
+  ["BSP 未解压,本次会下载解压"]="BSP not extracted; it will be downloaded and extracted"
   ["rootfs 已 apply_binaries"]="rootfs already has apply_binaries applied"
-  ["rootfs 未准备，本次会下 1.83G sample rootfs 并 apply_binaries"]="rootfs missing; this run downloads the 1.83G sample rootfs and applies binaries"
-  ["读不到 USB 链路速率（不影响刷，但慢）"]="USB link speed unreadable (flashing still works, but slowly)"
-  ["当前没有 recovery 设备（不致命：刷写前会等你短接，按回车一直刷新到检测到为止）"]="no recovery device yet (not fatal: before flashing you short the pins, press Enter to re-check)"
-  ["sudo 可用（免密）"]="sudo available without a password"
-  ["sudo 需要输入密码，运行时会提示你输入"]="sudo requires a password; you will be prompted when needed"
-  ["extlinux 未指定自定义 FDT（用 UEFI 按 TNSPEC 自动选 dtb）"]="extlinux specifies no custom FDT (UEFI selects the dtb from TNSPEC)"
+  ["rootfs 未准备,本次会下 1.83G sample rootfs 并 apply_binaries"]="rootfs missing; this run downloads the 1.83G sample rootfs and applies binaries"
+  ["读不到 USB 链路速率(不影响刷,但慢)"]="USB link speed unreadable (flashing still works, but slowly)"
+  ["当前没有 recovery 设备(不致命:刷写前会等你短接,按回车一直刷新到检测到为止)"]="no recovery device yet (not fatal: before flashing you short the pins, press Enter to re-check)"
+  ["sudo 可用(免密)"]="sudo available without a password"
+  ["sudo 需要输入密码,运行时会提示你输入"]="sudo requires a password; you will be prompted when needed"
+  ["extlinux 未指定自定义 FDT(用 UEFI 按 TNSPEC 自动选 dtb)"]="extlinux specifies no custom FDT (UEFI selects the dtb from TNSPEC)"
   ["检查项全部通过"]="all checks passed"
   ["用 --jetpack <版本> 或 --l4t <L4T版本>"]="use --jetpack <version> or --l4t <L4T version>"
-  ["--mode 只能是 detect / qspi / nvme / prep / target（另有 --matrix / --self-update / --doc 三个动作）"]="--mode accepts detect / qspi / nvme / prep / target (plus the --matrix / --self-update / --doc actions)"
-  ["跳过依赖安装（--no-deps）"]="skipping dependency install (--no-deps)"
+  ["--mode 只能是 detect / qspi / nvme / prep / target(另有 --matrix / --self-update / --doc 三个动作)"]="--mode accepts detect / qspi / nvme / prep / target (plus the --matrix / --self-update / --doc actions)"
+  ["跳过依赖安装(--no-deps)"]="skipping dependency install (--no-deps)"
   ["安装 NVIDIA 官方列出的主机依赖"]="installing the host dependencies listed by NVIDIA"
   ["依赖安装失败；可手工装好后加 --no-deps 重跑"]="dependency install failed; install them manually and rerun with --no-deps"
   ["基础依赖安装失败"]="base dependency install failed"
   ["主机依赖就绪"]="host dependencies ready"
-  ["该源失败，换下一个"]="source failed, trying the next one"
+  ["该源失败,换下一个"]="source failed, trying the next one"
   ["解压 BSP 失败"]="BSP extraction failed"
-  ["rootfs 看起来已经 apply 过，跳过解压"]="rootfs looks already applied; skipping extraction"
+  ["rootfs 看起来已经 apply 过,跳过解压"]="rootfs looks already applied; skipping extraction"
   ["解压 sample rootfs"]="extracting the sample rootfs"
   ["解压 rootfs 失败"]="rootfs extraction failed"
   ["apply_binaries.sh 失败"]="apply_binaries.sh failed"
   ["rootfs 准备完成"]="rootfs ready"
   ["[dry-run] 跳过 recovery 检测"]="[dry-run] recovery check skipped"
   ["recovery 设备已就位"]="recovery device ready"
-  ["按 --skip-recovery-check 跳过检测，直接刷（recovery 没进的话刷写必然失败）"]="use --skip-recovery-check to bypass the check (flashing will fail if the board is not in recovery)"
-  ["没有检测到 recovery 设备，且当前不是交互终端（无法按键刷新）"]="no recovery device and no interactive terminal (cannot poll by keypress)"
-  ["请在终端里重跑本命令，或先在别的终端把板子切到 recovery 再回来"]="rerun this command in a terminal, or switch the board to recovery from another terminal first"
-  ["输入结束，放弃"]="input closed; aborting"
-  ["已退出（板子没进 recovery）"]="exited (board never entered recovery)"
-  ["跳过 recovery 检测，直接进入刷写（失败请回来重跑）"]="recovery check skipped, flashing starts (rerun if it fails)"
-  ["还是没进 recovery。常见原因：没在断电状态下保持短接就上电 / 短错脚位 / USB 线只充电不传数据"]="still no recovery. Usual causes: pins not held while powering on / wrong pins / charge-only USB cable"
-  ["弄好后继续按 [回车] 刷新，我这边一直等着"]="press Enter to re-check once the board is ready; this side keeps waiting"
+  ["按 --skip-recovery-check 跳过检测,直接刷(recovery 没进的话刷写必然失败)"]="use --skip-recovery-check to bypass the check (flashing will fail if the board is not in recovery)"
+  ["没有检测到 recovery 设备,且当前不是交互终端(无法按键刷新)"]="no recovery device and no interactive terminal (cannot poll by keypress)"
+  ["请在终端里重跑本命令,或先在别的终端把板子切到 recovery 再回来"]="rerun this command in a terminal, or switch the board to recovery from another terminal first"
+  ["输入结束,放弃"]="input closed; aborting"
+  ["已退出(板子没进 recovery)"]="exited (board never entered recovery)"
+  ["跳过 recovery 检测,直接进入刷写(失败请回来重跑)"]="recovery check skipped, flashing starts (rerun if it fails)"
+  ["还是没进 recovery.常见原因:没在断电状态下保持短接就上电 / 短错脚位 / USB 线只充电不传数据"]="still no recovery. Usual causes: pins not held while powering on / wrong pins / charge-only USB cable"
+  ["弄好后继续按 [回车] 刷新,我这边一直等着"]="press Enter to re-check once the board is ready; this side keeps waiting"
   ["已取消"]="cancelled"
-  ["刷写日志里没找到 Board ID 行，无法二次核对板型"]="no Board ID line in the flash log; cannot cross-check the board"
-  ["缺 flash.sh，先跑 --mode prep"]="flash.sh missing; run --mode prep first"
-  ["没有进入 recovery，已放弃本次刷写（板子就绪后重跑同一条命令即可）"]="board never entered recovery; flashing abandoned (rerun the same command once it is ready)"
-  ["[dry-run] 到此为止，不执行"]="[dry-run] stopping here, nothing executed"
-  ["QSPI 刷写完成"]="QSPI flash complete"
-  ["缺 l4t_initrd_flash.sh（先 --mode prep --with-rootfs）"]="l4t_initrd_flash.sh missing (run --mode prep --with-rootfs first)"
-  ["rootfs 未准备：先 --mode prep --with-rootfs"]="rootfs not prepared: run --mode prep --with-rootfs first"
-  ["整机刷写完成（用户名/密码在首启创建，可用 tools/l4t_create_default_user.sh 预置）"]="full flash complete (user/password are created on first boot; tools/l4t_create_default_user.sh can preset them)"
+  ["no Board ID line in the flash log; cannot cross-check the board model"]="no Board ID line in the flash log; cannot cross-check the board"
+  ["缺 flash.sh,先跑 --mode prep"]="flash.sh missing; run --mode prep first"
+  ["没有进入 recovery,已放弃本次刷写(板子就绪后重跑同一条命令即可)"]="board never entered recovery; flashing abandoned (rerun the same command once it is ready)"
+  ["[dry-run] 到此为止,不执行"]="[dry-run] stopping here, nothing executed"
+  ["QSPI flash完成"]="QSPI flash complete"
+  ["缺 l4t_initrd_flash.sh(先 --mode prep --with-rootfs)"]="l4t_initrd_flash.sh missing (run --mode prep --with-rootfs first)"
+  ["rootfs 未准备:先 --mode prep --with-rootfs"]="rootfs not prepared: run --mode prep --with-rootfs first"
+  ["整机刷写完成(用户名/密码在首启创建,可用 tools/l4t_create_default_user.sh 预置)"]="full flash complete (user/password are created on first boot; tools/l4t_create_default_user.sh can preset them)"
   ["[dry-run] 把 nvidia-l4t-apt-source.list 里的 r36.x 改成 r36.4 后 apt dist-upgrade"]="[dry-run] change r36.x to r36.4 in nvidia-l4t-apt-source.list, then apt dist-upgrade"
-  ["这条会升级板上 BSP 包：TensorRT 8.x→10.x、cuDNN 8.x→9.x，自编 engine 需重建"]="this upgrades onboard BSP packages: TensorRT 8.x→10.x, cuDNN 8.x→9.x; self-built engines must be rebuilt"
-  ["dist-upgrade 有报错，继续尝试修复"]="dist-upgrade reported errors; attempting repair"
-  ["完成，物理重启后 nvbootctrl dump-slots-info 应显示 36.4.x"]="done; after a physical reboot nvbootctrl dump-slots-info should show 36.4.x"
-  ["模式：板内诊断（系统已启动）"]="mode: onboard diagnostics (system booted)"
-  ["CSI 相机(i2c 9/10) 探测失败 → 相机排线/供电/设备树，与刷机无关"]="CSI camera (i2c 9/10) probe failed → camera cable/power/device tree; unrelated to flashing"
-  ["fusb301(USB-C PD) 读不到 ID → 载板没这颗器件或板型号不匹配"]="fusb301 (USB-C PD) ID unreadable → carrier lacks the part or the board model does not match"
-  ["注意：这一层能看内核/系统报错，但看不到 UEFI 与 DDR 训练的日志"]="note: this layer shows kernel/system errors but not UEFI or DDR training logs"
-  ["缺 Linux_for_Tegra/bootloader 工具，先跑 --mode prep（只下载解压即可）"]="Linux_for_Tegra/bootloader tools missing; run --mode prep (download and extract only)"
-  ["模式：recovery 诊断（板子未启动）"]="mode: recovery diagnostics (board not booted)"
-  ["recovery 模式看不到内核/UEFI 运行时日志，也看不到 DDR 训练与电源问题"]="recovery mode exposes no kernel/UEFI runtime log, nor DDR training or power issues"
-  ["既不在板内（无 /etc/nv_tegra_release），也没有 recovery 设备"]="neither onboard (no /etc/nv_tegra_release) nor in recovery"
-  ["把板子接上：正常启动 → 本机可 ssh，脚本走板内诊断；未启动 → 短接进 recovery 走 EEPROM/BCT 诊断"]="connect the board: normal boot → ssh in and run onboard diagnostics; not booted → short the pins and run EEPROM/BCT diagnostics"
-  ["stty 设置失败（可能不是 TTY），继续尝试读取"]="stty failed (possibly not a TTY); still trying to read"
-  ["可用串口设备："]="available serial devices:"
-  ["没检测到串口。接线（Orin Nano DevKit 40-pin）：Pin 6=GND、Pin 8=UART1_TX、Pin 10=UART1_RX，115200 8N1"]="no serial device found. Wiring (Orin Nano DevKit 40-pin): Pin 6=GND, Pin 8=UART1_TX, Pin 10=UART1_RX, 115200 8N1"
-  ["接好后重跑：--mode uart --uart /dev/ttyUSB0 --uart-seconds 60"]="once wired, rerun: --mode uart --uart /dev/ttyUSB0 --uart-seconds 60"
-  ["已有日志想离线分析：--mode uart --uart-log boot.log"]="to analyse an existing log: --mode uart --uart-log boot.log"
-  ["运行在 Jetson 本机（板内识别最准）"]="running on the Jetson itself (most accurate identification)"
-  ["主机端看到 recovery 设备（板子型号需刷写时由 EEPROM 读出）"]="recovery device visible from the host (model is read from EEPROM during flashing)"
-  ["既不在板内，也没有 recovery 设备（板子没连、或没进 recovery）"]="neither onboard nor in recovery (board not connected, or not in recovery)"
-  ["当前板子不是 super 版；要 Super 必须先刷 QSPI 到 36.4，再 nvpmodel 切 MAXN_SUPER"]="this board is not the Super variant; for Super you must flash QSPI to 36.4, then switch nvpmodel to MAXN_SUPER"
-  ["取不到可用版本列表，回落 auto"]="available versions unavailable; falling back to auto"
-  ["探测不到上游版本（代理/网络？）→ 使用内置兜底清单（可能不是最新）"]="upstream unreachable (proxy/network?) → using the built-in fallback list (may not be the newest)"
+  ["这条会升级板上 BSP 包:TensorRT 8.x->10.x,cuDNN 8.x->9.x,自编 engine 需重建"]="this upgrades onboard BSP packages: TensorRT 8.x->10.x, cuDNN 8.x->9.x; self-built engines must be rebuilt"
+  ["dist-upgrade 有报错,继续尝试修复"]="dist-upgrade reported errors; attempting repair"
+  ["完成,物理重启后 nvbootctrl dump-slots-info 应显示 36.4.x"]="done; after a physical reboot nvbootctrl dump-slots-info should show 36.4.x"
+  ["模式:板内诊断(系统已启动)"]="mode: onboard diagnostics (system booted)"
+  ["CSI 相机(i2c 9/10) 探测失败 -> 相机排线/供电/设备树,与刷机无关"]="CSI camera (i2c 9/10) probe failed -> camera cable/power/device tree; unrelated to flashing"
+  ["fusb301(USB-C PD) 读不到 ID -> 载板没这颗器件或板型号不匹配"]="fusb301 (USB-C PD) ID unreadable -> carrier lacks the part or the board model does not match"
+  ["注意:这一层能看内核/系统报错,但看不到 UEFI 与 DDR 训练的日志"]="note: this layer shows kernel/system errors but not UEFI or DDR training logs"
+  ["缺 Linux_for_Tegra/bootloader 工具,先跑 --mode prep(只下载解压即可)"]="Linux_for_Tegra/bootloader tools missing; run --mode prep (download and extract only)"
+  ["模式:recovery 诊断(板子未启动)"]="mode: recovery diagnostics (board not booted)"
+  ["recovery mode shows no kernel/UEFI runtime log, nor DDR training or power issues"]="recovery mode exposes no kernel/UEFI runtime log, nor DDR training or power issues"
+  ["既不在板内(无 /etc/nv_tegra_release),也没有 recovery 设备"]="neither onboard (no /etc/nv_tegra_release) nor in recovery"
+  ["把板子接上:正常启动 -> 本机可 ssh,脚本走板内诊断；未启动 -> 短接进 recovery 走 EEPROM/BCT 诊断"]="connect the board: normal boot -> ssh in and run onboard diagnostics; not booted -> short the pins and run EEPROM/BCT diagnostics"
+  ["stty 设置失败(可能不是 TTY),继续尝试读取"]="stty failed (possibly not a TTY); still trying to read"
+  ["可用串口设备:"]="available serial devices:"
+  ["没检测到串口.接线(Orin Nano DevKit 40-pin):Pin 6=GND,Pin 8=UART1_TX,Pin 10=UART1_RX,115200 8N1"]="no serial device found. Wiring (Orin Nano DevKit 40-pin): Pin 6=GND, Pin 8=UART1_TX, Pin 10=UART1_RX, 115200 8N1"
+  ["接好后重跑:--mode uart --uart /dev/ttyUSB0 --uart-seconds 60"]="once wired, rerun: --mode uart --uart /dev/ttyUSB0 --uart-seconds 60"
+  ["to analyse an existing log: --mode uart --uart-log boot.log"]="to analyse an existing log: --mode uart --uart-log boot.log"
+  ["运行在 Jetson 本机(板内识别最准)"]="running on the Jetson itself (most accurate identification)"
+  ["主机端看到 recovery 设备(板子型号需刷写时由 EEPROM 读出)"]="recovery device visible from the host (model is read from EEPROM during flashing)"
+  ["既不在板内,也没有 recovery 设备(板子没连,或没进 recovery)"]="neither onboard nor in recovery (board not connected, or not in recovery)"
+  ["当前板子不是 super 版；要 Super 必须先刷 QSPI 到 36.4,再 nvpmodel 切 MAXN_SUPER"]="this board is not the Super variant; for Super you must flash QSPI to 36.4, then switch nvpmodel to MAXN_SUPER"
+  ["取不到可用版本列表,回落 auto"]="available versions unavailable; falling back to auto"
+  ["探测不到上游版本(代理/网络？)-> 使用内置兜底清单(可能不是最新)"]="upstream unreachable (proxy/network?) -> using the built-in fallback list (may not be the newest)"
   ["有网后跑 --refresh 重新探测；下载失败时用 --mirror 指向内网源"]="rerun --refresh once online; if downloads fail, point --mirror at an internal source"
-  ["矩阵缓存里没有可用版本（上次探测失败？）→ 重取一次"]="matrix cache holds no usable version (last probe failed?) → probing once more"
-  ["离线兜底模式：跳过版本存在性探测，直接尝试下载"]="offline fallback: skipping the version probe and trying the download directly"
+  ["矩阵缓存里没有可用版本(上次探测失败？)-> 重取一次"]="matrix cache holds no usable version (last probe failed?) -> probing once more"
+  ["离线兜底模式:跳过版本存在性探测,直接尝试下载"]="offline fallback: skipping the version probe and trying the download directly"
   ["已退出"]="exited"
   ["请输入序号或版本号"]="enter an index or a version"
   ["序号超出范围"]="index out of range"
-  ["换个版本：--l4t <版本>，或 --l4t latest 自动挑最新的"]="pick another version: --l4t <version>, or --l4t latest to take the newest"
-  ["文件不在，跳过校验"]="file absent; verification skipped"
-  ["没给更新源：--update-from <url|路径>，或配 JETSON_SCRIPT_URL"]="no update source: --update-from <url|path>, or set JETSON_SCRIPT_URL"
-  ["新版本语法检查没过，放弃更新"]="new version failed the syntax check; update abandoned"
-  ["已经是当前最新版（sha256 相同）"]="already the current version (identical sha256)"
-  ["新版本说明（头部 12 行）："]="new version notes (first 12 lines):"
-  ["没找到 index.html（应与脚本同目录），也没配 --doc-url；跳过"]="no index.html (expected next to the script) and no --doc-url; skipping"
-  ["非交互环境，版本回落 auto（最新可刷）"]="non-interactive; version falls back to auto (newest flashable)"
-  ["板内体检通过。板内只能 --mode target（升计算栈）；要刷 QSPI/整机请接 x86_64 主机"]="onboard check passed. Only --mode target (compute stack) works onboard; use an x86_64 host to flash QSPI or the whole system"
-  ["主机侧体检通过。板子进 recovery 后：--mode qspi（写入启动固件）或 --mode nvme（整机重刷）"]="host check passed. Once the board is in recovery: --mode qspi (boot firmware) or --mode nvme (full reflash)"
+  ["换个版本:--l4t <版本>,或 --l4t latest 自动挑最新的"]="pick another version: --l4t <version>, or --l4t latest to take the newest"
+  ["文件不在,跳过校验"]="file absent; verification skipped"
+  ["没给更新源:--update-from <url|路径>,或配 JETSON_SCRIPT_URL"]="no update source: --update-from <url|path>, or set JETSON_SCRIPT_URL"
+  ["新版本语法检查没过,放弃更新"]="new version failed the syntax check; update abandoned"
+  ["已经是当前最新版(sha256 相同)"]="already the current version (identical sha256)"
+  ["新版本说明(头部 12 行):"]="new version notes (first 12 lines):"
+  ["没找到 index.html(应与脚本同目录),也没配 --doc-url；跳过"]="no index.html (expected next to the script) and no --doc-url; skipping"
+  ["非交互环境,版本回落 auto(最新可刷)"]="non-interactive; version falls back to auto (newest flashable)"
+  ["板内体检通过.板内只能 --mode target(升计算栈)；要刷 QSPI/整机请接 x86_64 主机"]="onboard check passed. Only --mode target (compute stack) works onboard; use an x86_64 host to flash QSPI or the whole system"
+  ["主机侧体检通过.板子进 recovery 后:--mode qspi(写入启动固件)或 --mode nvme(整机重刷)"]="host check passed. Once the board is in recovery: --mode qspi (boot firmware) or --mode nvme (full reflash)"
   ["全部完成"]="all done"
 )
-en_msg() {  # 中文原文 → 英文；没有映射时原样返回
+en_msg() {  # 中文原文 -> 英文；没有映射时原样返回
     [ "$UI_LANG" = en ] || { printf '%s' "$1"; return; }
     local v="${EN_MSG[$1]:-}"
     printf '%s' "${v:-$1}"
@@ -187,8 +182,8 @@ warn() { printf '%s[%s]%s %s\n' "$C_Y" "$(T 注意 warn)" "$C_N" "$(en_msg "$*")
 die()  { printf '%s[%s]%s %s\n' "$C_R" "$(T 错误 error)" "$C_N" "$(en_msg "$*")" >&2; exit 1; }
 
 FAILS=0
-chk_ok()   { printf '  %s[ ✓ ]%s %s\n' "$C_G" "$C_N" "$(en_msg "$*")"; }
-chk_bad()  { printf '  %s[ ✗ ]%s %s\n' "$C_R" "$C_N" "$1"; [ -n "${2:-}" ] && printf '        %s%s: %s%s\n' "$C_D" "$(T 修法 fix)" "$2" "$C_N"; FAILS=$((FAILS+1)); }
+chk_ok()   { printf '  %s[ ok ]%s %s\n' "$C_G" "$C_N" "$(en_msg "$*")"; }
+chk_bad()  { printf '  %s[ xx ]%s %s\n' "$C_R" "$C_N" "$1"; [ -n "${2:-}" ] && printf '        %s%s: %s%s\n' "$C_D" "$(T 修法 fix)" "$2" "$C_N"; FAILS=$((FAILS+1)); }
 chk_warn() { printf '  %s[ ! ]%s %s\n' "$C_Y" "$C_N" "$(en_msg "$*")"; }
 chk_info() { printf '  %s[ - ]%s %s\n' "$C_D" "$C_N" "$(en_msg "$*")"; }
 
@@ -209,11 +204,11 @@ cat <<'ART'
 |  ,     .-./;   | .'        '---" \   \  /  \   \  /
  `--`---'    `---'                  `----'    `----'
 ART
-    printf '  %sA2VEC%s · FIELD TOOLS / JETSON · jetson-jp62.sh\n' "$C_B" "$C_N"
+    printf '  %sA2VEC%s | FIELD TOOLS / JETSON | jetson-jp62.sh\n' "$C_B" "$C_N"
     printf '  %s\n' "----------------------------------------------------------------"
-    printf '  %s\n' "$(T "Jetson 固件维护（QSPI / NVMe / 诊断）" "Jetson firmware maintenance (QSPI / NVMe / diagnostics)")"
+    printf '  %s\n' "$(T "Jetson 固件维护(QSPI / NVMe / 诊断)" "Jetson firmware maintenance (QSPI / NVMe / diagnostics)")"
     printf '  L4T: %s  |  %s: %s\n' "${L4T_VERSION:-$(T 待选择 to-select)}" "$(T 模式 mode)" "${MODE:-$(T 交互菜单 interactive-menu)}"
-    printf '  %s\n' "$(T "独立维护工具 · MIT License · 非 NVIDIA 官方产品" "Independent tool · MIT License · not an NVIDIA product")"
+    printf '  %s\n' "$(T "独立维护工具 . MIT License . 非 NVIDIA 官方产品" "Independent tool . MIT License . not an NVIDIA product")"
     printf '\n'
 }
 
@@ -266,36 +261,39 @@ agreement_text() { if [ "$UI_LANG" = en ]; then agreement_text_en; else agreemen
 
 agreement_text_zh() {
 cat <<EOF
-使用声明 / 第 2 版
+USAGE NOTICE / revision 2
 --------------------------------------------------------------
 
-1. 工具与许可
-   A2VEC 独立维护工具，脚本与文档依据 MIT License 提供。
-   Copyright (c) 2026 Shippuurl。再分发须保留版权与许可声明。
-   许可原文：https://github.com/Shippuurl/jetson-jp62/blob/main/LICENSE
-   本工具与 NVIDIA 无隶属或背书关系。NVIDIA、Jetson、JetPack
-   为 NVIDIA Corporation 的商标。
+1. Tool and licence
+   A2VEC is an independent maintenance tool, provided under the MIT License.
+   Copyright (c) 2026 Shippuurl. Redistributions must keep this notice.
+   Licence text: https://github.com/Shippuurl/jetson-jp62/blob/main/LICENSE
+   This tool is not affiliated with or endorsed by NVIDIA. NVIDIA, Jetson and
+   JetPack are trademarks of NVIDIA Corporation.
 
-2. 第三方组件
-   公开发布的脚本不包含 NVIDIA 固件或专有 SDK；运行时下载的
-   组件受各自随附许可约束。请在下载、使用或再分发前核对许可。
-   对本声明的确认不替代第三方许可要求。
+2. Third-party components
+   Public releases contain no NVIDIA firmware or proprietary SDK. Components
+   downloaded at runtime are bound by their own licences; check them before
+   downloading, using or redistributing. Accepting this notice does not replace
+   any third-party licence requirement.
 
-3. 操作风险
-   NVMe 模式会重写目标存储并清除数据。QSPI 模式写入启动固件，
-   不以重写系统盘为目标，但错误固件或断电可能导致无法启动。
-   请确认设备操作权限、数据备份、稳定供电与恢复路径；第三方
-   载板须使用厂商适配配置。软件包升级可能要求重建应用和模型。
-   下载可用、版本探测或预检查通过均不构成兼容性或成功保证。
+3. Operational risk
+   NVMe mode rewrites the target storage and erases data. QSPI mode writes boot
+   firmware and does not target the system disk, but wrong firmware or power loss
+   can make the device unbootable. Confirm permissions, backups, stable power and
+   a recovery path. Third-party carrier boards need the vendor's config. Package
+   upgrades may require rebuilding applications and models. A working download,
+   version probe or pre-flight check is not a compatibility or success guarantee.
 
-4. 担保与责任
-   软件按现状（AS IS）提供。在适用法律允许的最大范围内不提供
-   明示或默示担保；作者及版权持有人的责任限制以 MIT 原文为准。
-   本声明不排除或限制适用法律不得排除或限制的责任。
+4. Warranty and liability
+   The software is provided AS IS. To the maximum extent permitted by law there
+   is no express or implied warranty; the authors' and copyright holders' limits
+   follow the MIT text. Nothing here excludes liability that law does not allow
+   to be excluded.
 
-参考：NVIDIA Jetson Linux R36.4.3 / Flashing Support
+Reference: NVIDIA Jetson Linux R36.4.3 / Flashing Support
 https://docs.nvidia.com/jetson/archives/r36.4.3/DeveloperGuide/SD/FlashingSupport.html
-其他版本请查阅对应版本文档。
+See the matching documentation for other releases.
 
 EOF
 }
@@ -306,14 +304,14 @@ ensure_agreement() {
     banner
     agreement_text
     if [ "$YES" = 1 ]; then
-        warn "$(T "--yes 已给出，视为同意上述协议" "--yes supplied; treated as agreement")"
+        warn "$(T "--yes 已给出,视为agree上述协议" "--yes supplied; treated as agreement")"
     else
-        printf '%s' "$(T "输入 同意 继续（其他任何输入则退出）: " "Type agree to continue (anything else exits): ")"
+        printf '%s' "$(T "输入 agree 继续(其他任何输入则退出): " "Type agree to continue (anything else exits): ")"
         local a; read -r a
-        [ "$a" = "同意" ] || [ "$a" = "agree" ] || { log "$(T "未同意协议，退出" "Agreement not accepted; exiting")"; exit 0; }
+        [ "$a" = "agree" ] || [ "$a" = "agree" ] || { log "$(T "未agree协议,退出" "Agreement not accepted; exiting")"; exit 0; }
     fi
     mkdir -p "$AGREE_DIR" 2>/dev/null && date -Is > "$AGREE_STAMP" 2>/dev/null
-    ok "已记录同意（$AGREE_STAMP，删除该文件可重新显示协议）"
+    ok "consent recorded ($AGREE_STAMP); delete that file to show the agreement again"
 }
 
 # ================================================================ 板子识别
@@ -368,8 +366,8 @@ detect_recovery() {
     local pid; pid="$(printf '%s' "$out" | grep -oiE "0955:[0-9a-f]{4}" | head -1 | cut -d: -f2)"
     DET_MODULE="recovery:$pid"
     case "$pid" in
-        7523) DET_BOARD_SUGGEST=""; chk_info "recovery 设备 0955:7523（Orin 系列 t234）" ;;
-        *)    chk_warn "recovery 设备 0955:$pid（非 t234 常见值，本脚本按 Orin 处理）" ;;
+        7523) DET_BOARD_SUGGEST=""; chk_info "recovery device 0955:7523 (Orin family, t234)" ;;
+        *)    chk_warn "recovery device 0955:$pid (unusual for t234; treated as Orin)" ;;
     esac
     return 0
 }
@@ -387,13 +385,13 @@ usb_speed() {
 
 pick_board() {
     if [ -n "$BOARD" ]; then
-        log "板型由参数指定: $BOARD"
+        log "board model from --board: $BOARD"
     elif [ -n "$DET_BOARD_SUGGEST" ]; then
         BOARD="$DET_BOARD_SUGGEST"
-        log "自动识别板型: $BOARD"
+        log "auto-detected board model: $BOARD"
     else
         BOARD="jetson-orin-nano-devkit-super"
-        warn "无法自动识别板型，按默认 $BOARD 处理（可用 --board 指定，--list-boards 看全部）"
+        warn "cannot auto-detect the board; using default $BOARD (override with --board; --list-boards lists all)"
     fi
     case "$DET_STORAGE" in
         nvme*) [ -f "$WORK_DIR/Linux_for_Tegra/${BOARD}-nvme.conf" ] && BOARD="${BOARD}-nvme" ;;
@@ -423,7 +421,7 @@ space_plan() {
     [ -s "${CACHE_DIR:-$WORK_DIR}/$ROOTFS_FILENAME" ] && have_rfs=1
     case "$mode" in
         qspi) dl=$((SPACE_DL_BSP+SPACE_DL_ROOTFS)); ex=$((SPACE_EX_BSP+SPACE_EX_ROOTFS+SPACE_APPLY))
-              tmp=800 ;;   # 只刷 QSPI：不生成 system.img，但要拼 recovery ramdisk
+              tmp=800 ;;   # QSPI only:不生成 system.img,但要拼 recovery ramdisk
         prep) dl=$SPACE_DL_BSP; ex=$SPACE_EX_BSP
               [ "$WITH_ROOTFS" = 1 ] && { dl=$((dl+SPACE_DL_ROOTFS)); ex=$((ex+SPACE_EX_ROOTFS+SPACE_APPLY)); } ;;
         nvme) dl=$((SPACE_DL_BSP+SPACE_DL_ROOTFS)); ex=$((SPACE_EX_BSP+SPACE_EX_ROOTFS+SPACE_APPLY)); tmp=$SPACE_FLASH_TMP ;;
@@ -477,9 +475,9 @@ check_disk() {
     if [ "$mode" = "target" ]; then
         local fm; fm="$(free_mb /)"; local pct; pct="$(used_pct /)"
         if [ "${fm:-0}" -ge "$((9*1024))" ] && [ "${pct:-0}" -lt 90 ]; then
-            chk_ok "系统盘 / 可用 $(mb2g "${fm:-0}")（已用 ${pct}%），apt dist-upgrade 够用"
+            chk_ok "system disk / free $(mb2g "${fm:-0}") (${pct}% used), enough for apt dist-upgrade"
         else
-            chk_bad "系统盘 / 可用 $(mb2g "${fm:-0}")、已用 ${pct}%，apt 升级需要 ≥9G" "sudo apt clean; sudo journalctl --vacuum-size=200M; 清旧内核"
+            chk_bad "system disk / free $(mb2g "${fm:-0}"), ${pct}% used; apt upgrade needs >=9G" "sudo apt clean; sudo journalctl --vacuum-size=200M; remove old kernels"
         fi
         return 0
     fi
@@ -491,31 +489,31 @@ check_disk() {
 
     local dl_pct=$(( pctc + 0 ))
     case "$(fs_type "$cache")" in
-        ext2|ext3|ext4|xfs|btrfs|zfs) chk_ok "下载目录 $cache：$(fs_type "$cache")，支持权限/软链" ;;
-        *) chk_bad "下载目录 $cache 是 $(fs_type "$cache")" "NTFS/exFAT/vfat 存 rootfs 会丢权限与软链，必须换 ext4/xfs/btrfs" ;;
+        ext2|ext3|ext4|xfs|btrfs|zfs) chk_ok "download dir $cache: $(fs_type "$cache"), preserves permissions and symlinks" ;;
+        *) chk_bad "download dir $cache is $(fs_type "$cache")" "NTFS/exFAT/vfat loses permissions and symlinks for rootfs; use ext4/xfs/btrfs" ;;
     esac
     case "$(fs_type "$WORK_DIR")" in
-        ext2|ext3|ext4|xfs|btrfs|zfs|overlay) chk_ok "工作目录 $WORK_DIR：$(fs_type "$WORK_DIR")" ;;
-        *) chk_bad "工作目录 $WORK_DIR 是 $(fs_type "$WORK_DIR")" "换成 ext4/xfs/btrfs 的分区（--dir）" ;;
+        ext2|ext3|ext4|xfs|btrfs|zfs|overlay) chk_ok "work dir $WORK_DIR: $(fs_type "$WORK_DIR")" ;;
+        *) chk_bad "work dir $WORK_DIR is $(fs_type "$WORK_DIR")" "use an ext4/xfs/btrfs partition (--dir)" ;;
     esac
 
     if [ "$cache" = "$WORK_DIR" ]; then
         local need_total=$(( total ))
         if [ "$fwork" -ge "$need_total" ]; then
-            chk_ok "工作目录 $WORK_DIR 可用 $(mb2g "$fwork")（已用 ${pctw}%），本模式峰值约 $totalg，余量 $(mb2g $((fwork-need_total)))"
-            [ "$pctw" -lt 85 ] || chk_warn "该分区已用 ${pctw}%，接近满盘：刷机中途写日志/镜像容易失败"
+            chk_ok "work dir $WORK_DIR free $(mb2g "$fwork") (${pctw}% used); this mode peaks at ~$totalg, margin $(mb2g $((fwork-need_total)))"
+            [ "$pctw" -lt 85 ] || chk_warn "this partition is ${pctw}% full; writing logs/images mid-flash may fail"
         else
-            chk_bad "工作目录只剩 $(mb2g "$fwork")，本模式峰值需要 $totalg（下载$(mb2g $dl)+解压$(mb2g $ex)+临时）" \
-                    "换盘：$(pick_hint "$total") ；或加 --auto-dir 让脚本自动选"
+            chk_bad "work dir has only $(mb2g "$fwork"); this mode needs $totalg peak (download $(mb2g $dl) + extract $(mb2g $ex) + temp)" \
+                    "switch disk: $(pick_hint "$total"), or add --auto-dir"
         fi
     else
-        if [ "$fcache" -ge "$dl" ]; then chk_ok "下载目录 $cache 可用 $(mb2g "$fcache")（已用 ${pctc}%），需装下 $(mb2g $dl)"
-        else chk_bad "下载目录只剩 $(mb2g "$fcache")，需要 $(mb2g $dl)" "换 --cache-dir 到大盘，或加 --auto-dir"; fi
+        if [ "$fcache" -ge "$dl" ]; then chk_ok "download dir $cache free $(mb2g "$fcache") (${pctc}% used); must hold $(mb2g $dl)"
+        else chk_bad "download dir has only $(mb2g "$fcache"); needs $(mb2g $dl)" "point --cache-dir at a bigger disk, or add --auto-dir"; fi
         if [ "$fwork" -ge "$((ex+tmp+SPACE_LOG+SPACE_SLACK))" ]; then
-            chk_ok "工作目录 $WORK_DIR 可用 $(mb2g "$fwork")，解压+临时约 $(mb2g $((ex+tmp+SPACE_LOG)))"
+            chk_ok "work dir $WORK_DIR free $(mb2g "$fwork"); extract + temp about $(mb2g $((ex+tmp+SPACE_LOG)))"
         else
-            chk_bad "工作目录只剩 $(mb2g "$fwork")，解压+临时需要 $(mb2g $((ex+tmp+SPACE_LOG)))" \
-                    "换盘：$(pick_hint "$total") ；或加 --auto-dir"
+            chk_bad "work dir has only $(mb2g "$fwork"); extract + temp needs $(mb2g $((ex+tmp+SPACE_LOG)))" \
+                    "switch disk: $(pick_hint "$total"), or add --auto-dir"
         fi
     fi
 }
@@ -524,9 +522,9 @@ pick_hint() {
     local need_mb="$1" out
     out="$(hash_mounts "$need_mb")"
     if [ -n "$out" ]; then
-        printf '可选挂载点 %s' "$(printf '%s' "$out" | awk '{print $3}' | tr '\n' ' ')"
+        printf 'candidate mount points %s' "$(printf '%s' "$out" | awk '{print $3}' | tr '\n' ' ')"
     else
-        printf '本机没有余量足够的其它分区，先清理或外接硬盘'
+        printf 'no other partition with enough free space; clean up or attach a disk'
     fi
 }
 
@@ -534,32 +532,32 @@ check_requirements() {
     local mode="$1" lt="$WORK_DIR/Linux_for_Tegra"
     FAILS=0
     echo
-    printf '%s── 刷入前检查（%s 模式）──%s\n' "$C_B" "$mode" "$C_N"
+    printf '%s-- pre-flight checks (%s mode) --%s\n' "$C_B" "$mode" "$C_N"
 
     # 1 运行位置 / 主机架构
     local arch; arch="$(uname -m)"
     if [ "$DET_MODE" = "onboard" ]; then
-        chk_ok "运行在 Jetson 本机（$arch），板内识别有效"
+        chk_ok "running on the Jetson itself ($arch); onboard detection is valid"
         [ "$mode" = "qspi" ] || [ "$mode" = "nvme" ] && \
-            chk_bad "不能在板内自己刷自己（$arch）" "把板子短接 FC REC 接到 x86_64 主机上，在那台机器跑同一命令"
+            chk_bad "a Jetson cannot flash itself ($arch)" "short FC REC, connect to an x86_64 host, and run the same command there"
     elif [ "$mode" != "target" ]; then
-        [ "$arch" = "x86_64" ] && chk_ok "主机架构 x86_64" || chk_bad "主机架构 $arch 不是 x86_64" "刷机要用 x86_64 主机；若这是 Jetson 本机请用 --mode target"
+        [ "$arch" = "x86_64" ] && chk_ok "host architecture x86_64" || chk_bad "host architecture $arch is not x86_64" "flashing needs an x86_64 host; on the Jetson itself use --mode target"
     fi
 
     # 2 系统版本（只提示，不拦）
     if [ -r /etc/os-release ]; then
         . /etc/os-release
         case "${VERSION_ID:-}" in
-            20.04|22.04) chk_ok "主机系统 ${PRETTY_NAME}（NVIDIA 官方支持）" ;;
-            24.04|24.10|25.*) chk_warn "主机系统 ${PRETTY_NAME}：NVIDIA 官方只写 20.04/22.04，实测依赖可满足，按可用处理" ;;
-            *) chk_warn "主机系统 ${PRETTY_NAME}：未验证，缺依赖时用 --no-deps 自行处理" ;;
+            20.04|22.04) chk_ok "host OS ${PRETTY_NAME} (NVIDIA-supported)" ;;
+            24.04|24.10|25.*) chk_warn "host OS ${PRETTY_NAME}: NVIDIA documents 20.04/22.04, dependencies check out here, treating as supported" ;;
+            *) chk_warn "host OS ${PRETTY_NAME}: untested; use --no-deps if dependencies are missing" ;;
         esac
     fi
 
     # 3 基础命令
     local miss=() p
     for p in curl tar bzip2 python3; do command -v "$p" >/dev/null 2>&1 || miss+=("$p"); done
-    [ ${#miss[@]} -eq 0 ] && chk_ok "基础命令 curl/tar/bzip2/python3 齐全" || chk_bad "缺命令: ${miss[*]}" "sudo apt install ${miss[*]}"
+    [ ${#miss[@]} -eq 0 ] && chk_ok "base commands curl/tar/bzip2/python3 present" || chk_bad "missing commands: ${miss[*]}" "sudo apt install ${miss[*]}"
 
     # 4 磁盘冗余（下载目录 + 工作目录分开算，含文件系统类型）
     check_disk "$mode"
@@ -568,80 +566,80 @@ check_requirements() {
     if [ -f "$lt/nv_tegra/bsp_version" ]; then
         local have; have="$(awk -F= '/^BSP_BRANCH=/{b=$2}/^BSP_MAJOR=/{m=$2}/^BSP_MINOR=/{n=$2}END{print b"."m"."n}' "$lt/nv_tegra/bsp_version")"
         if [ "$have" = "$L4T_VERSION" ]; then
-            chk_ok "BSP 已解压且版本 ${have}"
+            chk_ok "BSP already extracted, version ${have}"
         elif [ "$mode" = "detect" ]; then
-            chk_warn "已有 BSP 是 ${have}，目标 ${L4T_VERSION}（体检不拦；真刷时会先备份旧目录再重解）"
+            chk_warn "existing BSP is ${have}, target ${L4T_VERSION} (not fatal here; a real flash backs up the old dir first)"
         else
-            chk_bad "已有 BSP 是 ${have}，目标 ${L4T_VERSION}" "去掉旧目录或换 --dir；脚本也会先备份再重解"
+            chk_bad "existing BSP is ${have}, target ${L4T_VERSION}" "remove the old dir or use --dir; the script backs up before re-extracting"
         fi
     else
-        [ "$mode" = "detect" ] && chk_info "BSP 未解压（detect 模式不拦）" || chk_info "BSP 未解压，本次会下载解压"
+        [ "$mode" = "detect" ] && chk_info "BSP not extracted (detect does not block)" || chk_info "BSP not extracted; it will be downloaded and extracted"
     fi
 
     # 6 板型配置是否存在
     if [ -d "$lt" ]; then
-        [ -f "$lt/${BOARD}.conf" ] && chk_ok "板型配置存在: ${BOARD}.conf" \
-            || chk_bad "BSP 里没有 ${BOARD}.conf" "--list-boards 看可用板型，再用 --board 指定"
+        [ -f "$lt/${BOARD}.conf" ] && chk_ok "board config present: ${BOARD}.conf" \
+            || chk_bad "no ${BOARD}.conf in the BSP" "see --list-boards for available models, then pass --board"
     fi
 
     # 7 rootfs（qspi 也要：36.x 的 flash.sh 会用 rootfs 生成 recovery ramdisk，
     #   根文件系统本身不会被写到板子上）
     if [ "$mode" = "nvme" ] || [ "$mode" = "qspi" ]; then
-        if [ -f "$lt/rootfs/etc/nv_tegra_release" ]; then chk_ok "rootfs 已 apply_binaries"
-        else chk_info "rootfs 未准备，本次会下 1.83G sample rootfs 并 apply_binaries"; fi
+        if [ -f "$lt/rootfs/etc/nv_tegra_release" ]; then chk_ok "rootfs already has apply_binaries applied"
+        else chk_info "rootfs missing; this run downloads the 1.83G sample rootfs and applies binaries"; fi
     fi
 
     # 8 recovery 设备 + USB 链路
     if [ "$mode" = "qspi" ] || [ "$mode" = "nvme" ]; then
         if lsusb 2>/dev/null | grep -qiE "0955:7(523|22)"; then
-            chk_ok "检测到 recovery 设备（0955:$(lsusb | grep -oiE '0955:[0-9a-f]{4}' | head -1 | cut -d: -f2)）"
+            chk_ok "recovery device detected (0955:$(lsusb | grep -oiE '0955:[0-9a-f]{4}' | head -1 | cut -d: -f2))"
             local sp; sp="$(usb_speed || echo '')"
             case "$sp" in
-                5000*|10000*) chk_ok "USB 链路 ${sp} Mbps" ;;
-                "") chk_warn "读不到 USB 链路速率（不影响刷，但慢）" ;;
-                *) chk_warn "USB 链路 ${sp} Mbps（USB2，刷写会慢很多，建议换 USB3 口/线）" ;;
+                5000*|10000*) chk_ok "USB link ${sp} Mbps" ;;
+                "") chk_warn "USB link speed unreadable (flashing still works, but slowly)" ;;
+                *) chk_warn "USB link ${sp} Mbps (USB2; flashing will be slow, prefer a USB3 port/cable)" ;;
             esac
         else
-            chk_warn "当前没有 recovery 设备（不致命：刷写前会等你短接，按回车一直刷新到检测到为止）"
+            chk_warn "no recovery device yet (not fatal: before flashing you short the pins, press Enter to re-check)"
         fi
     fi
 
     # 9 提权
     if [ "$mode" = "qspi" ] || [ "$mode" = "nvme" ] || [ "$mode" = "target" ]; then
-        if [ "$(id -u)" = 0 ] || sudo -n true 2>/dev/null; then chk_ok "sudo 可用（免密）"
-        else chk_warn "sudo 需要输入密码，运行时会提示你输入"; fi
+        if [ "$(id -u)" = 0 ] || sudo -n true 2>/dev/null; then chk_ok "sudo available without a password"
+        else chk_warn "sudo requires a password; you will be prompted when needed"; fi
     fi
 
     # 10 板内专属检查
     if [ "$DET_MODE" = "onboard" ]; then
-        chk_info "板内识别: TNSPEC=${DET_TNSPEC:-未知} L4T=${DET_L4T:-未知} Super=${DET_SUPER} 启动盘=${DET_STORAGE:-未知}"
+        chk_info "onboard: TNSPEC=${DET_TNSPEC:-unknown} L4T=${DET_L4T:-unknown} Super=${DET_SUPER} boot=${DET_STORAGE:-unknown}"
         local fdt; fdt="$(grep -hiE '^[[:space:]]*(FDT|DEVICETREE)[[:space:]]' /boot/extlinux/extlinux.conf 2>/dev/null | awk '{print $NF}' | head -2 | tr '\n' ' ')"
         if [ -z "$fdt" ]; then
-            chk_ok "extlinux 未指定自定义 FDT（用 UEFI 按 TNSPEC 自动选 dtb）"
+            chk_ok "extlinux specifies no custom FDT (UEFI selects the dtb from TNSPEC)"
         elif printf '%s' "$fdt" | grep -qE 'kernel_tegra234-p(3767|3768)' ; then
-            chk_ok "extlinux 用的 dtb 属 NVIDIA 官方目录（$(basename "$fdt")）"
+            chk_ok "extlinux dtb is in NVIDIA's official dir ($(basename "$fdt"))"
         else
-            chk_warn "extlinux 指向非官方 dtb（$fdt）→ 刷 QSPI 前先备份 /boot 与厂商补丁"
+            chk_warn "extlinux points at a non-official dtb ($fdt); back up /boot and vendor patches before flashing QSPI"
         fi
         local uefi_target_major; uefi_target_major="$(printf '%s' "$L4T_VERSION" | cut -d. -f1-2)"
         if [ -n "$DET_UEFI" ]; then
             case "$DET_UEFI" in
-                "$uefi_target_major".*) chk_ok "QSPI/UEFI 已是 ${DET_UEFI}（与目标 ${L4T_VERSION} 同代，无需再刷 QSPI）" ;;
-                *) chk_warn "QSPI/UEFI 是 ${DET_UEFI}，目标 ${L4T_VERSION} → 需要刷 QSPI 才能拿到 Super/新 bootloader" ;;
+                "$uefi_target_major".*) chk_ok "QSPI/UEFI already ${DET_UEFI} (same generation as target ${L4T_VERSION}; no QSPI flash needed)" ;;
+                *) chk_warn "QSPI/UEFI is ${DET_UEFI}, target ${L4T_VERSION} -> flash QSPI to get Super/new bootloader" ;;
             esac
         fi
         if [ "$mode" = "target" ]; then
             local f; f="$(free_gb /)"
-            if [ "$f" -ge 8 ]; then chk_ok "系统盘可用 ${f}G"
-            else chk_bad "系统盘只剩 ${f}G，apt dist-upgrade 需要 ≥8G" "先清 /var/cache/apt、旧内核"; fi
+            if [ "$f" -ge 8 ]; then chk_ok "system disk free ${f}G"
+            else chk_bad "system disk has only ${f}G; apt dist-upgrade needs >=8G" "first clear /var/cache/apt and old kernels"; fi
         fi
     fi
 
     echo
     if [ "$FAILS" -gt 0 ]; then
-        die "有 ${FAILS} 项不满足，先按上面的“修法”处理再跑（体检不算改动）"
+        die "${FAILS} check(s) failed; apply the suggested fixes above and rerun (checks change nothing)"
     fi
-    ok "检查项全部通过"
+    ok "all checks passed"
     echo
 }
 
@@ -649,61 +647,61 @@ check_requirements() {
 usage_en() {
 cat <<EOF
 A2VEC / Jetson firmware maintenance tool
-MIT License · not an NVIDIA official product
+MIT License . not an NVIDIA product
 
-Usage: bash jetson-jp62.sh [options]
+usage: bash jetson-jp62.sh [options]
 
-Common:
-  bash jetson-jp62.sh                         interactive menu
-  bash jetson-jp62.sh --mode detect           environment check
-  bash jetson-jp62.sh --mode qspi --l4t 36.4.3  QSPI flash, pinned version
+common:
+  bash jetson-jp62.sh                          interactive menu
+  bash jetson-jp62.sh --mode detect            pre-flight checks
+  bash jetson-jp62.sh --mode qspi --l4t 36.4.3 flash QSPI for a given release
 
-Risk: nvme rewrites the target storage; qspi writes boot firmware. Back up data and
-verify the board before proceeding. A version listed here is not a compatibility
-recommendation, and a reachable download URL does not prove suitability.
+risk: nvme rewrites the target storage; qspi writes boot firmware. Back up and
+verify the board model first. Version examples are not compatibility advice; a
+download URL existing does not mean it fits your hardware.
 
-Options:
+options:
 
-  --mode <detect|qspi|nvme|prep|target>  execution mode (omit for the menu)
-  --board <name>                  force a board config (auto-detected by default; --list-boards)
-  --dir <path>                    working directory (default: script dir / \$JETSON_DIR)
-  --mirror <src[,src2...]>        download sources: http/https/file:// or a local dir
-  --offline --src <dir>           fully offline: take tbzs from a local directory
+  --mode <detect|qspi|nvme|prep|target>  run mode (menu when omitted)
+  --board <name>                  force a board config (auto by default; --list-boards)
+  --dir <path>                    work dir (default: script dir / \$JETSON_DIR)
+  --mirror <src[,src2...]>        download source: http/https/file:// or a local dir
+  --offline --src <dir>           fully offline: take tbz2 from a local dir
   --with-rootfs                   prep also fetches the sample rootfs
-  --rootdev <dev>                 rootdev for flash.sh (inferred from the boot disk)
-  --skip-recovery-check           skip the recovery check (may make flashing fail)
-  --no-deps                       do not install host dependencies automatically
-  --accept                        skip the agreement prompt (same as agreed)
-  --yes                           auto-confirm the notice and subsequent prompts
-  --cache-dir <path>              package cache directory (= --resource; same disk as --dir by default)
-  --auto-dir                      pick the partition with the most free space as working dir
-  --config <file>                 read config (default ~/.config/jetson-jp62/config, KEY=VALUE)
-  --l4t <version|latest>          target L4T version (prompted when omitted; falls back to auto when non-interactive)
-  --jetpack|--jp <version>        map a JetPack number to L4T (6.2→36.4.3, 6.2.1→36.4.4, 6.2.2→36.5.0 …)
-  --jp-list                       print the JetPack → L4T mapping
-  --diag                          diagnostics: kernel/system errors onboard, EEPROM/BCT in recovery; read-only
-  --uart [device]                 capture BootROM/UEFI/DDR serial log and classify it (auto: /dev/ttyUSB*)
-  --uart-out <file>               write the captured log to a path
+  --rootdev <dev>                 rootdev for flash.sh (inferred from boot disk)
+  --skip-recovery-check           skip the recovery check (may make the flash fail)
+  --no-deps                       do not apt-install host dependencies
+  --accept                        skip the agreement prompt (same as agreeing)
+  --yes                           auto-confirm the notice and later prompts
+  --cache-dir <path>              package cache (= --resource; defaults to --dir disk)
+  --auto-dir                      pick the partition with the most free space
+  --config <file>                 read config (default ~/.config/jetson-jp62/config)
+  --l4t <version|latest>          target L4T (menu when omitted; auto when non-interactive)
+  --jetpack|--jp <version>        map a JetPack number to L4T (6.2->36.4.3, 6.2.2->36.5.0...)
+  --jp-list                       print the JetPack -> L4T table
+  --diag                          diagnostics: onboard kernel/system, recovery EEPROM/BCT
+  --uart [dev]                    capture BootROM/UEFI/DDR boot log and classify it
+  --uart-out <file>               write the capture to a path
   --uart-log <file>               analyse an existing serial log offline
   --uart-baud <baud>              default 115200
-  --uart-seconds <sec>            capture duration, default 30
+  --uart-seconds <sec>            capture length, default 30
   --uart-list                     list serial devices
-  --doc                            open the documentation page (index.html)
-  --doc-url <url>                 online documentation URL (used when no local index.html)
-  --no-doc                        do not offer to open the documentation
-  --matrix                        print the QSPI/flash support matrix (live apt repo + download probe)
-  --refresh                       force a refresh of the matrix cache
+  --doc                           open the docs page (index.html)
+  --doc-url <url>                 online docs URL (when no local index.html)
+  --no-doc                        do not offer the docs page at the end
+  --matrix                        print the QSPI/flash support matrix (live probe)
+  --refresh                       force a fresh upstream matrix probe
   --manifest-url <url>            verify downloads against an external sha256 manifest
   --self-update                   update this script from --update-from / JETSON_SCRIPT_URL
   --update-from <url|path>        update source
-  --dry-run                       check and print only; no download, no changes
-  --list-boards                   list board configs available in the BSP
-  --lang <zh|en>                  interface language (default: from \$LANG)
+  --dry-run                       checks and prints only; changes nothing
+  --list-boards                   list board configs in the BSP
+  --lang <zh|en>                  UI language (default: en)
   -h, --help                      show this help
 
-Environment: JETSON_MIRROR  JETSON_DIR  JETSON_BOARD  L4T_VERSION  JETSON_JP62_LANG
-             NO_COLOR (disable ANSI colour); colour is disabled automatically when not a terminal
-Examples:
+environment: JETSON_MIRROR  JETSON_DIR  JETSON_BOARD  L4T_VERSION
+             NO_COLOR (disable ANSI colour); colour is off for non-terminals
+examples:
   bash jetson-jp62.sh --mode detect
   bash jetson-jp62.sh --mode qspi --mirror http://192.168.1.10/l4t/r36.4.3/
   JETSON_MIRROR=file:///mnt/nas/l4t bash jetson-jp62.sh --mode prep --with-rootfs
@@ -715,7 +713,7 @@ usage() { if [ "$UI_LANG" = en ]; then usage_en; else usage_zh; fi; }
 usage_zh() {
 cat <<EOF
 A2VEC / Jetson 固件维护工具
-MIT License · 非 NVIDIA 官方产品
+MIT License . 非 NVIDIA 官方产品
 
 用法: bash jetson-jp62.sh [选项]
 
@@ -724,50 +722,50 @@ MIT License · 非 NVIDIA 官方产品
   bash jetson-jp62.sh --mode detect           环境检查
   bash jetson-jp62.sh --mode qspi --l4t 36.4.3 指定版本刷 QSPI
 
-风险: nvme 将重写目标存储；qspi 将写入启动固件。操作前备份并核对板型。
-版本示例不构成兼容性建议；下载地址存在不代表可用于当前硬件。
+风险: nvme 将重写目标存储；qspi 将写入启动固件.操作前备份并核对板型.
+版本示例不构成兼容性建议；下载地址存在不代表可用于当前硬件.
 
 参数:
 
-  --mode <detect|qspi|nvme|prep|target>  执行模式（不给则进交互菜单）
-  --board <名字>                  强制板型配置（默认自动识别，--list-boards 看全部）
-  --dir <路径>                    工作目录（默认脚本所在目录 / \$JETSON_DIR）
-  --mirror <源[,源2...]>          下载源，支持 http/https/file:// 或本地目录
-  --offline --src <目录>          完全离线：从本地目录取 tbz2
+  --mode <detect|qspi|nvme|prep|target>  执行模式(不给则进交互菜单)
+  --board <名字>                  强制板型配置(默认自动识别,--list-boards 看全部)
+  --dir <路径>                    工作目录(默认脚本所在目录 / \$JETSON_DIR)
+  --mirror <源[,源2...]>          下载源,支持 http/https/file:// 或本地目录
+  --offline --src <目录>          完全离线:从本地目录取 tbz2
   --with-rootfs                   prep 模式顺带下 sample rootfs
-  --rootdev <设备>                flash.sh 的 rootdev（默认按启动盘推断）
-  --skip-recovery-check           跳过 recovery 检查（可能导致刷写失败）
+  --rootdev <设备>                flash.sh 的 rootdev(默认按启动盘推断)
+  --skip-recovery-check           跳过 recovery 检查(可能导致刷写失败)
   --no-deps                       不自动 apt 装主机依赖
-  --accept                        跳过协议交互（等同已同意，自动化可用）
-  --yes                           自动确认使用声明及后续操作（请先审阅声明）
-  --cache-dir <路径>              下载包存放/复用目录（= --resource，默认跟 --dir 同一个盘）
-  --auto-dir                      自动挑余量最大的分区当工作目录（含下载缓存）
-  --config <文件>                 读取配置（默认 ~/.config/jetson-jp62/config，KEY=VALUE）
-  --l4t <版本|latest>             目标 L4T 版本（不给则交互选择，非交互回落 auto）
-  --jetpack|--jp <版本>           按 JetPack 号自动映射 L4T（6.2→36.4.3、6.2.1→36.4.4、6.2.2→36.5.0…）
-  --jp-list                       打印 JetPack → L4T 映射表
-  --diag                          诊断：板内看内核/系统报错，recovery 看 EEPROM/BCT，均不改动
-  --uart [设备]                   串口抓 BootROM/UEFI/DDR 启动日志并分级判断（默认自动找 /dev/ttyUSB*）
+  --accept                        跳过协议交互(等同已agree,自动化可用)
+  --yes                           自动确认使用声明及后续操作(请先审阅声明)
+  --cache-dir <路径>              下载包存放/复用目录(= --resource,默认跟 --dir 同一个盘)
+  --auto-dir                      自动挑余量最大的分区当工作目录(含下载缓存)
+  --config <文件>                 读取配置(默认 ~/.config/jetson-jp62/config,KEY=VALUE)
+  --l4t <版本|latest>             目标 L4T 版本(不给则交互选择,非交互回落 auto)
+  --jetpack|--jp <版本>           按 JetPack 号自动映射 L4T(6.2->36.4.3,6.2.1->36.4.4,6.2.2->36.5.0...)
+  --jp-list                       打印 JetPack -> L4T 映射表
+  --diag                          诊断:板内看内核/系统报错,recovery 看 EEPROM/BCT,均不改动
+  --uart [设备]                   串口抓 BootROM/UEFI/DDR 启动日志并分级判断(默认自动找 /dev/ttyUSB*)
   --uart-out <文件>               抓取日志写到指定路径
   --uart-log <文件>               离线分析已有串口日志
   --uart-baud <波特率>            默认 115200
-  --uart-seconds <秒>             捕获时长，默认 30
+  --uart-seconds <秒>             捕获时长,默认 30
   --uart-list                     列出可用串口设备
-  --doc                           打开使用说明页（index.html）
-  --doc-url <url>                 在线文档地址（无本地 index.html 时用）
+  --doc                           打开使用说明页(index.html)
+  --doc-url <url>                 在线文档地址(无本地 index.html 时用)
   --no-doc                        跑完不提示打开文档
-  --matrix                        打印 QSPI/刷机支持矩阵（上游 apt 仓库 + 官方下载目录实时探测）
+  --matrix                        打印 QSPI/刷机支持矩阵(上游 apt 仓库 + 官方下载目录实时探测)
   --refresh                       强制重取上游矩阵缓存
-  --manifest-url <url>            用外部 sha256 清单校验下载包（默认用本机 TOFU 清单）
+  --manifest-url <url>            用外部 sha256 清单校验下载包(默认用本机 TOFU 清单)
   --self-update                   从 --update-from / JETSON_SCRIPT_URL 更新脚本自身
   --update-from <url|路径>        更新源
-  --dry-run                       只体检、只打印，不下载不改动
+  --dry-run                       只体检,只打印,不下载不改动
   --list-boards                   列出 BSP 里可用的板型配置
-  --lang <zh|en>                  界面语言（默认按 \$LANG 判定）
+  --lang <zh|en>                  界面语言(默认按 \$LANG 判定)
   -h, --help                      显示本帮助
 
 环境变量: JETSON_MIRROR  JETSON_DIR  JETSON_BOARD  L4T_VERSION
-          NO_COLOR（禁用 ANSI 颜色）；非终端输出自动禁用颜色
+          NO_COLOR(禁用 ANSI 颜色)；非终端输出自动禁用颜色
 示例:
   bash jetson-jp62.sh --mode detect
   bash jetson-jp62.sh --mode qspi --mirror http://192.168.1.10/l4t/r36.4.3/
@@ -797,14 +795,14 @@ refresh_filenames() {
     BSP_FILENAME="Jetson_Linux_R${L4T_VERSION}_aarch64.tbz2"
     ROOTFS_FILENAME="Tegra_Linux_Sample-Root-Filesystem_R${L4T_VERSION}_aarch64.tbz2"
     DEFAULT_MIRROR="$NV_DL_BASE/l4t/${L4T_TAG}/release"
-    BSP_SIZE=""; ROOTFS_SIZE=""        # 不预判大小：bzip2 -t + TOFU 清单校验
+    BSP_SIZE=""; ROOTFS_SIZE=""        # 不预判大小:bzip2 -t + TOFU 清单校验
 }
 
 load_config() {
     local f="${CONFIG_FILE:-$AGREE_DIR/config}"
-    [ -n "$CONFIG_FILE" ] && [ ! -f "$f" ] && die "配置文件不存在: $f"
+    [ -n "$CONFIG_FILE" ] && [ ! -f "$f" ] && die "config file not found: $f"
     [ -f "$f" ] || return 0
-    log "读取配置: $f"
+    log "reading config: $f"
     local k v
     while IFS='=' read -r k v; do
         case "$k" in ""|\#*) continue ;; esac
@@ -818,7 +816,7 @@ load_config() {
             L4T_VERSION)     L4T_VERSION="$v"; refresh_filenames ;;
             L4T_TAG)         L4T_TAG="$v"; refresh_filenames ;;
             JETSON_OFFLINE_SRC) OFFLINE_SRC="$v" ;;
-            *) warn "配置里忽略未知项: $k" ;;
+            *) warn "ignoring unknown config key: $k" ;;
         esac
     done < "$f"
 }
@@ -830,14 +828,14 @@ auto_select_dirs() {
     total="$(echo "$plan" | cut -d' ' -f3)"
     best="$(auto_pick_dir "$total")"
     if [ -z "$best" ]; then
-        warn "没找到余量 ≥$(mb2g "$total") 的可写分区，继续用当前目录（体检会拦）"
+        warn "no writable partition with >=$(mb2g "$total") free; staying on the current dir (checks will fail)"
         return 0
     fi
     local fm mnt; fm="${best%%|*}"; mnt="${best#*|}"
     local base="$mnt/jetson-jp62"
     [ "$mnt" = "/" ] && base="/var/tmp/jetson-jp62"
-    log "自动选盘: $mnt（可用 $(mb2g "$fm")，本模式峰值约 $(mb2g "$total")）→ $base"
-    [ "$WORK_DIR" = "$SCRIPT_DIR" ] || warn "已被 --dir/配置指定的工作目录 $WORK_DIR 将被覆盖为 $base"
+    log "auto-picked disk: $mnt (free $(mb2g "$fm"); this mode peaks at $(mb2g "$total")) -> $base"
+    [ "$WORK_DIR" = "$SCRIPT_DIR" ] || warn "work dir $WORK_DIR (from --dir/config) will be overridden to $base"
     WORK_DIR="$base"; CACHE_DIR="$base/cache"
     mkdir -p "$CACHE_DIR" 2>/dev/null || true
 }
@@ -863,10 +861,10 @@ parse_args() {
                         local jpv="${2:-}"; shift 2
                         local l4t; if l4t="$(jp_to_l4t "$jpv")"; then
                             L4T_VERSION="$l4t"; SPEC_FROM="jp"
-                            log "JetPack $jpv → L4T $L4T_VERSION"
+                            log "JetPack $jpv -> L4T $L4T_VERSION"
                         else
-                            printf '未知 JetPack 版本: %s\n' "$jpv" >&2; jp_list >&2
-                            die "用 --jetpack <版本> 或 --l4t <L4T版本>"
+                            printf 'unknown JetPack version: %s\n' "$jpv" >&2; jp_list >&2
+                            die "use --jetpack <version> or --l4t <L4T version>"
                         fi ;;
             --matrix)   MODE="matrix"; shift ;;
             --jp-list)  MODE="jpmap"; shift ;;
@@ -891,40 +889,40 @@ parse_args() {
             --lang)     UI_LANG="${2:-zh}"; shift 2 ;;
             --lang=*)   UI_LANG="${1#*=}"; shift ;;
             -h|--help)  WANT_HELP=1; shift ;;
-            *) die "未知参数: $1（--help 看用法）" ;;
+            *) die "unknown argument: $1 (see --help)" ;;
         esac
     done
     [ "${WANT_HELP:-0}" = 1 ] && { usage; exit 0; }
-    case "$UI_LANG" in zh|en) ;; *) die "--lang 只能是 zh / en（--lang accepts zh / en only）" ;; esac
+    case "$UI_LANG" in zh|en) ;; *) die "--lang accepts zh or en only" ;; esac
     case "$MODE" in
         ""|detect|qspi|nvme|prep|target|matrix|update|doc|jpmap|diag|uart) ;;
-        *) die "--mode 只能是 detect / qspi / nvme / prep / target（另有 --matrix / --self-update / --doc 三个动作）" ;;
+        *) die "--mode accepts detect / qspi / nvme / prep / target (plus the --matrix / --self-update / --doc actions)" ;;
     esac
 }
 
 list_boards() {
     local d="$WORK_DIR/Linux_for_Tegra"
-    [ -d "$d" ] || { warn "还没有解压 BSP，先跑：bash $(basename "$0") --mode prep"; return; }
+    [ -d "$d" ] || { warn "BSP not extracted yet; first run: bash $(basename "$0") --mode prep"; return; }
     ( cd "$d" && ls jetson-*.conf 2>/dev/null | sed 's/\.conf$//' )
 }
 
 run_root() {
-    if [ "$DRY_RUN" = 1 ]; then log "[dry-run] 会执行: $*"; return 0; fi
+    if [ "$DRY_RUN" = 1 ]; then log "[dry-run] would run: $*"; return 0; fi
     if [ "$(id -u)" = 0 ]; then "$@"; else sudo "$@"; fi
 }
 
 install_deps() {
-    [ "$SKIP_DEPS" = 1 ] && { warn "跳过依赖安装（--no-deps）"; return 0; }
+    [ "$SKIP_DEPS" = 1 ] && { warn "skipping dependency install (--no-deps)"; return 0; }
     local d="$WORK_DIR/Linux_for_Tegra"
     if [ -x "$d/tools/l4t_flash_prerequisites.sh" ]; then
-        log "安装 NVIDIA 官方列出的主机依赖"
-        run_root "$d/tools/l4t_flash_prerequisites.sh" || die "依赖安装失败；可手工装好后加 --no-deps 重跑"
+        log "installing the host dependencies listed by NVIDIA"
+        run_root "$d/tools/l4t_flash_prerequisites.sh" || die "dependency install failed; install them manually and rerun with --no-deps"
     else
         local miss=() p
         for p in curl bzip2 tar python3 file rsync; do command -v "$p" >/dev/null 2>&1 || miss+=("$p"); done
-        [ ${#miss[@]} -eq 0 ] || { run_root apt-get update && run_root apt-get install -y "${miss[@]}" || die "基础依赖安装失败"; }
+        [ ${#miss[@]} -eq 0 ] || { run_root apt-get update && run_root apt-get install -y "${miss[@]}" || die "base dependency install failed"; }
     fi
-    ok "主机依赖就绪"
+    ok "host dependencies ready"
 }
 
 # ==================================================================== 下载
@@ -976,23 +974,23 @@ fetch() {
     if [ -s "$dst" ]; then
         local got; got="$(stat -c%s "$dst")"
         if [ -n "$want" ] && [ "$got" = "$want" ]; then
-            log "已存在且与上游大小一致（$(human "$got")），跳过下载: $name"
+            log "already present and matches upstream size ($(human "$got")), skipping download: $name"
             return 0
         fi
         if [ -z "$want" ]; then
-            log "上游没给大小，本地已有 $(human "$got")，交给压缩包完整性校验判断: $name"
+            log "upstream gave no size; local copy is $(human "$got"); leaving it to the archive integrity check: $name"
             return 0
         fi
         if [ "$got" -gt "$want" ]; then
-            warn "本地文件比上游还大（本地 $(human "$got") > 上游 $(human "$want")），可能不是同一版本 → 删除重下"
+            warn "local file is larger than upstream (local $(human "$got") > upstream $(human "$want")); possibly a different release -> deleting and re-downloading"
             [ "$DRY_RUN" = 1 ] || rm -f "$dst"
         else
-            warn "本地不完整（$(human "$got") / $(human "$want")）→ 断点续传"
+            warn "local file is incomplete ($(human "$got") / $(human "$want")) -> resuming"
         fi
     fi
 
     if [ -n "$local_src" ] && [ -f "$local_src/$name" ]; then
-        log "离线拷贝: $local_src/$name"
+        log "offline copy: $local_src/$name"
         [ "$DRY_RUN" = 1 ] && { log "[dry-run] cp $local_src/$name $dst"; return 0; }
         cp -f "$local_src/$name" "$dst" && return 0
     fi
@@ -1000,19 +998,19 @@ fetch() {
     local m got
     while IFS= read -r m; do
         [ -n "$m" ] || continue
-        log "下载 $name ← $m"
+        log "downloading $name <- $m"
         [ "$DRY_RUN" = 1 ] && { log "[dry-run] curl -fL -C - -o $dst ${m}/${name}"; return 0; }
         if curl -fL --retry 3 --retry-delay 2 --connect-timeout 20 -C - -o "$dst" "${m}/${name}"; then
             got="$(stat -c%s "$dst")"
             if [ -n "$want" ] && [ "$got" != "$want" ]; then
-                warn "下完大小仍不符（$(human "$got") / $(human "$want")），删掉换下一个源"
+                warn "size still mismatched after download ($(human "$got") / $(human "$want")); deleting and moving to the next source"
                 rm -f "$dst"; continue
             fi
             return 0
         fi
-        warn "该源失败，换下一个"
+        warn "source failed, trying the next one"
     done < <(mirror_list)
-    die "全部源都下不动: $name；用 --mirror 指定内网/本地源（支持 file:// 与目录）"
+    die "no source could deliver $name; use --mirror for an internal/local source (file:// and dirs work)"
 }
 
 # 取包 + 校验，坏包自动删掉重下一次（不让用户手工 rm）
@@ -1020,21 +1018,21 @@ ensure_pkg() {
     local name="$1" size="${2:-}" src="${3:-}"
     fetch "$name" "$size" "$src"
     if [ "$DRY_RUN" = 1 ]; then verify_tbz2 "$name"; return 0; fi
-    if bzip2 -t "$(pkg_dir)/$name" 2>/dev/null; then log "压缩包校验通过: $name"; return 0; fi
-    warn "压缩包校验失败（$name），删掉重新下载一次"
+    if bzip2 -t "$(pkg_dir)/$name" 2>/dev/null; then log "archive verified: $name"; return 0; fi
+    warn "archive check failed ($name); deleting and retrying once"
     rm -f "$(pkg_dir)/$name"
     fetch "$name" "$size" "$src"
-    log "校验压缩包: $name"
-    bzip2 -t "$(pkg_dir)/$name" || die "重下后仍损坏：查网络/代理，或换 --mirror 源（文件: $(pkg_dir)/$name）"
-    ok "重下后校验通过: $name"
+    log "verifying archive: $name"
+    bzip2 -t "$(pkg_dir)/$name" || die "still corrupt after re-download: check network/proxy or switch --mirror (file: $(pkg_dir)/$name)"
+    ok "verified after re-download: $name"
 }
 
 verify_tbz2() {
     local f; f="$(pkg_dir)/$1"
     if [ "$DRY_RUN" = 1 ]; then log "[dry-run] bzip2 -t $f"; return 0; fi
-    [ -s "$f" ] || die "缺文件: $f"
-    log "校验压缩包: $1"
-    bzip2 -t "$f" || die "压缩包损坏，删掉重下: rm '$f'"
+    [ -s "$f" ] || die "missing file: $f"
+    log "verifying archive: $1"
+    bzip2 -t "$f" || die "archive corrupt; delete and retry: rm '$f'"
 }
 
 # ============================================================ 解压 / 应用
@@ -1042,28 +1040,28 @@ extract_bsp() {
     local lt="$WORK_DIR/Linux_for_Tegra"
     if [ -d "$lt" ] && [ -f "$lt/nv_tegra/bsp_version" ]; then
         local have; have="$(awk -F= '/^BSP_BRANCH=/{b=$2}/^BSP_MAJOR=/{m=$2}/^BSP_MINOR=/{n=$2}END{print b"."m"."n}' "$lt/nv_tegra/bsp_version")"
-        [ "$have" = "$L4T_VERSION" ] && { log "BSP 已解压且版本正确（$have）"; return 0; }
-        warn "已有 Linux_for_Tegra 是 $have，与目标 $L4T_VERSION 不符 → 备份后重解"
+        [ "$have" = "$L4T_VERSION" ] && { log "BSP extracted and version matches ($have)"; return 0; }
+        warn "existing Linux_for_Tegra is $have, not the target $L4T_VERSION -> backing up and re-extracting"
         [ "$DRY_RUN" = 1 ] || run_root mv "$lt" "${lt}.bak.$(date +%s)"
     fi
-    log "解压 $BSP_FILENAME"
+    log "extracting $BSP_FILENAME"
     [ "$DRY_RUN" = 1 ] && { log "[dry-run] tar -xjf $(pkg_dir)/$BSP_FILENAME -C $WORK_DIR"; return 0; }
-    tar -xjf "$(pkg_dir)/$BSP_FILENAME" -C "$WORK_DIR" || die "解压 BSP 失败"
-    ok "BSP 解压完成: $lt"
+    tar -xjf "$(pkg_dir)/$BSP_FILENAME" -C "$WORK_DIR" || die "BSP extraction failed"
+    ok "BSP extracted: $lt"
 }
 
 extract_rootfs() {
     local lt="$WORK_DIR/Linux_for_Tegra"
     if [ -f "$lt/rootfs/etc/nv_tegra_release" ]; then
-        log "rootfs 看起来已经 apply 过，跳过解压"
+        log "rootfs looks already applied; skipping extraction"
     else
-        log "解压 sample rootfs"
+        log "extracting the sample rootfs"
         [ "$DRY_RUN" = 1 ] && log "[dry-run] tar -xjpf $(pkg_dir)/$ROOTFS_FILENAME -C $lt/rootfs" \
-                          || run_root tar -xjpf "$(pkg_dir)/$ROOTFS_FILENAME" -C "$lt/rootfs" || die "解压 rootfs 失败"
+                          || run_root tar -xjpf "$(pkg_dir)/$ROOTFS_FILENAME" -C "$lt/rootfs" || die "rootfs extraction failed"
     fi
     log "apply_binaries.sh"
-    run_root bash -lc "cd '$lt' && ./apply_binaries.sh" || die "apply_binaries.sh 失败"
-    ok "rootfs 准备完成"
+    run_root bash -lc "cd '$lt' && ./apply_binaries.sh" || die "apply_binaries.sh failed"
+    ok "rootfs ready"
 }
 
 # ================================================================ recovery
@@ -1081,56 +1079,56 @@ recovery_present() {
 # 把当前所有 NVIDIA USB 设备分类打出来：区分"进了 recovery"和"其实板子已经正常启动"
 usb_state_hint() {
     local lines; lines="$(lsusb 2>/dev/null | grep -i '0955:' || true)"
-    [ -n "$lines" ] || { printf '  当前 USB 上没有任何 NVIDIA 设备（0955:*）\n'; return 0; }
-    printf '%s  当前看到的 NVIDIA USB 设备:%s\n' "$C_D" "$C_N"
+    [ -n "$lines" ] || { printf '  no NVIDIA device on USB right now (0955:*)\n'; return 0; }
+    printf '%s  NVIDIA USB devices currently visible:%s\n' "$C_D" "$C_N"
     local pid
     while IFS= read -r l; do
         [ -n "$l" ] || continue
         pid="$(printf '%s' "$l" | grep -oiE '0955:[0-9a-f]{4}' | head -1 | cut -d: -f2 | tr 'A-F' 'a-f')"
         if printf '%s' "$l" | grep -qiE 'APX'; then
-            printf '    %s · 0955:%s → recovery/APX，✓ 就是这个，按回车即可\n' "$C_G" "$pid"
+            printf '    %s . 0955:%s -> recovery/APX, this is the one; press Enter\n' "$C_G" "$pid"
             local prod
             prod="$(lsusb -v -d "0955:$pid" 2>/dev/null | grep -i 'iProduct' | head -1 | sed 's/.*iProduct *//; s/^ *[0-9]* *//')"
             case "$prod" in
-                ""|APX) printf '      %s 产品串是 "%s"，APX 模式不会告诉你模组型号；板型以刷写日志里的 Board ID/sku 为准%s\n' "$C_D" "${prod:-空}" "$C_N" ;;
-                *)      printf '      %s 产品串: %s（可据此核对模组/载板）%s\n' "$C_D" "$prod" "$C_N" ;;
+                ""|APX) printf '      %s product string is "%s"; APX does not expose the module model - use Board ID/sku from the flash log%s\n' "$C_D" "${prod:-none}" "$C_N" ;;
+                *)      printf '      %s product string: %s (use it to confirm module/carrier)%s\n' "$C_D" "$prod" "$C_N" ;;
             esac
             continue
         fi
         case "$pid" in
-            7523|7522|7623) printf '    %s · 0955:%s → recovery/APX，✓ 就是这个，按回车即可\n' "$C_G" "$pid" ;;
+            7523|7522|7623) printf '    %s . 0955:%s -> recovery/APX, this is the one; press Enter\n' "$C_G" "$pid" ;;
             7020|7018|7418)
-                printf '    %s · 0955:%s → L4T 已经正常启动（USB device/gadget 模式），不是 recovery\n' "$C_R" "$pid"
-                printf '      %s 说明线是好的、板子有电，只是没进 recovery：断电 → 保持短接 → 上电 2 秒后再松开\n' "$C_D"
-                printf '      %s 顺带：这种状态下主机通常有 usb0/192.168.55.x，可 ssh ubuntu@192.168.55.1 确认是哪块板\n' "$C_D" ;;
-            *) printf '    %s · 0955:%s → 未知/其它模式\n' "$C_Y" "$pid" ;;
+                printf '    %s . 0955:%s -> L4T is already booted (USB device/gadget mode), not recovery\n' "$C_R" "$pid"
+                printf '      %s cable and power are fine, it simply is not in recovery: power off -> hold the short -> power on, release after 2s\n' "$C_D"
+                printf '      %s tip: in this mode the host usually has usb0/192.168.55.x; ssh ubuntu@192.168.55.1 to identify the board\n' "$C_D" ;;
+            *) printf '    %s . 0955:%s -> unknown/other mode\n' "$C_Y" "$pid" ;;
         esac
     done <<< "$lines"
 }
 
 # 进入 recovery 的三种官方方式（NVIDIA Orin Nano DevKit User Guide → Force Recovery Mode）
 print_recovery_howto() {
-    printf '\n  %s%s%s\n' "$C_Y" "$(T "板子现在不在 recovery 模式。官方三种进入方式：" "The board is not in recovery mode. Three official ways in:")" "$C_N"
-    printf '    A  %s\n' "$(T "断电法：断电 → 短接 Button Header 9、10 脚（FC REC / GND）→ 接回电源" "Power-off: unplug → short Button Header pins 9 and 10 (FC REC / GND) → reconnect power")"
-    printf '    B  %s\n' "$(T "已开机：短接 9、10 脚 → 再短接 7、8 脚触发复位" "Already on: short pins 9 and 10 → then briefly short pins 7 and 8 to reset")"
-    printf '    C  %s\n' "$(T "已能登录：sudo reboot --force forced-recovery" "If you can log in: sudo reboot --force forced-recovery")"
-    printf '    %s\n' "$(T "短接位置以载板丝印为准；主机检测到设备后拔掉跳线，别一直插着。" "Follow the carrier silkscreen; remove the jumper once the host detects the device.")"
-    printf '    USB-C %s: %s%s | grep 0955%s → %s\n' \
+    printf '\n  %s%s%s\n' "$C_Y" "$(T "板子现在不在 recovery 模式.官方三种进入方式:" "The board is not in recovery mode. Three official ways in:")" "$C_N"
+    printf '    A  %s\n' "$(T "断电法:断电 -> 短接 Button Header 9,10 脚(FC REC / GND)-> 接回电源" "Power-off: unplug -> short Button Header pins 9 and 10 (FC REC / GND) -> reconnect power")"
+    printf '    B  %s\n' "$(T "已开机:短接 9,10 脚 -> 再短接 7,8 脚触发复位" "Already on: short pins 9 and 10 -> then briefly short pins 7 and 8 to reset")"
+    printf '    C  %s\n' "$(T "已能登录:sudo reboot --force forced-recovery" "If you can log in: sudo reboot --force forced-recovery")"
+    printf '    %s\n' "$(T "短接位置以载板丝印为准；主机检测到设备后拔掉跳线,别一直插着." "Follow the carrier silkscreen; remove the jumper once the host detects the device.")"
+    printf '    USB-C %s: %s%s | grep 0955%s -> %s\n' \
         "$(T "要接能传数据的口/线；本机确认" "must be a data port/cable; check on the host with")" "$C_B" "lsusb" "$C_N" \
-        "$(T "0955:7523（Orin Nano 8GB）/ 7623（4GB）" "0955:7523 (Orin Nano 8GB) / 7623 (4GB)")"
-    printf '    %s\n' "$(T "参考：docs.nvidia.com/jetson/orin-nano-devkit/user-guide/latest/howto.html#force-recovery-mode" "Ref: docs.nvidia.com/jetson/orin-nano-devkit/user-guide/latest/howto.html#force-recovery-mode")"
-    printf '    %s\n\n' "$(T "提示：进 recovery 后板子不会显示为新磁盘，只在 lsusb 里出现，属正常。" "Note: in recovery the board does not appear as a disk; it only shows up in lsusb.")"
+        "$(T "0955:7523(Orin Nano 8GB)/ 7623(4GB)" "0955:7523 (Orin Nano 8GB) / 7623 (4GB)")"
+    printf '    %s\n' "$(T "参考:docs.nvidia.com/jetson/orin-nano-devkit/user-guide/latest/howto.html#force-recovery-mode" "Ref: docs.nvidia.com/jetson/orin-nano-devkit/user-guide/latest/howto.html#force-recovery-mode")"
+    printf '    %s\n\n' "$(T "提示:进 recovery 后板子不会显示为新磁盘,只在 lsusb 里出现,属正常." "Note: in recovery the board does not appear as a disk; it only shows up in lsusb.")"
 }
 
 # 刷写前的 recovery 闸门：没检测到就一直让用户手动按回车刷新（不自动轮询、不超时）
 # 返回 0 = 可以继续刷；1 = 放弃（EOF/非交互时等不到人）
 wait_recovery() {
-    [ "$DRY_RUN" = 1 ] && { log "[dry-run] 跳过 recovery 检测"; return 0; }
+    [ "$DRY_RUN" = 1 ] && { log "[dry-run] recovery check skipped"; return 0; }
     command -v lsusb >/dev/null 2>&1 || run_root apt-get install -y usbutils >/dev/null 2>&1
 
-    if recovery_present; then ok "recovery 设备已就位"; return 0; fi
+    if recovery_present; then ok "recovery device ready"; return 0; fi
     if [ "$RECOVERY_SKIP" = 1 ]; then
-        warn "按 --skip-recovery-check 跳过检测，直接刷（recovery 没进的话刷写必然失败）"
+        warn "use --skip-recovery-check to bypass the check (flashing will fail if the board is not in recovery)"
         return 0
     fi
 
@@ -1140,99 +1138,99 @@ wait_recovery() {
     while :; do
         n=$((n + 1))
         if [ ! -t 0 ]; then
-            warn "没有检测到 recovery 设备，且当前不是交互终端（无法按键刷新）"
-            warn "请在终端里重跑本命令，或先在别的终端把板子切到 recovery 再回来"
+            warn "no recovery device and no interactive terminal (cannot poll by keypress)"
+            warn "rerun this command in a terminal, or switch the board to recovery from another terminal first"
             return 1
         fi
-        printf '  %s→ 板子短接好并上电后，按 [回车] 刷新检测%s   [s] 跳过检测强行刷   [q] 退出   （第 %d 次）> ' \
+        printf '  %s-> short the pins and power on, then [Enter] to re-check%s   [s] skip check and force flash   [q] quit   (poll %d)> ' \
                "$C_Y" "$C_N" "$n"
-        if ! IFS= read -rsn1 key; then warn "输入结束，放弃"; return 1; fi   # 单键即生效，回车=刷新
+        if ! IFS= read -rsn1 key; then warn "input closed; aborting"; return 1; fi   # 单键即生效,回车=刷新
         case "$key" in
-            q|Q) die "已退出（板子没进 recovery）" ;;
-            s|S) warn "跳过 recovery 检测，直接进入刷写（失败请回来重跑）"; return 0 ;;
+            q|Q) die "exited (board never entered recovery)" ;;
+            s|S) warn "recovery check skipped, flashing starts (rerun if it fails)"; return 0 ;;
         esac
-        if recovery_present; then ok "检测到 recovery 设备（第 ${n} 次刷新）"; return 0; fi
-        warn "还是没进 recovery。常见原因：没在断电状态下保持短接就上电 / 短错脚位 / USB 线只充电不传数据"
+        if recovery_present; then ok "recovery device detected (poll ${n})"; return 0; fi
+        warn "still no recovery. Usual causes: pins not held while powering on / wrong pins / charge-only USB cable"
         usb_state_hint
-        log "弄好后继续按 [回车] 刷新，我这边一直等着"
+        log "press Enter to re-check once the board is ready; this side keeps waiting"
     done
 }
 
 confirm_flash() {
     [ "$YES" = 1 ] && return 0
     [ "$DRY_RUN" = 1 ] && return 0
-    printf '%s即将执行：%s，继续？[y/N] %s' "$C_Y" "$1" "$C_N"
+    printf '%sabout to run: %s - continue? [y/N] %s' "$C_Y" "$1" "$C_N"
     local a; read -r a
-    case "$a" in y|Y|yes|YES) ;; *) die "已取消" ;; esac
+    case "$a" in y|Y|yes|YES) ;; *) die "cancelled" ;; esac
 }
 
 verify_flash_log() {
     # 刷写日志里 NVIDIA 会打印 EEPROM 读到的板子信息，与所选配置对不上就报警
     local logf="$1" got
     got="$(grep -m1 -oE 'Board ID\([^)]*\) version\([^)]*\) sku\([^)]*\) revision\([^)]*\)' "$logf" 2>/dev/null)"
-    [ -n "$got" ] || { chk_warn "刷写日志里没找到 Board ID 行，无法二次核对板型"; return 0; }
-    log "EEPROM 读到: $got"
+    [ -n "$got" ] || { chk_warn "no Board ID line in the flash log; cannot cross-check the board"; return 0; }
+    log "EEPROM reports: $got"
     local sku; sku="$(printf '%s' "$got" | sed -n 's/.*sku(\([^)]*\)).*/\1/p')"
     case "$BOARD:$sku" in
-        *-super*:0004|*-super*:0005) chk_ok "板型与 EEPROM sku 匹配（$sku）" ;;
-        *devkit*:0004|*devkit*:0005) chk_ok "板型与 EEPROM sku 匹配（$sku）" ;;
-        *) chk_warn "板型 $BOARD 与 EEPROM sku($sku) 可能不匹配，建议 --board 换成对应配置后重刷" ;;
+        *-super*:0004|*-super*:0005) chk_ok "board model matches EEPROM sku ($sku)" ;;
+        *devkit*:0004|*devkit*:0005) chk_ok "board model matches EEPROM sku ($sku)" ;;
+        *) chk_warn "board $BOARD may not match EEPROM sku($sku); switch --board to the right config and reflash" ;;
     esac
 }
 
 # ==================================================================== 刷机
 do_qspi() {
     local lt="$WORK_DIR/Linux_for_Tegra" logf="$WORK_DIR/flash-qspi.log"
-    [ -x "$lt/flash.sh" ] || die "缺 flash.sh，先跑 --mode prep"
-    confirm_flash "只刷 QSPI（UEFI/bootloader），板型 $BOARD，不动系统盘数据"
-    wait_recovery || die "没有进入 recovery，已放弃本次刷写（板子就绪后重跑同一条命令即可）"
+    [ -x "$lt/flash.sh" ] || die "flash.sh missing; run --mode prep first"
+    confirm_flash "QSPI only (UEFI/bootloader), board $BOARD; system disk data untouched"
+    wait_recovery || die "board never entered recovery; flashing abandoned (rerun the same command once it is ready)"
     local cmd=(./flash.sh --no-systemimg -c bootloader/generic/cfg/flash_t234_qspi.xml "$BOARD" "$ROOTDEV")
-    log "命令: sudo ${cmd[*]}"
-    if [ "$DRY_RUN" = 1 ]; then log "[dry-run] 到此为止，不执行"; return 0; fi
+    log "command: sudo ${cmd[*]}"
+    if [ "$DRY_RUN" = 1 ]; then log "[dry-run] stopping here, nothing executed"; return 0; fi
     if ! ( cd "$lt" && run_root "${cmd[@]}" 2>&1 | tee "$logf" ); then
         if grep -qE "rootfs/(lib|bin|usr).*(没有那个文件|No such file)" "$logf" 2>/dev/null; then
-            die "flash.sh 失败：rootfs 是空的（缺 sample rootfs）。36.x 的 flash.sh 即使只刷 QSPI，
-也要用 rootfs 生成 recovery ramdisk → 先跑 prep --with-rootfs。日志: $logf"
+            die "flash.sh failed: rootfs is empty (sample rootfs missing). Even a QSPI-only
+flash needs rootfs to build the recovery ramdisk on 36.x -> run prep --with-rootfs first. log: $logf"
         fi
-        die "flash.sh 失败（见 $logf）"
+        die "flash.sh failed (see $logf)"
     fi
     verify_flash_log "$logf"
-    ok "QSPI 刷写完成"
+    ok "QSPI flash complete"
     cat <<EOF
 
-板子重启后自检（在板内跑，注意要 sudo）：
-  sudo nvbootctrl dump-slots-info     # Current version 应等于你刚刷的版本（本次 $L4T_VERSION）
-                                      # 不加 sudo 会报 Permission denied 且版本显示 0.0.13，属正常
-  nvpmodel -q                         # 期望 MAXN_SUPER（需 super 板型 + 36.4+ UEFI）
-  head -3 /etc/nv_boot_control.conf   # TNSPEC 应带 -super
+self-check after the board reboots (run onboard, needs sudo):
+  sudo nvbootctrl dump-slots-info     # Current version must equal the flashed $L4T_VERSION
+                                      # without sudo it prints 0.0.13 and Permission denied
+  nvpmodel -q                         # expect MAXN_SUPER (Super board + 36.4+ UEFI)
+  head -3 /etc/nv_boot_control.conf   # TNSPEC should carry -super
 
 EOF
 }
 
 do_nvme() {
     local lt="$WORK_DIR/Linux_for_Tegra" logf="$WORK_DIR/flash-nvme.log"
-    [ -x "$lt/tools/kernel_flash/l4t_initrd_flash.sh" ] || die "缺 l4t_initrd_flash.sh（先 --mode prep --with-rootfs）"
-    [ -f "$lt/rootfs/etc/nv_tegra_release" ] || die "rootfs 未准备：先 --mode prep --with-rootfs"
-    confirm_flash "整机刷到 NVMe（QSPI+系统全刷，目标盘数据会丢）"
-    wait_recovery || die "没有进入 recovery，已放弃本次刷写（板子就绪后重跑同一条命令即可）"
+    [ -x "$lt/tools/kernel_flash/l4t_initrd_flash.sh" ] || die "l4t_initrd_flash.sh missing (run --mode prep --with-rootfs first)"
+    [ -f "$lt/rootfs/etc/nv_tegra_release" ] || die "rootfs not prepared: run --mode prep --with-rootfs first"
+    confirm_flash "full flash to NVMe (QSPI + system; target disk will be erased)"
+    wait_recovery || die "board never entered recovery; flashing abandoned (rerun the same command once it is ready)"
     local cmd=(./tools/kernel_flash/l4t_initrd_flash.sh
                --external-device nvme0n1p1
                -p "-c ./bootloader/generic/cfg/flash_t234_qspi.xml"
                -c ./tools/kernel_flash/flash_l4t_t234_nvme.xml
                --showlogs --network usb0 "$BOARD" external)
-    log "命令: sudo ${cmd[*]}"
-    if [ "$DRY_RUN" = 1 ]; then log "[dry-run] 到此为止，不执行"; return 0; fi
-    ( cd "$lt" && run_root "${cmd[@]}" 2>&1 | tee "$logf" ) || die "initrd flash 失败（见 $logf）"
+    log "command: sudo ${cmd[*]}"
+    if [ "$DRY_RUN" = 1 ]; then log "[dry-run] stopping here, nothing executed"; return 0; fi
+    ( cd "$lt" && run_root "${cmd[@]}" 2>&1 | tee "$logf" ) || die "initrd flash failed (see $logf)"
     verify_flash_log "$logf"
-    ok "整机刷写完成（用户名/密码在首启创建，可用 tools/l4t_create_default_user.sh 预置）"
+    ok "full flash complete (user/password are created on first boot; tools/l4t_create_default_user.sh can preset them)"
 }
 
 do_prep() {
     local src=""
     if [ -n "$OFFLINE_SRC" ]; then
         src="$OFFLINE_SRC"; [ "$src" = "auto" ] && src="$WORK_DIR"
-        [ -d "$src" ] || die "离线源目录不存在: $src"
-        log "离线模式：从 $src 取包"
+        [ -d "$src" ] || die "offline source dir not found: $src"
+        log "offline mode: taking packages from $src"
     fi
     ensure_pkg "$BSP_FILENAME" "$BSP_SIZE" "$src"
     verify_checksum "$BSP_FILENAME"
@@ -1242,26 +1240,26 @@ do_prep() {
         ensure_pkg "$ROOTFS_FILENAME" "$ROOTFS_SIZE" "$src"
         extract_rootfs
     fi
-    ok "准备完成: $WORK_DIR/Linux_for_Tegra"
+    ok "prep done: $WORK_DIR/Linux_for_Tegra"
 }
 
 do_target() {
     local rel; rel="$(grep -m1 '^# R' /etc/nv_tegra_release 2>/dev/null)"
-    log "当前 L4T: ${rel:-未知}"
+    log "current L4T: ${rel:-unknown}"
     if [ "$DRY_RUN" = 1 ]; then
-        log "[dry-run] 把 nvidia-l4t-apt-source.list 里的 r36.x 改成 r36.4 后 apt dist-upgrade"
+        log "[dry-run] change r36.x to r36.4 in nvidia-l4t-apt-source.list, then apt dist-upgrade"
         return 0
     fi
-    warn "这条会升级板上 BSP 包：TensorRT 8.x→10.x、cuDNN 8.x→9.x，自编 engine 需重建"
-    confirm_flash "在 Jetson 上把 L4T 包升到 36.4（官方 apt 升级路径）"
+    warn "this upgrades onboard BSP packages: TensorRT 8.x->10.x, cuDNN 8.x->9.x; self-built engines must be rebuilt"
+    confirm_flash "upgrade L4T packages to 36.4 on the Jetson (official apt path)"
     local f=/etc/apt/sources.list.d/nvidia-l4t-apt-source.list
-    [ -f "$f" ] || die "没有 $f，不是标准 L4T 系统"
+    [ -f "$f" ] || die "no $f; not a standard L4T system"
     run_root cp "$f" "$f.bak.$(date +%s)"
     run_root sed -i -E 's#jetson/(common|t234|ffmpeg) r36\.[0-9]+#jetson/\1 r36.4#g' "$f"
     run_root apt-get update
-    run_root apt-get -y dist-upgrade || warn "dist-upgrade 有报错，继续尝试修复"
+    run_root apt-get -y dist-upgrade || warn "dist-upgrade reported errors; attempting repair"
     run_root apt-get install -y --fix-broken -o Dpkg::Options::="--force-overwrite" || true
-    ok "完成，物理重启后 nvbootctrl dump-slots-info 应显示 36.4.x"
+    ok "done; after a physical reboot nvbootctrl dump-slots-info should show 36.4.x"
 }
 
 # ==================================================================== 诊断
@@ -1272,11 +1270,11 @@ do_target() {
 uart_help() {
 cat <<EOF
 
-  ${C_B}要看开机最底层日志（UEFI / DDR 训练 / BPMP / 电源），接串口：${C_N}
-    Orin Nano DevKit 40-pin 排针：Pin 6 = GND，Pin 8 = UART1_TX，Pin 10 = UART1_RX
-    参数 115200 8N1，控制台设备 ttyTCU0；用 USB-TTL 接上后：
-      screen /dev/ttyUSB0 115200     # 或 picocom -b 115200 /dev/ttyUSB0
-    冷启动时能看到的阶段：BootROM → MB1/MB2 → UEFI → kernel；坏在哪一段一眼就能分辨。
+  ${C_B}Lowest-level boot output (UEFI / DDR training / BPMP / power) needs serial:${C_N}
+    Orin Nano DevKit 40-pin: Pin 6 = GND, Pin 8 = UART1_TX, Pin 10 = UART1_RX
+    115200 8N1, console ttyTCU0; with a USB-TTL adapter:
+      screen /dev/ttyUSB0 115200     # or picocom -b 115200 /dev/ttyUSB0
+    A cold boot walks BootROM -> MB1/MB2 -> UEFI -> kernel; the stage it stops at tells you where it broke.
 
 EOF
 }
@@ -1284,41 +1282,41 @@ EOF
 do_diag() {
     local d="$WORK_DIR/diag-$(date +%Y%m%d-%H%M%S)"
     mkdir -p "$d" 2>/dev/null || true
-    printf '\n%s── 诊断报告（输出目录 %s）──%s\n' "$C_B" "$d" "$C_N"
+    printf '\n%s-- diagnostics report (output %s) --%s\n' "$C_B" "$d" "$C_N"
 
     if [ -r /etc/nv_tegra_release ]; then
         # ---------- 板内（已启动）：这层才看得到内核与系统日志 ----------
-        chk_info "模式：板内诊断（系统已启动）"
+        chk_info "mode: onboard diagnostics (system booted)"
         {
-            echo "## 版本"; grep -m1 '^# R' /etc/nv_tegra_release; uname -a
+            echo "## version"; grep -m1 '^# R' /etc/nv_tegra_release; uname -a
             echo; echo "## TNSPEC"; head -4 /etc/nv_boot_control.conf 2>/dev/null
-            echo; echo "## bootloader 槽位"; sudo -n nvbootctrl dump-slots-info 2>&1 | head -8
-            echo; echo "## 功耗模式"; nvpmodel -q 2>&1 | head -3
+            echo; echo "## bootloader slots"; sudo -n nvbootctrl dump-slots-info 2>&1 | head -8
+            echo; echo "## power mode"; nvpmodel -q 2>&1 | head -3
             echo; echo "## cmdline"; cat /proc/cmdline
             echo; echo "## dmesg err"; (sudo -n dmesg -l err,crit,alert,emerg 2>/dev/null || dmesg 2>/dev/null | grep -iE 'error|fail' | tail -40)
             echo; echo "## journal -b -p err"; sudo -n journalctl -b -p err --no-pager 2>/dev/null | tail -30
-            echo; echo "## 失败的服务"; systemctl --failed --no-legend 2>/dev/null | head -10
-            echo; echo "## 关键外设探测失败计数"
+            echo; echo "## failed services"; systemctl --failed --no-legend 2>/dev/null | head -10
+            echo; echo "## probe failures for key peripherals"
             (sudo -n dmesg 2>/dev/null || true) | grep -icE 'board setup failed|probe failed|failed to read device id' | sed 's/^/  failures=/' || true
         } > "$d/onboard.txt" 2>&1
         local uefi; uefi="$(sudo -n nvbootctrl dump-slots-info 2>/dev/null | awk -F': ' '/Current version/{print $2}')"
         local l4t_short; l4t_short="$(sed -nE 's/^# ?R([0-9]+).*REVISION:? *([0-9]+\.[0-9]+).*/R\1.\2/p' /etc/nv_tegra_release 2>/dev/null | head -1)"
-        chk_ok "系统 L4T/内核: ${l4t_short:-?} / $(uname -r)"
-        chk_info "UEFI(QSPI) 版本: ${uefi:-未读到}"
+        chk_ok "system L4T/kernel: ${l4t_short:-?} / $(uname -r)"
+        chk_info "UEFI (QSPI) version: ${uefi:-not readable}"
         if [ -n "$uefi" ] && [ -n "$l4t_short" ]; then
             local sysv="${l4t_short#R}" uefimaj="${uefi%.*}"
             if [ "${sysv%.*}" = "$uefimaj" ]; then
-                chk_ok "QSPI/UEFI($uefi) 与系统($sysv) 同代"
+                chk_ok "QSPI/UEFI ($uefi) matches system ($sysv)"
             else
-                chk_warn "QSPI/UEFI($uefi) 与系统($sysv) 不同代：典型"只刷过 QSPI、系统盘没动"。要对齐用 --mode nvme 整机刷，或在板内 --mode target 用 apt 升"
+                chk_warn "QSPI/UEFI ($uefi) differs from system ($sysv): typically QSPI was flashed alone; align them with --mode nvme or upgrade in place with --mode target"
             fi
         fi
-        chk_info "功耗模式: $(nvpmodel -q 2>/dev/null | head -1)"
+        chk_info "power mode: $(nvpmodel -q 2>/dev/null | head -1)"
         local nerr; nerr="$(grep -c . "$d/onboard.txt" 2>/dev/null || echo 0)"
-        grep -q "imx219_board_setup" "$d/onboard.txt" 2>/dev/null && chk_warn "CSI 相机(i2c 9/10) 探测失败 → 相机排线/供电/设备树，与刷机无关"
-        grep -q "fusb301" "$d/onboard.txt" 2>/dev/null && chk_warn "fusb301(USB-C PD) 读不到 ID → 载板没这颗器件或板型号不匹配"
-        chk_ok "完整日志: $d/onboard.txt"
-        log "注意：这一层能看内核/系统报错，但看不到 UEFI 与 DDR 训练的日志"
+        grep -q "imx219_board_setup" "$d/onboard.txt" 2>/dev/null && chk_warn "CSI camera (i2c 9/10) probe failed -> camera cable/power/device tree; unrelated to flashing"
+        grep -q "fusb301" "$d/onboard.txt" 2>/dev/null && chk_warn "fusb301 (USB-C PD) ID unreadable -> carrier lacks the part or the board model does not match"
+        chk_ok "full log: $d/onboard.txt"
+        log "note: this layer shows kernel/system errors but not UEFI or DDR training logs"
         uart_help
         return 0
     fi
@@ -1327,9 +1325,9 @@ do_diag() {
         # ---------- recovery：只能查设备身份/EEPROM/BCT ----------
         local lt="$WORK_DIR/Linux_for_Tegra"
         if [ ! -x "$lt/bootloader/tegrarcm_v2" ]; then
-            die "缺 Linux_for_Tegra/bootloader 工具，先跑 --mode prep（只下载解压即可）"
+            die "Linux_for_Tegra/bootloader tools missing; run --mode prep (download and extract only)"
         fi
-        chk_info "模式：recovery 诊断（板子未启动）"
+        chk_info "mode: recovery diagnostics (board not booted)"
         ( cd "$lt" && run_root ./bootloader/tegrarcm_v2 --chip 0x23 0 --oem platformdetails chip "$d/chip_info.bin" ) 2>&1 | tail -2
         ( cd "$lt" && run_root ./bootloader/tegrarcm_v2 --chip 0x23 0 --oem platformdetails eeprom cvm "$d/cvm.bin" ) 2>&1 | tail -2
         ( cd "$lt" && run_root ./bootloader/tegrarcm_v2 --chip 0x23 0 --oem dump bct "$d/tmp.bct" ) 2>&1 | tail -2
@@ -1340,24 +1338,24 @@ do_diag() {
                 printf '  BoardID: %s\n  SKU: %s\n  FAB: %s\n  Revision: %s\n' \
                     "$("$ci" -i "$d/cvm.bin" 2>&1)" "$("$ci" -k "$d/cvm.bin" 2>&1)" \
                     "$("$ci" -f "$d/cvm.bin" 2>&1)" "$("$ci" -r "$d/cvm.bin" 2>&1)"
-                printf '  板料号: %s\n  AssetID: %s\n' "$("$ci" -p "$d/cvm.bin" 2>&1)" "$("$ci" -a "$d/cvm.bin" 2>&1)"
+                printf '  board part number: %s\n  AssetID: %s\n' "$("$ci" -p "$d/cvm.bin" 2>&1)" "$("$ci" -a "$d/cvm.bin" 2>&1)"
                 printf '  GB MAC: %s\n  WiFi MAC: %s\n' "$("$ci" -g "$d/cvm.bin" 2>&1)" "$("$ci" -w "$d/cvm.bin" 2>&1)"
             } | tee "$d/eeprom.txt"
             local sku; sku="$("$ci" -k "$d/cvm.bin" 2>&1)"
             case "$BOARD:$sku" in
-                *-super*:0004|*devkit*:0004|*:0005) chk_ok "EEPROM sku=$sku 与所选板型 $BOARD 匹配" ;;
-                *) chk_warn "EEPROM sku=$sku 与所选板型 $BOARD 可能不匹配 → 用 --board 换对应配置" ;;
+                *-super*:0004|*devkit*:0004|*:0005) chk_ok "EEPROM sku=$sku matches board $BOARD" ;;
+                *) chk_warn "EEPROM sku=$sku may not match board $BOARD -> pick the right --board config" ;;
             esac
         fi
-        chk_info "BCT 已导出: $d/tmp.bct（客户信息损坏 / BCT 不匹配，是「能进 recovery 但起不来系统」的常见原因）"
-        chk_warn "recovery 模式看不到内核/UEFI 运行时日志，也看不到 DDR 训练与电源问题"
+        chk_info "BCT exported: $d/tmp.bct (corrupt info / BCT mismatch is a common reason for recovery-only boots)"
+        chk_warn "recovery mode exposes no kernel/UEFI runtime log, nor DDR training or power issues"
         uart_help
         return 0
     fi
 
-    chk_warn "既不在板内（无 /etc/nv_tegra_release），也没有 recovery 设备"
+    chk_warn "neither onboard (no /etc/nv_tegra_release) nor in recovery"
     usb_state_hint
-    chk_info "把板子接上：正常启动 → 本机可 ssh，脚本走板内诊断；未启动 → 短接进 recovery 走 EEPROM/BCT 诊断"
+    chk_info "connect the board: normal boot -> ssh in and run onboard diagnostics; not booted -> short the pins and run EEPROM/BCT diagnostics"
     uart_help
 }
 
@@ -1388,15 +1386,15 @@ uart_list_ports() {
         [ -e "$f" ] || continue
         found=1
         if is_l4t_gadget "$f"; then
-            note="${C_Y}(L4T USB gadget，不是 UART 控制台，别选这个)${C_N}"
+            note="${C_Y}(L4T USB gadget, not a UART console; do not pick this)${C_N}"
         elif [ -r "$f" ]; then
-            note="${C_G}可读${C_N}"
+            note="${C_G}readable${C_N}"
         else
-            note="${C_Y}(需要 dialout 组或 sudo)${C_N}"
+            note="${C_Y}(needs dialout group or sudo)${C_N}"
         fi
-        printf '   %-46s → %-14s %b\n' "$f" "$(readlink -f "$f" 2>/dev/null)" "$note"
+        printf '   %-46s -> %-14s %b\n' "$f" "$(readlink -f "$f" 2>/dev/null)" "$note"
     done
-    [ "$found" = 1 ] || printf '   %s没找到任何串口设备。板子接 USB-TTL 了没？驱动装了吗（FTDI/CP210x/CH340/PL2303）%s\n' "$C_D" "$C_N"
+    [ "$found" = 1 ] || printf '   %sno serial device found. USB-TTL connected? driver installed (FTDI/CP210x/CH340/PL2303)?%s\n' "$C_D" "$C_N"
 }
 
 uart_auto_dev() {
@@ -1420,7 +1418,7 @@ uart_auto_dev() {
 # 对串口日志分级：返回最后到达的阶段
 uart_analyze() {
     local f="$1"
-    [ -s "$f" ] || { warn "日志是空的: $f"; return 1; }
+    [ -s "$f" ] || { warn "log is empty: $f"; return 1; }
     local n=$'\n'
     local stages=(
         "BootROM|BootROM|Tegra Boot|Boot Rom"
@@ -1430,50 +1428,50 @@ uart_analyze() {
         "kernel|Linux version|Booting Linux|Kernel command line"
         "userspace|systemd\[1\]|Reached target|Ubuntu "
     )
-    printf '\n  %s── 串口日志分级（%s）──%s\n' "$C_B" "$f" "$C_N"
-    local last="(无)"
+    printf '\n  %s-- serial log stages (%s) --%s\n' "$C_B" "$f" "$C_N"
+    local last="(none)"
     local entry name pat
     for entry in "${stages[@]}"; do
         name="${entry%%|*}"; pat="${entry#*|}"
         if grep -qiE "$pat" "$f"; then
-            printf '    %s[ ✓ ]%s %-9s 出现过（首次在第 %s 行）\n' "$C_G" "$C_N" "$name" "$(grep -niE -m1 "$pat" "$f" | cut -d: -f1)"
+            printf '    %s[ ok ]%s %-9s seen (first at line %s)\n' "$C_G" "$C_N" "$name" "$(grep -niE -m1 "$pat" "$f" | cut -d: -f1)"
             last="$name"
         else
-            printf '    %s[ · ]%s %-9s 未出现\n' "$C_D" "$C_N" "$name"
+            printf '    %s[ - ]%s %-9s absent\n' "$C_D" "$C_N" "$name"
         fi
     done
 
-    printf '\n  %s── 可疑行（最多 15 条）──%s\n' "$C_B" "$C_N"
+    printf '\n  %s-- suspicious lines (max 15) --%s\n' "$C_B" "$C_N"
     local hits
     hits="$(grep -niE 'error|fail|panic|abort|timeout|assert|unable|not found|invalid|watchdog|DRAM.*(fail|error)|assert' "$f" 2>/dev/null | head -15)"
     if [ -n "$hits" ]; then printf '%s\n' "$hits" | sed 's/^/    /'
-    else printf '    %s没有明显错误行%s\n' "$C_D" "$C_N"; fi
+    else printf '    %sno obvious error lines%s\n' "$C_D" "$C_N"; fi
 
-    printf '\n  %s结论：%s' "$C_B" "$C_N"
+    printf '\n  %sverdict: %s' "$C_B" "$C_N"
     case "$last" in
-        userspace|kernel) printf '%s日志已出现 %s 阶段；仍需核对系统运行状态%s\n' "$C_G" "$last" "$C_N" ;;
-        UEFI)             printf '%s最后识别到 UEFI：建议检查启动项、系统分区与日志是否完整%s\n' "$C_Y" "$C_N" ;;
-        MB2)              printf '%s最后识别到 MB2：建议检查 UEFI 加载、BCT 及日志是否完整%s\n' "$C_Y" "$C_N" ;;
-        MB1)              printf '%s最后识别到 MB1：建议检查 DDR、BCT 及日志是否完整%s\n' "$C_Y" "$C_N" ;;
-        BootROM)          printf '%s仅识别到 BootROM 日志；请结合完整日志检查供电、内存初始化及采集完整性%s\n' "$C_R" "$C_N" ;;
-        *)                printf '%s没抓到任何已知阶段，检查波特率(115200)、TX/RX 是否接反、GND 是否共地%s\n' "$C_R" "$C_N" ;;
+        userspace|kernel) printf '%sthe log reached the %s stage; still verify the running system%s\n' "$C_G" "$last" "$C_N" ;;
+        UEFI)             printf '%slast stage UEFI: check boot entries, system partitions and log completeness%s\n' "$C_Y" "$C_N" ;;
+        MB2)              printf '%slast stage MB2: check UEFI loading, BCT and log completeness%s\n' "$C_Y" "$C_N" ;;
+        MB1)              printf '%slast stage MB1: check DDR, BCT and log completeness%s\n' "$C_Y" "$C_N" ;;
+        BootROM)          printf '%sonly BootROM output seen; check power, memory init and capture completeness against the full log%s\n' "$C_R" "$C_N" ;;
+        *)                printf '%sno known stage captured; check baud (115200), TX/RX swap and a common GND%s\n' "$C_R" "$C_N" ;;
     esac
 }
 
 uart_capture() {
     local dev="$1" log="$2" secs="$3"
-    if [ ! -e "$dev" ]; then die "串口设备不存在: $dev（--uart-list 看可用设备）"; fi
+    if [ ! -e "$dev" ]; then die "serial device not found: $dev (see --uart-list)"; fi
     if [ ! -r "$dev" ]; then
-        warn "$dev 不可读：把自己加进 dialout 组（sudo usermod -aG dialout $USER，重新登录），或用 sudo 跑"
+        warn "$dev is unreadable: add yourself to dialout (sudo usermod -aG dialout $USER, log in again) or run with sudo"
         return 1
     fi
-    log "串口 $dev @ ${UART_BAUD} 8N1，捕获 ${secs}s（现在给板子断电→上电，好抓完整启动链；Ctrl-C 提前结束）"
-    log "日志: $log"
-    stty -F "$dev" "$UART_BAUD" cs8 -cstopb -parenb -crtscts raw -echo 2>/dev/null || warn "stty 设置失败（可能不是 TTY），继续尝试读取"
-    printf '  %s按回车开始抓取…%s ' "$C_Y" "$C_N"
+    log "serial $dev @ ${UART_BAUD} 8N1, capturing ${secs}s (power-cycle the board now to capture the full boot chain; Ctrl-C stops early)"
+    log "log: $log"
+    stty -F "$dev" "$UART_BAUD" cs8 -cstopb -parenb -crtscts raw -echo 2>/dev/null || warn "stty failed (possibly not a TTY); still trying to read"
+    printf '  %spress Enter to start capturing...%s ' "$C_Y" "$C_N"
     if [ -t 0 ] && [ "$YES" != 1 ]; then read -r _; fi
     timeout --foreground "$secs" cat "$dev" 2>/dev/null | tee "$log"
-    ok "捕获结束（$(wc -c < "$log" 2>/dev/null || echo 0) 字节）"
+    ok "capture finished ($(wc -c < "$log" 2>/dev/null || echo 0) bytes)"
     uart_analyze "$log"
 }
 
@@ -1486,11 +1484,11 @@ do_uart() {
     mkdir -p "$runner_dir"
     runner=""
     if [ -f "$here/uart-logs.sh" ]; then
-        runner="$here/uart-logs.sh"                      # 与脚本同目录：完全离线
+        runner="$here/uart-logs.sh"                      # 与脚本同目录:完全离线
     elif [ -f "$runner_dir/uart-logs.sh" ]; then
         runner="$runner_dir/uart-logs.sh"                # 上次下载的缓存
     else
-        log "$(T "本地没有采集器，下载一次（之后可离线使用）" "No local collector; downloading once (offline afterwards)")"
+        log "$(T "本地没有采集器,下载一次(之后可离线使用)" "No local collector; downloading once (offline afterwards)")"
         if curl -fsSL https://raw.githubusercontent.com/Shippuurl/jetson-jp62/main/uart-logs.sh -o "$runner.tmp"; then
             mv "$runner.tmp" "$runner"
             runner="$runner_dir/uart-logs.sh"
@@ -1502,10 +1500,10 @@ do_uart() {
 
     # 交互：时长（脚本内一次问完，不用记参数）
     if [ -t 0 ] && [ "$YES" != 1 ] && [ -z "$UART_FILE" ]; then
-        printf '  %s [%s]（0 = 直到 Ctrl-C）: ' "$(T "采集时长（秒）" "Capture length (seconds)")" "$UART_SECONDS"
+        printf '  %s [%s] (0 = until Ctrl-C): ' "$(T "采集时长(秒)" "Capture length (seconds)")" "$UART_SECONDS"
         local d; read -r d
         case "$d" in ''|*[!0-9]*) ;; *) UART_SECONDS="$d" ;; esac
-        [ "$UART_SECONDS" = 0 ] && warn "$(T "持续采集：抓完按 Ctrl-C，仍会自动打包" "Continuous capture: press Ctrl-C when done, packaging still runs")"
+        [ "$UART_SECONDS" = 0 ] && warn "$(T "持续采集:抓完按 Ctrl-C,仍会自动打包" "Continuous capture: press Ctrl-C when done, packaging still runs")"
     fi
 
     local args=(--baud "$UART_BAUD" --seconds "$UART_SECONDS")
@@ -1513,7 +1511,7 @@ do_uart() {
     [ -n "$UART_FILE" ] && args+=(--input "$UART_FILE")
     [ -n "$UART_OUT" ]  && args+=(--output "$UART_OUT")
 
-    printf '\n  %s%s%s\n' "$C_D" "$(T "给板子断电 → 上电，开始抓完整启动链" "Power-cycle the board now to capture the whole boot chain")" "$C_N"
+    printf '\n  %s%s%s\n' "$C_D" "$(T "给板子断电 -> 上电,开始抓完整启动链" "Power-cycle the board now to capture the whole boot chain")" "$C_N"
     bash "$runner" "${args[@]}" 2>&1 | tee "$runner_dir/last-run.txt"
     local rc=${PIPESTATUS[0]}
 
@@ -1525,17 +1523,17 @@ do_uart() {
         printf '    %s\n' "$sess"
         printf '    %s %s\n' "$(T "全量日志" "Full log")"    "$sess/full.log"
         printf '    %s %s\n' "$(T "重要日志" "Important")"   "$sess/important.log"
-        printf '    %s %s\n' "$(T "压缩包"   "Archives")"    "$sess/all-logs.zip（$(T 全部 all)）, $sess/important-logs.zip"
+        printf '    %s %s\n' "$(T "压缩包"   "Archives")"    "$sess/all-logs.zip (all logs), $sess/important-logs.zip"
         printf '    %s %s\n' "$(T "本地入口" "Shortcut")"    "file://$sess/index.html"
         viewer=""
         for c in xdg-open open explorer.exe; do command -v "$c" >/dev/null 2>&1 && { viewer="$c"; break; }; done
         if [ -n "$viewer" ] && [ -t 0 ] && [ "$YES" != 1 ]; then
-            printf '\n  %s[回车] %s  [n] %s > ' "$C_Y" "$(T "打开目录" "open folder")" "$(T "不打开" "skip")"
+            printf '\n  %s[Enter] %s  [n] %s > ' "$C_Y" "$(T "打开目录" "open folder")" "$(T "不打开" "skip")"
             local o; read -r o
             case "$o" in n|N) ;; *) "$viewer" "$sess" >/dev/null 2>&1 || true ;; esac
         fi
     fi
-    [ "$rc" = 0 ] || warn "$(T "采集器返回 $rc（见上面的输出）" "collector exited $rc (see output above)")"
+    [ "$rc" = 0 ] || warn "$(T "采集器返回 $rc(见上面的输出)" "collector exited $rc (see output above)")"
     return 0
 }
 
@@ -1551,9 +1549,9 @@ menu() {
     printf '\n  %s\n' "$(T "资源与维护" "Resources and upkeep")"
     printf '    4  %s %s\n' "$(_pad "$(T 准备资源 "prepare")" 12)"      "$(T "下载并解压 BSP / 可选 rootfs" "Download and extract BSP / optional rootfs")"
     printf '    5  %s %s\n' "$(_pad "$(T 板内更新 "onboard apt")" 12)"  "$(T "通过 apt 更新软件包" "Update packages on the Jetson via apt")"
-    printf '    6  %s %s%s%s\n' "$(_pad "$(T "QSPI 刷写" "QSPI flash")" 12)" "$C_Y" "$(T "写入启动固件；请核对板型与版本" "Writes boot firmware; verify board and version")" "$C_N"
-    printf '    7  %s %s%s%s\n' "$(_pad "$(T "NVMe 刷写" "NVMe flash")" 12)" "$C_R" "$(T "重写目标存储，清除数据" "Rewrites target storage, erases data")" "$C_N"
-    printf '\n    8  %s %s\n' "$(_pad "$(T 操作手册 "manual")" 12)"   "$(T "参数、许可与官方参考" "Options, licence and official references")"
+    printf '    6  %s %s%s%s\n' "$(_pad "$(T "QSPI flash" "QSPI flash")" 12)" "$C_Y" "$(T "写入启动固件；请核对板型与版本" "Writes boot firmware; verify board and version")" "$C_N"
+    printf '    7  %s %s%s%s\n' "$(_pad "$(T "NVMe flash" "NVMe flash")" 12)" "$C_R" "$(T "重写目标存储,清除数据" "Rewrites target storage, erases data")" "$C_N"
+    printf '\n    8  %s %s\n' "$(_pad "$(T 操作手册 "manual")" 12)"   "$(T "参数,许可与官方参考" "Options, licence and official references")"
     printf '    0  %s\n' "$(T 退出 quit)"
     printf '\n  %s [0-8] > ' "$(T 选择 select)"
     local a; read -r a
@@ -1561,7 +1559,7 @@ menu() {
         1) MODE=detect ;;
         6) MODE=qspi ;;
         7) MODE=nvme; WITH_ROOTFS=1 ;;
-        4) MODE=prep; printf '  %s [y/N] ' "$(T "一并下载 sample rootfs（1.83G，整机刷才需要）？" "Also fetch the sample rootfs (1.83G, only needed for a full flash)?")"; local b; read -r b
+        4) MODE=prep; printf '  %s [y/N] ' "$(T "一并下载 sample rootfs(1.83G,整机刷才需要)？" "Also fetch the sample rootfs (1.83G, only needed for a full flash)?")"; local b; read -r b
            case "$b" in y|Y) WITH_ROOTFS=1 ;; esac ;;
         5) MODE=target ;;
         2) MODE=diag ;;
@@ -1573,25 +1571,25 @@ menu() {
 
 report_detect() {
     banner
-    echo "  自动识别结果："
+    echo "  auto-detect result:"
     case "$DET_MODE" in
         onboard)
-            chk_ok "运行在 Jetson 本机（板内识别最准）"
-            chk_info "TNSPEC      : ${DET_TNSPEC:-未读到}"
-            chk_info "模块/机型   : ${DET_MODULE:-未知} → 建议板型 ${DET_BOARD_SUGGEST:-未知}"
-            chk_info "L4T 版本    : ${DET_L4T:-未知}"
-            chk_info "UEFI 版本   : ${DET_UEFI:-需要 sudo，未读到}"
-            chk_info "Super 已启用: ${DET_SUPER}"
-            chk_info "启动存储    : ${DET_STORAGE:-未知}（rootdev ${DET_ROOTDEV_SUGGEST:-未知}）"
+            chk_ok "running on the Jetson itself (most accurate identification)"
+            chk_info "TNSPEC      : ${DET_TNSPEC:-not readable}"
+            chk_info "module/type : ${DET_MODULE:-unknown} -> suggested board ${DET_BOARD_SUGGEST:-unknown}"
+            chk_info "L4T version : ${DET_L4T:-unknown}"
+            chk_info "UEFI version: ${DET_UEFI:-needs sudo; not readable}"
+            chk_info "Super enabled: ${DET_SUPER}"
+            chk_info "boot storage: ${DET_STORAGE:-unknown} (rootdev ${DET_ROOTDEV_SUGGEST:-unknown})"
             ;;
-        recovery) chk_ok "主机端看到 recovery 设备（板子型号需刷写时由 EEPROM 读出）" ;;
-        *) chk_warn "既不在板内，也没有 recovery 设备（板子没连、或没进 recovery）" ;;
+        recovery) chk_ok "recovery device visible from the host (model is read from EEPROM during flashing)" ;;
+        *) chk_warn "neither onboard nor in recovery (board not connected, or not in recovery)" ;;
     esac
     if [ -n "$DET_BOARD_SUGGEST" ]; then
         local want="jetson-orin-nano-devkit-super"
         case "$DET_TNSPEC" in
-            *-super*) [ "$want" = "jetson-orin-nano-devkit-super" ] && chk_ok "板型可支持 Super（config 用 ${want}）" ;;
-            *) chk_warn "当前板子不是 super 版；要 Super 必须先刷 QSPI 到 36.4，再 nvpmodel 切 MAXN_SUPER" ;;
+            *-super*) [ "$want" = "jetson-orin-nano-devkit-super" ] && chk_ok "board supports Super (config ${want})" ;;
+            *) chk_warn "this board is not the Super variant; for Super you must flash QSPI to 36.4, then switch nvpmodel to MAXN_SUPER" ;;
         esac
     fi
     echo
@@ -1605,7 +1603,7 @@ report_detect() {
 #   数据源2 官方 BSP 下载目录 HEAD 探测 → 该 L4T 版本是否有可直接刷机的 BSP 包
 # 参考: 官方图形工具 https://developer.nvidia.com/sdk-manager
 #       mfi-qspi-forge  (QSPI-only 量产包生成/校验/烧写)
-#       turing-pi-2.5-jetson-eeprom-fix (先备份再只刷 QSPI，NVMe 数据不动)
+#       turing-pi-2.5-jetson-eeprom-fix (先备份再QSPI only，NVMe 数据不动)
 matrix_age() {
     [ -f "$MATRIX_FILE" ] || { echo 999999; return; }
     echo $(( $(date +%s) - $(stat -c%Y "$MATRIX_FILE" 2>/dev/null || echo 0) ))
@@ -1617,7 +1615,7 @@ suite_core_version() {   # suite -> 该 suite 最新 nvidia-l4t-core 版本
         awk '/^Package: nvidia-l4t-core$/{f=1;next} f&&/^Version:/{print $2; exit}'
 }
 
-suite_qspi_updater() {   # suite -> QSPI capsule 更新包版本（没有则空）
+suite_qspi_updater() {   # suite -> QSPI capsule 更新包版本(没有则空)
     local s="$1" url="$NV_REPO/t234/dists/$s/main/binary-arm64/Packages.gz"
     curl -s --max-time 25 "$url" | gunzip -c 2>/dev/null | \
         awk '/^Package: nvidia-l4t-jetson-orin-nano-qspi-updater$/{f=1;next} f&&/^Version:/{print $2; exit}'
@@ -1639,8 +1637,8 @@ fallback_matrix() {
     local all; all="$(printf '%s' "$FALLBACK_VERSIONS" | tr ' ' ',')"
     printf 'offline|%s||%s|%s\n' "$newest" "$newest" "$all" > "$MATRIX_FILE"
     NEEDS_FALLBACK=1
-    warn "探测不到上游版本（代理/网络？）→ 使用内置兜底清单（可能不是最新）"
-    warn "有网后跑 --refresh 重新探测；下载失败时用 --mirror 指向内网源"
+    warn "upstream unreachable (proxy/network?) -> using the built-in fallback list (may not be the newest)"
+    warn "rerun --refresh once online; if downloads fail, point --mirror at an internal source"
 }
 
 build_matrix() {
@@ -1648,10 +1646,16 @@ build_matrix() {
     local age; age="$(matrix_age)"
     if [ "$force" != 1 ] && [ "$age" -ge 0 ] && [ "$age" -lt "$MATRIX_TTL" ]; then
         if matrix_has_versions; then
-            log "上游矩阵用缓存（$(( age / 3600 )) 小时前生成，--refresh 可强制重取）"
+            # 缓存可能就是上次断网时写的兜底清单：那时不能再做存在性探测
+            if awk -F'|' '$1=="offline"{f=1} END{exit(f?0:1)}' "$MATRIX_FILE"; then
+                NEEDS_FALLBACK=1
+                log "using the offline fallback list from cache ($(( age / 3600 ))h old; --refresh re-probes)"
+            else
+                log "using cached matrix ($(( age / 3600 ))h old; --refresh forces a re-probe)"
+            fi
             return 0
         fi
-        warn "矩阵缓存里没有可用版本（上次探测失败？）→ 重取一次"
+        warn "matrix cache holds no usable version (last probe failed?) -> probing once more"
     fi
     mkdir -p "$(dirname "$MATRIX_FILE")" 2>/dev/null
     : > "$MATRIX_FILE.tmp"
@@ -1662,7 +1666,7 @@ build_matrix() {
         if [ -z "$core" ]; then
             empty=$((empty + 1))
             if [ "$empty" -ge 2 ]; then
-                warn "连续 $empty 个 suite 拿不到 apt 元数据，判定上游不可达，提前结束探测"
+                warn "$empty suites in a row returned no apt metadata; upstream looks unreachable, stopping early"
                 break
             fi
             continue
@@ -1678,7 +1682,7 @@ build_matrix() {
             fi
         done
         printf '%s|%s|%s|%s|%s\n' "$s" "$core" "${qspi%%-*}" "$best" "$all" >> "$MATRIX_FILE.tmp"
-        log "探测 $s: L4T=${core%%-*}, 有BSP=${best:-无}"
+        log "probe $s: L4T=${core%%-*}, BSP=${best:-none}"
         if [ -n "$best" ]; then
             found_any=1; fails=0
         else
@@ -1687,7 +1691,7 @@ build_matrix() {
         # 连续两个 suite 一个包都探不到，基本可以判定上游不可达；
         # 继续逐个探测只会让客户干等几分钟。
         if [ "$found_any" = 0 ] && [ "$fails" -ge 2 ]; then
-            warn "连续 $fails 个 suite 探测失败，判定上游不可达，提前结束探测"
+            warn "$fails suites in a row probed empty; upstream looks unreachable, stopping early"
             break
         fi
     done
@@ -1696,26 +1700,26 @@ build_matrix() {
 }
 
 matrix_print() {
-    printf '\n%s── QSPI / 刷机支持矩阵（数据源：NVIDIA apt 仓库 + 官方下载目录，%s）──%s\n' "$C_B" "$(date +%F)" "$C_N"
-    printf '%-8s %-10s %-12s %-12s %s\n' "suite" "L4T(apt)" "BSP可下" "QSPI胶囊包" "只刷QSPI"
+    printf '\n%s-- QSPI / flash support matrix (source: NVIDIA apt repo + download dir, %s) --%s\n' "$C_B" "$(date +%F)" "$C_N"
+    printf '%-8s %-10s %-12s %-12s %s\n' "suite" "L4T(apt)" "BSP" "QSPI capsule" "QSPI-only"
     local s core qspi best all
     while IFS='|' read -r s core qspi best all; do
         [ -n "$s" ] || continue
-        local ok="是"; [ -n "$best" ] || ok="否(只有apt)"
-        local cap="无"; [ -n "$qspi" ] && cap="有 $qspi"
+        local ok="yes"; [ -n "$best" ] || ok="no (apt only)"
+        local cap="none"; [ -n "$qspi" ] && cap="yes $qspi"
         printf '%-8s %-10s %-12s %-12s %s\n' "$s" "${core%%-*}" "${best:--}" "$cap" "$ok"
     done < "$MATRIX_FILE"
-    printf '\n所有可刷版本（下载目录里真有 BSP 包，按高到低）：%s\n' "$(available_versions 2>/dev/null | tr '\n' ' ')"
-    printf '指定方式：--l4t <版本>；交互运行时不给 --l4t 会弹选择菜单（不会偷偷用最新）\n' 
+    printf '\nall flashable versions (BSP package really exists, high to low): %s\n' "$(available_versions 2>/dev/null | tr '\n' ' ')"
+    printf 'how to pick: --l4t <version>; interactive runs show a menu when --l4t is omitted (never silently newest)\n' 
     local lt="$WORK_DIR/Linux_for_Tegra"
     if [ -d "$lt/bootloader/generic/cfg" ]; then
-        printf '\n本机 BSP 里的 QSPI 分区配置（决定能刷哪些存储后端）：\n'
+        printf '\nQSPI partition configs in the local BSP (which storage backends can be flashed):\n'
         ls "$lt/bootloader/generic/cfg/" 2>/dev/null | grep -E '^flash_t234_qspi.*\.xml$' | sed 's/^/  - /'
-        printf '本机 BSP 可用板型（--board 的取值）：\n'
+        printf 'board models available in the local BSP (values for --board):\n'
         ls "$lt"/jetson-*.conf 2>/dev/null | sed 's#.*/##; s/\.conf$//' | sed 's/^/  - /' | head -20
     fi
-    printf '\n官方图形工具（可整机刷，无"只刷 QSPI"选项）: https://developer.nvidia.com/sdk-manager\n'
-    printf '只刷 QSPI 的第三方实现参考: osrbot/mfi-qspi-forge（量产 MFI 包）、Hi5808/turing-pi-2.5-jetson-eeprom-fix（先备份载板 EEPROM 再只刷 QSPI）\n\n'
+    printf '\nofficial GUI tool (full flash only, no QSPI-only mode): https://developer.nvidia.com/sdk-manager\n'
+    printf 'QSPI-only third-party references: osrbot/mfi-qspi-forge (production MFI package), Hi5808/turing-pi-2.5-jetson-eeprom-fix (back up the carrier EEPROM first)\n\n'
 }
 
 # JetPack → Jetson Linux(L4T) 映射。数据源：NVIDIA 各 JetPack 发布页原文
@@ -1745,11 +1749,11 @@ jp_to_l4t() {
 
 jp_list() {
     cat <<'EOF'
-   JetPack → Jetson Linux(L4T)
-     6.0     → 36.3.0     6.2    → 36.4.3     5.1.3 → 35.4.1
-     6.1     → 36.4.0     6.2.1  → 36.4.4     5.1.1 → 35.3.1
-                          6.2.2  → 36.5.0
-                          6.2.3  → 36.5.2   （apt/OTA 才有，无 BSP 包）
+   JetPack -> Jetson Linux(L4T)
+     6.0     -> 36.3.0     6.2    -> 36.4.3     5.1.3 -> 35.4.1
+     6.1     -> 36.4.0     6.2.1  -> 36.4.4     5.1.1 -> 35.3.1
+                          6.2.2  -> 36.5.0
+                          6.2.3  -> 36.5.2   (apt/OTA only, no BSP)
 EOF
 }
 
@@ -1785,25 +1789,25 @@ available_versions() {
 pick_l4t_interactive() {
     build_matrix 0
     local vers; vers="$(available_versions)"
-    [ -n "$vers" ] || { warn "取不到可用版本列表，回落 auto"; L4T_VERSION=auto; return 0; }
+    [ -n "$vers" ] || { warn "available versions unavailable; falling back to auto"; L4T_VERSION=auto; return 0; }
 
-    printf '\n%s── 选择要装的 L4T / JetPack 版本（数据源：官方下载目录实测存在 BSP）──%s\n' "$C_B" "$C_N"
+    printf '\n%s-- choose the L4T / JetPack version to install (probed from the official download dir) --%s\n' "$C_B" "$C_N"
     local i=0 newest; newest="$(printf '%s\n' "$vers" | head -1)"
     local -a arr=()
     while IFS= read -r v; do
         [ -n "$v" ] || continue
         i=$((i+1)); arr+=("$v")
         local hint; hint="$(jp_hint "$v")"
-        printf '   %2d) %-9s %s%s\n' "$i" "$v" "${hint:+$hint}" "$([ "$v" = "$newest" ] && printf '   %s← 最新%s' "$C_D" "$C_N")"
+        printf '   %2d) %-9s %s%s\n' "$i" "$v" "${hint:+$hint}" "$([ "$v" = "$newest" ] && printf '   %s<- newest%s' "$C_D" "$C_N")"
     done <<< "$vers"
-    printf '    q) 退出\n'
+    printf '    q) quit\n'
     while :; do
-        printf '  请选择 [1-%d]（直接回车 = 1 最新 %s，也可直接输入版本号如 36.4.3）> ' "${#arr[@]}" "$newest"
+        printf '  choose [1-%d] (Enter = 1, newest %s; or type a version such as 36.4.3)> ' "${#arr[@]}" "$newest"
         local a; IFS= read -r a || { L4T_VERSION=auto; return 0; }
         case "$a" in
-            q|Q) die "已退出" ;;
+            q|Q) die "exited" ;;
             "")  L4T_VERSION="${arr[0]}"; break ;;
-            *[!0-9]*) ;;   # 非纯数字 → 当作版本号处理
+            *[!0-9]*) ;;   # 非纯数字 -> 当作版本号处理
         esac
         # 先认 L4T 号（36.x），再认 JetPack 号（6.x / 5.x / jp6.2 …）
         if printf '%s' "$a" | grep -qE '^36\.[0-9]+(\.[0-9]+)?$'; then
@@ -1812,27 +1816,27 @@ pick_l4t_interactive() {
                 *)     L4T_VERSION="$(printf '%s\n' "$vers" | grep -E "^$a\." | head -1)" ;;
             esac
             [ -n "$L4T_VERSION" ] && break
-            L4T_VERSION=""; warn "没找到 L4T $a 的可刷版本，重选"; continue
+            L4T_VERSION=""; warn "no flashable version for L4T $a; pick again"; continue
         fi
         if printf '%s' "$a" | grep -qiE '^(jp)?[0-9]+(\.[0-9]+)+$'; then
             local l4t; if l4t="$(jp_to_l4t "$a")"; then
                 if printf '%s\n' "$vers" | grep -qx "$l4t"; then L4T_VERSION="$l4t"; break; fi
                 local nv; nv="$(nearest_available "$l4t")"
                 if [ -n "$nv" ]; then
-                    warn "JetPack $a → L4T $l4t 官方无 BSP 包，退到最近的 $nv"
+                    warn "JetPack $a -> L4T $l4t has no BSP package; falling back to $nv"
                     L4T_VERSION="$nv"; break
                 fi
-                warn "JetPack $a → L4T $l4t，但当前没有可刷的 BSP 版本"; continue
+                warn "JetPack $a -> L4T $l4t, but no flashable BSP is available"; continue
             fi
-            warn "没有 JetPack $a 这个映射（--jp-list 看映射表）"; continue
+            warn "no such JetPack mapping: $a (see --jp-list)"; continue
         fi
         case "$a" in
-            ''|*[!0-9]*) warn "请输入序号或版本号"; continue ;;
+            ''|*[!0-9]*) warn "enter an index or a version"; continue ;;
         esac
         if [ "$a" -ge 1 ] && [ "$a" -le "${#arr[@]}" ]; then L4T_VERSION="${arr[$((a-1))]}"; break; fi
-        warn "序号超出范围"
+        warn "index out of range"
     done
-    ok "已选 L4T $L4T_VERSION$( [ -n "$(jp_hint "$L4T_VERSION")" ] && printf '（%s）' "$(jp_hint "$L4T_VERSION")" )"
+    ok "selected L4T $L4T_VERSION$( [ -n "$(jp_hint "$L4T_VERSION")" ] && printf ' (%s)' "$(jp_hint "$L4T_VERSION")" )"
 }
 
 resolve_l4t() {
@@ -1841,14 +1845,14 @@ resolve_l4t() {
         auto|latest|"")
             build_matrix 0
             L4T_VERSION="$(awk -F'|' '$4!=""{print $4}' "$MATRIX_FILE" 2>/dev/null | sort -V | tail -1)"
-            [ -n "$L4T_VERSION" ] || die "从上游没解析出可用 BSP 版本（网络不通？矩阵缓存 $MATRIX_FILE）"
-            log "自动选中最新可刷 BSP: L4T $L4T_VERSION"
+            [ -n "$L4T_VERSION" ] || die "could not resolve a flashable BSP from upstream (network down? matrix cache $MATRIX_FILE)"
+            log "auto-selected newest flashable BSP: L4T $L4T_VERSION"
             ;;
         *)  : ;;
     esac
     refresh_filenames
     if [ "$NEEDS_FALLBACK" = 1 ]; then
-        warn "离线兜底模式：跳过版本存在性探测，直接尝试下载"
+        warn "offline fallback: skipping the version probe and trying the download directly"
         return 0
     fi
     if ! url_exists "$(bsp_url "$L4T_VERSION")"; then
@@ -1856,20 +1860,20 @@ resolve_l4t() {
             build_matrix 0
             local nv; nv="$(nearest_available "$L4T_VERSION")"
             if [ -n "$nv" ]; then
-                warn "JetPack 映射到的 L4T $L4T_VERSION 官方没有可直接刷的 BSP 包（只走 apt/OTA）→ 退到最近的 $nv"
+                warn "the mapped L4T $L4T_VERSION has no downloadable BSP (apt/OTA only) -> falling back to $nv"
                 L4T_VERSION="$nv"; refresh_filenames; return 0
             fi
         fi
         if [ "$SPEC_FROM" = "l4t" ]; then
             # 用户已经点名版本，探测失败多半是网络/代理；交给下载环节报真实错误。
-            warn "探测不到 L4T $L4T_VERSION 的 BSP（代理/网络？），继续尝试下载"
-            warn "下载失败时：给 curl 配代理（https_proxy=...），或用 --mirror 指向内网源"
+            warn "cannot probe the BSP for L4T $L4T_VERSION (proxy/network?); trying the download anyway"
+            warn "if the download fails: set https_proxy for curl, or point --mirror at an internal source"
             return 0
         fi
-        warn "L4T $L4T_VERSION 的 BSP 包在官方下载目录不存在（可能只有 apt/OTA 发布）"
+        warn "no BSP package for L4T $L4T_VERSION in the official download dir (apt/OTA only?)"
         build_matrix 0
-        printf '可选版本（有 BSP 包）: %s\n' "$(awk -F'|' '$4!=""{print $4}' "$MATRIX_FILE" 2>/dev/null | sort -V | tr '\n' ' ')"
-        die "换个版本：--l4t <版本>，或 --l4t latest 自动挑最新的"
+        printf 'available versions (with BSP): %s\n' "$(awk -F'|' '$4!=""{print $4}' "$MATRIX_FILE" 2>/dev/null | sort -V | tr '\n' ' ')"
+        die "pick another version: --l4t <version>, or --l4t latest to take the newest"
     fi
 }
 
@@ -1884,43 +1888,43 @@ manifest_put() {
 
 verify_checksum() {
     local name="$1" f; f="$(pkg_dir)/$1"
-    [ "$DRY_RUN" = 1 ] && { log "[dry-run] sha256 校验 $f"; return 0; }
-    [ -s "$f" ] || { warn "文件不在，跳过校验"; return 0; }
+    [ "$DRY_RUN" = 1 ] && { log "[dry-run] sha256 verify $f"; return 0; }
+    [ -s "$f" ] || { warn "file absent; verification skipped"; return 0; }
     local got want=""
     got="$(sha256sum "$f" | awk '{print $1}')"
     if [ -n "$MANIFEST_URL" ]; then
         want="$(curl -fsSL --max-time 20 "$MANIFEST_URL" 2>/dev/null | awk -v n="$name" '$2==n||$2=="*"n{print $1}' | head -1)"
-        [ -n "$want" ] || warn "外部清单里没有 $name，退回本机 TOFU 记录"
+        [ -n "$want" ] || warn "$name absent from the external manifest; falling back to the local TOFU record"
     fi
     [ -n "$want" ] || want="$(manifest_get "$name")"
     if [ -z "$want" ]; then
         manifest_put "$name" "$got"
-        ok "首次校验通过并记入本机清单: $name = $got"
+        ok "first check passed and recorded locally: $name = $got"
         return 0
     fi
-    if [ "$got" = "$want" ]; then ok "sha256 与清单一致: $name"
-    else die "sha256 不符（本地 $got ≠ 清单 $want）；若上游确实换了包，删掉清单行重跑：rm $MANIFEST_FILE"; fi
+    if [ "$got" = "$want" ]; then ok "sha256 matches the manifest: $name"
+    else die "sha256 mismatch (local $got != manifest $want); if upstream really republished, drop that line and rerun: rm $MANIFEST_FILE"; fi
 }
 
 # ================================================================ 自更新
 self_update() {
     local src="${UPDATE_FROM:-${JETSON_SCRIPT_URL:-}}"
-    [ -n "$src" ] || die "没给更新源：--update-from <url|路径>，或配 JETSON_SCRIPT_URL"
+    [ -n "$src" ] || die "no update source: --update-from <url|path>, or set JETSON_SCRIPT_URL"
     local tmp; tmp="$(mktemp)"; local new_sha old_sha
     case "$src" in
-        http://*|https://*) curl -fsSL --max-time 60 -o "$tmp" "$src" || die "下载新版本失败: $src" ;;
-        *) [ -f "$src" ] || die "更新源不存在: $src"; cp -f "$src" "$tmp" ;;
+        http://*|https://*) curl -fsSL --max-time 60 -o "$tmp" "$src" || die "downloading the new version failed: $src" ;;
+        *) [ -f "$src" ] || die "update source not found: $src"; cp -f "$src" "$tmp" ;;
     esac
-    bash -n "$tmp" || { rm -f "$tmp"; die "新版本语法检查没过，放弃更新"; }
+    bash -n "$tmp" || { rm -f "$tmp"; die "new version failed the syntax check; update abandoned"; }
     new_sha="$(sha256sum "$tmp" | awk '{print $1}')"
     old_sha="$(sha256sum "$0" 2>/dev/null | awk '{print $1}')"
-    if [ "$new_sha" = "$old_sha" ]; then rm -f "$tmp"; ok "已经是当前最新版（sha256 相同）"; return 0; fi
-    warn "发现新版本，准备替换（旧版备份为 $(basename "$0").bak.$(date +%s)）"
+    if [ "$new_sha" = "$old_sha" ]; then rm -f "$tmp"; ok "already the current version (identical sha256)"; return 0; fi
+    warn "new version found; replacing (old copy backed up as $(basename "$0").bak.$(date +%s))"
     cp -f "$0" "$0.bak.$(date +%s)" 2>/dev/null || true
     chmod 755 "$tmp"
-    if mv -f "$tmp" "$0" 2>/dev/null; then ok "已更新：$0"
-    else warn "无法写入 $0（只读/权限），新版本留在 $tmp，可手工拷走"; fi
-    log "新版本说明（头部 12 行）："; head -12 "$0" | sed 's/^/    /'
+    if mv -f "$tmp" "$0" 2>/dev/null; then ok "updated: $0"
+    else warn "cannot write $0 (read-only/permissions); new version left at $tmp, copy it manually"; fi
+    log "new version notes (first 12 lines):"; head -12 "$0" | sed 's/^/    /'
 }
 
 # =================================================== 说明文档（自动打开）
@@ -1947,18 +1951,18 @@ open_in_browser() {
 
 open_doc() {
     local t; if ! t="$(doc_target)"; then
-        warn "没找到 index.html（应与脚本同目录），也没配 --doc-url；跳过"
+        warn "no index.html (expected next to the script) and no --doc-url; skipping"
         return 0
     fi
     local url="$t"
     case "$t" in http://*|https://*) ;; *) url="file://$t" ;; esac
     if ! has_display; then
-        log "无图形环境（headless），文档在这里：$t"
-        [ -n "$DOC_URL" ] && log "在线版：$DOC_URL"
+        log "no GUI (headless); docs here: $t"
+        [ -n "$DOC_URL" ] && log "online: $DOC_URL"
         return 0
     fi
-    if open_in_browser "$url"; then log "已在浏览器打开：$url"
-    else warn "打不开浏览器，文档路径：$t"; fi
+    if open_in_browser "$url"; then log "opened in the browser: $url"
+    else warn "could not open a browser; docs at: $t"; fi
 }
 
 maybe_open_doc() {
@@ -1966,16 +1970,16 @@ maybe_open_doc() {
     [ "$DRY_RUN" = 1 ] && return 0
     local t; t="$(doc_target)" || return 0
     if ! has_display; then
-        log "更多说明（矩阵/参数/坑）：$t"
+        log "more (matrix/options/pitfalls): $t"
         return 0
     fi
     if [ "$YES" = 1 ] || [ ! -t 0 ]; then
         open_doc
         return 0
     fi
-    printf '  打开使用说明页（矩阵 / 参数 / 免责声明）？[Y/n] '
+    printf '  open the docs page (matrix / options / disclaimer)? [Y/n] '
     local a; read -r a
-    case "$a" in n|N|no|NO) log "文档路径：$t" ;; *) open_doc ;; esac
+    case "$a" in n|N|no|NO) log "docs path: $t" ;; *) open_doc ;; esac
 }
 
 prescan_config() {
@@ -1999,7 +2003,7 @@ main() {
         matrix) build_matrix "$REFRESH"; matrix_print; exit 0 ;;
         update) self_update; exit 0 ;;
         doc)    open_doc; exit 0 ;;
-        jpmap)  echo "可刷版本: $(available_versions 2>/dev/null | tr '\n' ' ')"; jp_list; exit 0 ;;
+        jpmap)  echo "flashable versions: $(available_versions 2>/dev/null | tr '\n' ' ')"; jp_list; exit 0 ;;
         diag)
             detect_onboard || detect_recovery || DET_MODE="none"
             pick_board
@@ -2010,7 +2014,7 @@ main() {
             exit 0 ;;
     esac
 
-    case "$MODE" in nvme|qspi) WITH_ROOTFS=1 ;; esac   # 这两种都要 rootfs，先定下来再算空间
+    case "$MODE" in nvme|qspi) WITH_ROOTFS=1 ;; esac   # 这两种都要 rootfs,先定下来再算空间
     [ "$AUTO_DIR" = 1 ] && auto_select_dirs "$MODE"
 
     # 版本：没显式给 --l4t 时，交互就让你选；非交互才回落 auto
@@ -2018,11 +2022,11 @@ main() {
         case "$MODE" in
             qspi|nvme|prep)
                 if [ -t 0 ] && [ "$YES" != 1 ] && [ "$DRY_RUN" != 1 ]; then pick_l4t_interactive
-                else L4T_VERSION=auto; log "非交互环境，版本回落 auto（最新可刷）"; fi ;;
+                else L4T_VERSION=auto; log "non-interactive; version falls back to auto (newest flashable)"; fi ;;
             *) L4T_VERSION=auto ;;
         esac
     fi
-    resolve_l4t                    # auto/latest → 向上游探测最新可刷 BSP（不写死版本）
+    resolve_l4t                    # auto/latest -> 向上游探测最新可刷 BSP(不写死版本)
 
     detect_onboard || detect_recovery || DET_MODE="none"
     pick_board
@@ -2033,9 +2037,9 @@ main() {
             report_detect
             check_requirements detect
             if [ "$DET_MODE" = "onboard" ]; then
-                log "板内体检通过。板内只能 --mode target（升计算栈）；要刷 QSPI/整机请接 x86_64 主机"
+                log "onboard check passed. Only --mode target (compute stack) works onboard; use an x86_64 host to flash QSPI or the whole system"
             else
-                log "主机侧体检通过。板子进 recovery 后：--mode qspi（写入启动固件）或 --mode nvme（整机重刷）"
+                log "host check passed. Once the board is in recovery: --mode qspi (boot firmware) or --mode nvme (full reflash)"
             fi
             ;;
         target)
@@ -2049,7 +2053,7 @@ main() {
             report_detect; WITH_ROOTFS=1; check_requirements nvme
             do_prep; do_nvme ;;
     esac
-    ok "全部完成"
+    ok "all done"
     maybe_open_doc      # 跑完自动提示 / 自动用浏览器打开 index.html
 }
 
@@ -2061,6 +2065,6 @@ _self_src="${BASH_SOURCE[0]:-}"
 if [ -z "$_self_src" ] || [ "$_self_src" = "$0" ]; then
     main "$@"
 else
-    ( main "$@" )        # source 调用：放子壳跑，中途 exit 不会关掉调用者终端
+    ( main "$@" )        # source 调用:放子壳跑,中途 exit 不会关掉调用者终端
     return $?
 fi
