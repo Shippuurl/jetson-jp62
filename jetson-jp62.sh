@@ -157,6 +157,10 @@ declare -A EN_MSG=(
   ["既不在板内，也没有 recovery 设备（板子没连、或没进 recovery）"]="neither onboard nor in recovery (board not connected, or not in recovery)"
   ["当前板子不是 super 版；要 Super 必须先刷 QSPI 到 36.4，再 nvpmodel 切 MAXN_SUPER"]="this board is not the Super variant; for Super you must flash QSPI to 36.4, then switch nvpmodel to MAXN_SUPER"
   ["取不到可用版本列表，回落 auto"]="available versions unavailable; falling back to auto"
+  ["探测不到上游版本（代理/网络？）→ 使用内置兜底清单（可能不是最新）"]="upstream unreachable (proxy/network?) → using the built-in fallback list (may not be the newest)"
+  ["有网后跑 --refresh 重新探测；下载失败时用 --mirror 指向内网源"]="rerun --refresh once online; if downloads fail, point --mirror at an internal source"
+  ["矩阵缓存里没有可用版本（上次探测失败？）→ 重取一次"]="matrix cache holds no usable version (last probe failed?) → probing once more"
+  ["离线兜底模式：跳过版本存在性探测，直接尝试下载"]="offline fallback: skipping the version probe and trying the download directly"
   ["已退出"]="exited"
   ["请输入序号或版本号"]="enter an index or a version"
   ["序号超出范围"]="index out of range"
@@ -782,7 +786,11 @@ tag_for_version() {   # 36.4.3 -> r36_release_v4.3 ; 36.5.0 -> r36_release_v5.0
 
 bsp_url()    { printf '%s/l4t/%s/release/Jetson_Linux_R%s_aarch64.tbz2' "$NV_DL_BASE" "$(tag_for_version "$1")" "$1"; }
 rootfs_url() { printf '%s/l4t/%s/release/Tegra_Linux_Sample-Root-Filesystem_R%s_aarch64.tbz2' "$NV_DL_BASE" "$(tag_for_version "$1")" "$1"; }
-url_exists() { curl -sIL --max-time 12 "$1" 2>/dev/null | grep -q '^HTTP/2 200'; }
+url_exists() {
+    # 公司代理常把响应降成 HTTP/1.1；只认 "HTTP/2 200" 会全线误判成"不存在"。
+    curl -sIL --connect-timeout 6 --max-time 15 "$1" 2>/dev/null |
+        grep -qE '^HTTP/[0-9.]+ 200'
+}
 
 refresh_filenames() {
     [ -n "$L4T_TAG" ] || L4T_TAG="$(tag_for_version "$L4T_VERSION")"
@@ -1615,19 +1623,51 @@ suite_qspi_updater() {   # suite -> QSPI capsule 更新包版本（没有则空�
         awk '/^Package: nvidia-l4t-jetson-orin-nano-qspi-updater$/{f=1;next} f&&/^Version:/{print $2; exit}'
 }
 
+# 上游全探测不到时用的离线清单：只保证"这些版本当年确实发过 BSP 包"，
+# 不是最新。有网后 --refresh 会用真实探测结果覆盖。
+FALLBACK_VERSIONS="36.5.0 36.4.4 36.4.3 36.4.0 36.3.0 36.2.0 35.6.5 35.4.1"
+NEEDS_FALLBACK=0
+
+matrix_has_versions() {
+    [ -s "$MATRIX_FILE" ] || return 1
+    awk -F'|' '$4!=""{found=1} END{exit(found?0:1)}' "$MATRIX_FILE"
+}
+
+fallback_matrix() {
+    mkdir -p "$(dirname "$MATRIX_FILE")" 2>/dev/null
+    local newest="${FALLBACK_VERSIONS%% *}"
+    local all; all="$(printf '%s' "$FALLBACK_VERSIONS" | tr ' ' ',')"
+    printf 'offline|%s||%s|%s\n' "$newest" "$newest" "$all" > "$MATRIX_FILE"
+    NEEDS_FALLBACK=1
+    warn "探测不到上游版本（代理/网络？）→ 使用内置兜底清单（可能不是最新）"
+    warn "有网后跑 --refresh 重新探测；下载失败时用 --mirror 指向内网源"
+}
+
 build_matrix() {
     local force="${1:-0}"
     local age; age="$(matrix_age)"
     if [ "$force" != 1 ] && [ "$age" -ge 0 ] && [ "$age" -lt "$MATRIX_TTL" ]; then
-        log "上游矩阵用缓存（$(( age / 3600 )) 小时前生成，--refresh 可强制重取）"
-        return 0
+        if matrix_has_versions; then
+            log "上游矩阵用缓存（$(( age / 3600 )) 小时前生成，--refresh 可强制重取）"
+            return 0
+        fi
+        warn "矩阵缓存里没有可用版本（上次探测失败？）→ 重取一次"
     fi
     mkdir -p "$(dirname "$MATRIX_FILE")" 2>/dev/null
     : > "$MATRIX_FILE.tmp"
     local s core qspi maj min pat v best
+    local found_any=0 fails=0 empty=0
     for s in $SUITES; do
         core="$(suite_core_version "$s")"
-        [ -n "$core" ] || continue
+        if [ -z "$core" ]; then
+            empty=$((empty + 1))
+            if [ "$empty" -ge 2 ]; then
+                warn "连续 $empty 个 suite 拿不到 apt 元数据，判定上游不可达，提前结束探测"
+                break
+            fi
+            continue
+        fi
+        empty=0
         qspi="$(suite_qspi_updater "$s")"
         maj="${core%%.*}"; local rest="${core#*.}"; min="${rest%%.*}"; pat="${rest#*.}"; pat="${pat%%-*}"
         best=""; local all=""
@@ -1639,8 +1679,20 @@ build_matrix() {
         done
         printf '%s|%s|%s|%s|%s\n' "$s" "$core" "${qspi%%-*}" "$best" "$all" >> "$MATRIX_FILE.tmp"
         log "探测 $s: L4T=${core%%-*}, 有BSP=${best:-无}"
+        if [ -n "$best" ]; then
+            found_any=1; fails=0
+        else
+            fails=$((fails + 1))
+        fi
+        # 连续两个 suite 一个包都探不到，基本可以判定上游不可达；
+        # 继续逐个探测只会让客户干等几分钟。
+        if [ "$found_any" = 0 ] && [ "$fails" -ge 2 ]; then
+            warn "连续 $fails 个 suite 探测失败，判定上游不可达，提前结束探测"
+            break
+        fi
     done
     mv "$MATRIX_FILE.tmp" "$MATRIX_FILE"
+    matrix_has_versions || fallback_matrix
 }
 
 matrix_print() {
@@ -1795,6 +1847,10 @@ resolve_l4t() {
         *)  : ;;
     esac
     refresh_filenames
+    if [ "$NEEDS_FALLBACK" = 1 ]; then
+        warn "离线兜底模式：跳过版本存在性探测，直接尝试下载"
+        return 0
+    fi
     if ! url_exists "$(bsp_url "$L4T_VERSION")"; then
         if [ "$SPEC_FROM" = "jp" ]; then
             build_matrix 0
@@ -1803,6 +1859,12 @@ resolve_l4t() {
                 warn "JetPack 映射到的 L4T $L4T_VERSION 官方没有可直接刷的 BSP 包（只走 apt/OTA）→ 退到最近的 $nv"
                 L4T_VERSION="$nv"; refresh_filenames; return 0
             fi
+        fi
+        if [ "$SPEC_FROM" = "l4t" ]; then
+            # 用户已经点名版本，探测失败多半是网络/代理；交给下载环节报真实错误。
+            warn "探测不到 L4T $L4T_VERSION 的 BSP（代理/网络？），继续尝试下载"
+            warn "下载失败时：给 curl 配代理（https_proxy=...），或用 --mirror 指向内网源"
+            return 0
         fi
         warn "L4T $L4T_VERSION 的 BSP 包在官方下载目录不存在（可能只有 apt/OTA 发布）"
         build_matrix 0
